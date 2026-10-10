@@ -1,34 +1,35 @@
-import { Client } from 'live-football-api';
+const { Client } = require('live-football-api');
 
-export default async function handler(req, res){
-  const key = process.env.LIVE_FOOTBALL_API_KEY;
-  if(!key) return res.status(200).json({ data:[], count:0, error:"NO KEY IN VERCEL" });
+module.exports = async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
 
-  const date = new Date().toISOString().split('T')[0];
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
 
-  try{
-    const client = new Client(key);
-    const result = await client.matches(date, 'en');
-    const matches = result?.data?.matches || [];
+  try {
+    const client = new Client('sk_live_1e6a6e1c6a0d3c2b8f5a9d4e7c3b2a1f0e');
 
-    const fixed = matches.map(m=>{
-      const country = (m.league?.country||"").toUpperCase();
-      const name = (m.league?.name||"FOOTBALL").toUpperCase();
-      return {
-        league_full: country? `${country}: ${name}` : name,
-        league_country: country,
-        league_name: name,
-        home_team: m.home_team,
-        away_team: m.away_team,
-        time: m.kickoff,
-        status: m.status,
-        home_score: m.home_score,
-        away_score: m.away_score
-      };
+    // Today's date
+    const today = new Date().toISOString().split('T')[0];
+
+    const result = await client.matches(today, 'en');
+
+    return res.status(200).json({
+      success: true,
+      data: result.data.matches || result.data || [],
+      count: result.data.matches? result.data.matches.length : 0,
+      date: today,
+      source: 'live-football-api'
     });
 
-    return res.status(200).json({ data: fixed, count: fixed.length, date });
-  }catch(e){
-    return res.status(200).json({ data:[], count:0, error: e.message, date });
+  } catch (error) {
+    console.error('API Error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+      data: []
+    });
   }
 }
