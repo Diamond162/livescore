@@ -9,12 +9,12 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const client = new Client('sk_live_1e6a6e1c6a0d3c2b8f5a9d4e7c3b2a1f0e');
+    const client = new Client(process.env.LIVE_FOOTBALL_API_KEY);
 
     // Today's date
     const today = new Date().toISOString().split('T')[0];
 
-    const result = await client.matches(today, 'en');
+    const result = await client.matchesToday('en');
 
     return res.status(200).json({
       success: true,
