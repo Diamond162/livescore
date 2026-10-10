@@ -1,15 +1,34 @@
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 'no-store');
-  const KEY = process.env.LIVE_FOOTBALL_API_KEY;
-  if(!KEY) return res.status(200).json({ data: [], error: "Missing API KEY" });
-  const date = new Date().toISOString().split('T')[0];
-  const url = `https://live-football-api.com/api/v1/matches?api_key=${KEY}&date=${date}&lang=en`;
+  const key = process.env.LIVE_FOOTBALL_API_KEY;
+  if(!key) return res.status(500).json({error: "No API key"});
+
+  const date = new Date().toISOString().split('T')[0]; // today 2026 format YYYY-MM-DD
+
   try {
-    const r = await fetch(url);
-    const txt = await r.text();
-    let j; try{ j=JSON.parse(txt); }catch{ return res.status(200).json({ data: [], error: txt.slice(0,400) }); }
-    const matches = j?.data?.matches || j?.data || j?.matches || [];
-    return res.status(200).json({ data: Array.isArray(matches)?matches:[], count: matches.length, date });
-  } catch(e) { return res.status(200).json({ data: [], error: e.message }); }
+    const r = await fetch(`https://live-football-api.com/api/matches?date=${date}`, {
+      headers: { "X-API-KEY": key, "Authorization": `Bearer ${key}` }
+    });
+
+    let data = await r.json();
+    // live-football-api returns {data: {matches: [...]} } or {matches: [...]}
+    let matches = data.data?.matches || data.matches || data.data || [];
+
+    // Fix league name to include country so Brazil Serie A!= Italy Serie A
+    const fixed = matches.map(m => {
+      const country = m.league?.country || m.country || m.league_country || '';
+      const leagueName = m.league?.name || m.league_name || m.competition || 'Unknown';
+      // create full league label like ITALY: SERIE A, BRAZIL: SERIE A
+      const fullLeague = country? `${country.toUpperCase()}: ${leagueName.toUpperCase()}` : leagueName.toUpperCase();
+      return {
+       ...m,
+        league_full: fullLeague,
+        league_country: country,
+        league_name: leagueName
+      }
+    });
+
+    return res.status(200).json({ data: fixed });
+  } catch(e){
+    return res.status(500).json({error: e.message});
+  }
 }
