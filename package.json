@@ -1,8 +1,7 @@
 {
   "name": "livescore",
   "version": "1.0.0",
-  "type": "module",
   "dependencies": {
-    "live-football-api": "^1.0.3"
+    "live-football-api": "latest"
   }
 }
