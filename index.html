@@ -1,109 +1,58 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NIELKING LIVESCORE</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diamond LiveScore - Live Football</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}body{background:#1a2a3a;color:#fff;font-family:Arial,sans-serif}
-.header{background:#0f2f1f;padding:14px;text-align:center;font-weight:800;font-size:18px}
-.advert1{background:#ffb700;color:#000;text-align:center;padding:10px;font-weight:800;font-size:14px}
-.advert2{background:#00bfff;color:#000;text-align:center;padding:10px;font-weight:800;font-size:14px}
-.tabs{display:flex;gap:8px;padding:10px;background:#1e3446}
-.tab{flex:1;padding:10px;border-radius:10px;background:#2a4055;color:#00bfff;font-weight:700;border:none;cursor:pointer}
-.tab.active{background:#4ecdc4;color:#000}
-.filters{display:flex;gap:8px;padding:10px;background:#1e3446}
-.fbtn{flex:1;padding:9px;border-radius:8px;border:none;font-weight:700;font-size:13px;cursor:pointer}
-.fbtn.all{background:#2a4055;color:#00bfff}.fbtn.all.active{background:#4ecdc4;color:#000}
-.fbtn.live{background:#2a1a1a;color:#ff3333}.fbtn.live.active{background:#ff3333;color:#fff}
-.fbtn.fin{background:#2a4055;color:#00bfff}.fbtn.fin.active{background:#4ecdc4;color:#000}
-.fbtn.ref{background:#4ecdc4;color:#000}
-.league-head{background:#2a3f50;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:12px}
-.stand{border:1px solid #5a8a5a;color:#8fbc8f;padding:4px 10px;border-radius:20px;font-size:11px;background:transparent}
-.match-row{background:#fff;color:#111;padding:12px 10px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #ddd;font-size:14px}
-.time{color:#d32f2f;font-size:12px;min-width:50px;font-weight:700}
-.teams{flex:1;text-align:center;font-weight:600}
-.score{color:#111;font-weight:800;min-width:20px;text-align:right}
-.loading{padding:40px;text-align:center;color:#7a8a9a}
+body{font-family:Arial,sans-serif;background:#0f172a;color:#fff;margin:0;padding:20px}
+h1{text-align:center;color:#22c55e}
+#status{text-align:center;margin:10px;color:#94a3b8}
+.match{background:#1e293b;margin:10px auto;max-width:600px;padding:15px;border-radius:12px;display:flex;justify-content:space-between;align-items:center}
+.team{font-weight:bold}
+.score{font-size:20px;background:#000;padding:5px 12px;border-radius:8px}
+.live{color:#ef4444;font-size:12px;font-weight:bold}
+button{display:block;margin:20px auto;padding:10px 20px;background:#22c55e;border:none;border-radius:8px;color:#000;font-weight:bold;cursor:pointer}
 </style>
 </head>
 <body>
-<div class="header">⚽ NIELKING LIVESCORE</div>
-<div class="advert1">🔥 ADVERT 1 - CLICK HERE TO ADVERTISE 🔥</div>
-<div class="advert2">💰 ADVERT 2 - CLICK HERE - WhatsApp Us 💰</div>
-<div class="tabs">
-<button class="tab active">Today</button>
-<button class="tab">Yesterday</button>
-<button class="tab">Tomorrow</button>
-</div>
-<div class="filters">
-<button class="fbtn all active" id="btn-all" onclick="showAll()">All Games</button>
-<button class="fbtn live" id="btn-live" onclick="showLive()">LIVE</button>
-<button class="fbtn fin" id="btn-fin" onclick="showFinished()">Finished</button>
-<button class="fbtn ref" onclick="location.reload()">↻ REFRESH</button>
-</div>
-<div id="list"><div class="loading">Loading matches... ⏳</div></div>
+<h1>⚽ Diamond LiveScore</h1>
+<div id="status">Loading live matches...</div>
+<button onclick="loadMatches()">Refresh 🔄</button>
+<div id="matches"></div>
+
 <script>
-let allMatches=[];
-function getName(t){ if(!t) return 'TBD'; if(typeof t==='string') return t; return t.name||t.shortName||t.team||t.team_name||'Team'; }
-function getLeagueLabel(m){
-  // Fix Brazil vs Italy Serie A mix
-  let country = (m.league_country || m.league?.country || m.country || '').toString().toUpperCase();
-  let name = (m.league_name || m.league?.name || m.league || 'FOOTBALL').toString().toUpperCase();
-  if(country &&!name.includes(country)) return country + ': ' + name;
-  return name;
-}
-async function load(){
+async function loadMatches(){
+  const statusEl = document.getElementById('status');
+  const box = document.getElementById('matches');
   try{
-    let r=await fetch('/api/matches'); let j=await r.json();
-    let ms=j.data||j.matches||j;
-    if(!Array.isArray(ms)) ms=ms.matches||[];
-    allMatches=ms;
-    render(allMatches);
-  }catch(e){ document.getElementById('list').innerHTML='<div class=loading>Error loading. Check Vercel API key</div>'; }
-}
-function render(matches){
-  let box=document.getElementById('list');
-  if(!matches.length){ box.innerHTML='<div class=loading>No matches for this filter.<br>Try All Games</div>'; return; }
-  const groups={};
-  matches.forEach(m=>{
-    let lg=getLeagueLabel(m);
-    if(!groups[lg]) groups[lg]=[];
-    groups[lg].push(m);
-  });
-  let html='';
-  for(let [league,games] of Object.entries(groups)){
-    html+=`<div class="league-head"><span>${league}</span><span class="stand">Standings</span></div>`;
-    games.forEach(m=>{
-      let home=getName(m.home_team||m.homeTeam||m.home||m.teams?.home);
-      let away=getName(m.away_team||m.awayTeam||m.away||m.teams?.away);
-      let time=m.time||m.kickoff||'20:00'; if(typeof time==='string' && time.length>5) time=time.slice(11,16);
-      let status=(m.status||'').toString();
-      let hs=m.home_score??m.score?.home??''; let as=m.away_score??m.score?.away??'';
-      let display = (hs!=='' && hs!=null)? `${hs}-${as}` : time;
-      html+=`<div class="match-row"><span class="time">${display}</span><span class="teams">${home} - ${away}</span><span class="score">-</span></div>`;
-    });
+    statusEl.textContent = 'Fetching live...';
+    const res = await fetch('/.netlify/functions/matches');
+    const json = await res.json();
+    console.log(json);
+    if(!json.success ||!json.data || json.data.length===0){
+      statusEl.textContent = json.error? 'Error: '+json.error : 'No live matches right now - '+json.date;
+      box.innerHTML = '';
+      return;
+    }
+    statusEl.textContent = `Live - ${json.data.length} matches - ${json.date}`;
+    box.innerHTML = json.data.map(m => {
+      const home = m.homeTeam?.name || m.home_team || m.teams?.home || 'Home';
+      const away = m.awayTeam?.name || m.away_team || m.teams?.away || 'Away';
+      const hs = m.score?.fullTime?.home?? m.score?.home?? m.home_score?? '-';
+      const as = m.score?.fullTime?.away?? m.score?.away?? m.away_score?? '-';
+      const state = m.status || m.state || 'LIVE';
+      return `<div class="match">
+        <div><div class="live">${state}</div><div class="team">${home}</div><div class="team">${away}</div></div>
+        <div class="score">${hs} - ${as}</div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    statusEl.textContent = 'Failed to load: '+e.message;
   }
-  box.innerHTML=html;
 }
-function setActive(id){
-  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-}
-function showAll(){ setActive('btn-all'); render(allMatches); }
-function showLive(){
-  setActive('btn-live');
-  let live=allMatches.filter(m=>{ let s=(m.status||m.state||'').toLowerCase(); return s.includes('live')||s.includes('1h')||s.includes('2h')||s.includes('ht')||s=='1'; });
-  render(live);
-}
-function showFinished(){
-  setActive('btn-fin');
-  let fin=allMatches.filter(m=>{ let s=(m.status||'').toLowerCase(); return s.includes('ft')||s.includes('finished')||s.includes('full'); });
-  // if no FT found, show matches with scores
-  if(!fin.length) fin=allMatches.filter(m=> m.home_score!=null && m.home_score!=='');
-  render(fin);
-}
-load();
+loadMatches();
+setInterval(loadMatches, 30000);
 </script>
 </body>
 </html>
