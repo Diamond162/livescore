@@ -6,39 +6,49 @@ exports.handler = async () => {
     let d=new Date(); d.setDate(d.getDate()+offset);
     let dateStr=d.toISOString().split('T')[0];
     try{
-      let url=`https://live-football-api.com/api/v1/matches?date=${dateStr}`;
-      let res=await fetch(url,{
+      let res=await fetch(`https://live-football-api.com/api/v1/matches?date=${dateStr}`,{
         headers:{ 'Authorization': `Bearer ${API_KEY}` }
       });
       let json=await res.json();
       let ms=json.data?.matches || json.data || json.matches || [];
-      if(Array.isArray(ms) && ms.length) all=all.concat(ms);
+      if(ms.length) all=all.concat(ms);
     }catch(e){}
   }
 
+  const toStr = (v) => {
+    if(!v) return "";
+    if(typeof v === "string") return v;
+    if(typeof v === "object") return v.name || v.short_name || v.shortName || v.displayName || "";
+    return String(v);
+  };
+
   const clean=all.map(m=>{
-    // Try EVERY possible field name your API might use
-    let home = m.homeTeam?.name || m.home_team?.name || m.home?.name || m.teams?.home?.name || m.homeTeam || m.home_team || m.home || "";
-    let away = m.awayTeam?.name || m.away_team?.name || m.away?.name || m.teams?.away?.name || m.awayTeam || m.away_team || m.away || "";
+    let homeObj = m.homeTeam || m.home_team || m.home || m.teams?.home;
+    let awayObj = m.awayTeam || m.away_team || m.away || m.teams?.away;
 
-    let hs = m.scores?.home?? m.score?.home?? m.homeTeam?.score?? m.home_score?? m.homeScore?? "-";
-    let as = m.scores?.away?? m.score?.away?? m.awayTeam?.score?? m.away_score?? m.awayScore?? "-";
+    let home = toStr(homeObj);
+    let away = toStr(awayObj);
 
-    let league = m.league?.name || m.competition?.name || m.leagueName || m.tournament || "Unknown League";
-    let country = m.country?.name || m.area?.name || m.country || "";
+    // Scores - try EVERY path
+    let hs = "-"; let as = "-";
+    if(m.scores){ hs = m.scores.home?? m.scores.homeScore?? m.scores.scoreHome?? "-"; as = m.scores.away?? m.scores.awayScore?? m.scores.scoreAway?? "-"; }
+    if(hs=="-" && m.score){ hs = m.score.home?? m.score.home_score?? "-"; as = m.score.away?? m.score.away_score?? "-"; }
+    if(hs=="-" && m.result){ hs = m.result.home?? "-"; as = m.result.away?? "-"; }
+    if(hs=="-" && m.homeTeam?.score!==undefined){ hs = m.homeTeam.score; as = m.awayTeam.score; }
+    if(hs=="-" && typeof m.home_score!=="undefined"){ hs = m.home_score; as = m.away_score; }
 
-    let statusRaw = m.status?.type || m.status || "FT";
-    let isLive = ["LIVE","IN_PLAY","1H","2H","HT"].includes(statusRaw);
-    let isFT = statusRaw==="FT" || statusRaw==="FINISHED";
+    let league = toStr(m.league) || m.league?.name || m.competition?.name || "Unknown";
+    let country = toStr(m.country) || m.area?.name || "";
+
+    let status = m.status?.type || m.status || m.state || "FT";
 
     return {
       country, leagueName: league,
-      home: String(home), away: String(away),
+      home, away,
       hs: String(hs), as: String(as),
-      status: String(statusRaw),
-      isLive, isFT
+      status, isLive: ["LIVE","IN_PLAY","1H","2H"].includes(status), isFT: status==="FT"
     };
-  }).filter(x=>x.home && x.away); // remove empty
+  }).filter(x=>x.home);
 
   return {
     statusCode:200,
