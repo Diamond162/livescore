@@ -3,71 +3,135 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Diamond LiveScore - Live Football</title>
+<title>Diamond LiveScore</title>
 <style>
-body{font-family:Arial,sans-serif;background:#0f172a;color:#fff;margin:0;padding:10px}
-h1{text-align:center;color:#f59e0b}
-#status{text-align:center;color:#94a3b8;margin:10px}
-.match{background:#1e293b;margin:10px auto;max-width:500px;padding:15px;border-radius:12px;display:flex;justify-content:space-between;align-items:center}
-.league{color:#f87171;font-size:12px;margin-bottom:5px}
-.team{font-weight:bold;margin:3px 0}
-.score{background:#000;color:#fff;padding:10px 18px;border-radius:8px;font-weight:bold;font-size:18px}
-button{display:block;margin:15px auto;padding:10px 20px;background:#f59e0b;border:none;border-radius:10px;color:#000;font-weight:bold;cursor:pointer}
-.live{color:#22c55e;font-size:12px;font-weight:bold}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#121212;color:#fff}
+.header{background:#1a4d2e;padding:14px;text-align:center;font-weight:bold;font-size:18px;position:sticky;top:0;z-index:10}
+.advert{margin:10px;border-radius:10px;padding:14px;text-align:center;font-weight:bold;color:#000}
+.ad1{background:#facc15}
+.ad2{background:#22d3ee}
+.dates{display:flex;gap:8px;overflow-x:auto;padding:10px;white-space:nowrap;scrollbar-width:none}
+.dates::-webkit-scrollbar{display:none}
+.date{padding:8px 16px;border-radius:20px;background:#2a2a2a;color:#aaa;font-size:13px;cursor:pointer;border:none}
+.date.active{background:#ef4444;color:#fff}
+.filters{display:flex;gap:8px;padding:0 10px 10px}
+.filter{padding:8px 16px;border-radius:20px;background:#2a2a2a;color:#aaa;font-size:13px;border:none;cursor:pointer}
+.filter.active{background:#fff;color:#000}
+.group{margin:10px;background:#1e1e1e;border-radius:10px;overflow:hidden}
+.group-head{background:#2a2a2a;padding:10px 12px;font-weight:bold;font-size:13px;color:#ddd}
+.match{display:flex;justify-content:space-between;align-items:center;padding:12px;border-bottom:1px solid #2a2a2a}
+.match:last-child{border:0}
+.left{display:flex;gap:12px;align-items:center}
+.ft{color:#888;font-size:12px;width:30px}
+.teams{font-size:14px;line-height:20px}
+.score{background:#2a2a2a;padding:8px 12px;border-radius:8px;font-weight:bold;min-width:45px;text-align:center}
+.green{color:#22c55e}
 </style>
 </head>
 <body>
-<h1>💎 Diamond LiveScore</h1>
-<div id="status">Loading live matches...</div>
-<button onclick="loadMatches()">🔄 Refresh</button>
-<div id="matches"></div>
+<div class="header">💎 DIAMOND LIVESCORE</div>
+<div class="advert ad1">ADVERT 1</div>
+<div class="advert ad2">ADVERT 2</div>
+
+<div class="dates" id="dates"></div>
+
+<div class="filters">
+<button class="filter active" onclick="setFilter('all',this)">All Games</button>
+<button class="filter" onclick="setFilter('live',this)">LIVE</button>
+<button class="filter" onclick="setFilter('finished',this)">Finished</button>
+<button class="filter" onclick="loadMatches()">↻</button>
+</div>
+
+<div id="list"></div>
 
 <script>
-async function loadMatches(){
-  const statusEl = document.getElementById('status');
-  const box = document.getElementById('matches');
-  statusEl.textContent = 'Fetching live...';
-  try{
-    const res = await fetch('/.netlify/functions/matches');
-    const json = await res.json();
-    console.log('API DATA:', json);
-    
-    if(json.error){ statusEl.textContent = 'Error: ' + json.error + ' - ' + json.details; return; }
-    
-    const matches = json.data?.matches || json.matches || json.data || [];
-    
-    if(!matches.length){ statusEl.textContent = 'No live matches right now - ' + (json.data?.length || 0) + ' found'; box.innerHTML=''; return; }
-    
-    statusEl.textContent = 'Live: ' + matches.length + ' matches';
-    box.innerHTML = '';
-    
-    matches.forEach(m=>{
-      // FIX: handle all possible formats
-      const league = m.league?.name || m.competition?.name || m.league_name || m.tournament || 'Live Match';
-      const home = m.homeTeam?.name || m.home_team?.name || m.home?.name || m.teams?.home?.name || (typeof m.home === 'string' ? m.home : 'Home');
-      const away = m.awayTeam?.name || m.away_team?.name || m.away?.name || m.teams?.away?.name || (typeof m.away === 'string' ? m.away : 'Away');
-      const homeScore = m.homeScore ?? m.score?.home ?? m.scores?.home ?? m.home_score ?? '-';
-      const awayScore = m.awayScore ?? m.score?.away ?? m.scores?.away ?? m.away_score ?? '-';
-      const state = m.status || m.state || m.minute || 'LIVE';
-      
-      box.innerHTML += `
-        <div class="match">
-          <div>
-            <div class="league">${league}</div>
-            <div class="team">${home}</div>
-            <div class="team">${away}</div>
-            <div class="live">${state}</div>
-          </div>
-          <div class="score">${homeScore} - ${awayScore}</div>
-        </div>
-      `;
-    });
-  }catch(e){
-    statusEl.textContent = 'Failed to load: ' + e.message;
-  }
+let allMatches=[];
+let currentFilter='all';
+
+function makeDates(){
+ const c=document.getElementById('dates');
+ const today=new Date();
+ for(let i=-3;i<=3;i++){
+  let d=new Date(); d.setDate(today.getDate()+i);
+  let label=d.toDateString().slice(4,10);
+  if(i===0) label='Today';
+  let btn=document.createElement('button');
+  btn.className='date'+(i===0?' active':'');
+  btn.textContent=label;
+  btn.onclick=()=>{document.querySelectorAll('.date').forEach(b=>b.classList.remove('active'));btn.classList.add('active');loadMatches();};
+  c.appendChild(btn);
+ }
 }
+
+async function loadMatches(){
+ const list=document.getElementById('list');
+ list.innerHTML='<p style="text-align:center;padding:20px;color:#888">Loading 958 matches...</p>';
+ try{
+  const res=await fetch('/.netlify/functions/matches');
+  const json=await res.json();
+  console.log(json);
+  let matches=json.data?.matches || json.matches || json.data || [];
+  // FIX OBJECT BUG
+  allMatches=matches.map(m=>{
+   const leagueName = m.league?.name || m.competition?.name || m.league_name || 'Unknown League';
+   const country = m.country?.name || m.area?.name || m.league?.country || '';
+   const home = m.homeTeam?.name || m.home_team?.name || m.home?.name || (typeof m.home==='string'?m.home:'Home');
+   const away = m.awayTeam?.name || m.away_team?.name || m.away?.name || (typeof m.away==='string'?m.away:'Away');
+   const hs = m.homeScore?? m.score?.home?? m.scores?.home?? m.home_score?? '-';
+   const as = m.awayScore?? m.score?.away?? m.scores?.away?? m.away_score?? '-';
+   const status = (m.status || m.state || '').toString().toUpperCase();
+   const isLive = status.includes('LIVE') || status.includes('1H') || status.includes('2H') || status.includes('HT');
+   const isFT = status.includes('FT') || status.includes('FINISHED') || status.includes('ENDED');
+   const displayStatus = isFT?'FT':(isLive? (m.minute||status||'LIVE') : (m.time||status||'NS'));
+   return {country, leagueName, home, away, hs, as, status:displayStatus, isLive, isFT, rawStatus:status};
+  });
+  render();
+ }catch(e){ list.innerHTML='Error: '+e.message; }
+}
+
+function render(){
+ const list=document.getElementById('list');
+ let filtered=allMatches;
+ if(currentFilter==='live') filtered=allMatches.filter(m=>m.isLive);
+ if(currentFilter==='finished') filtered=allMatches.filter(m=>m.isFT);
+
+ // Group by Country - League
+ const groups={};
+ filtered.forEach(m=>{
+  const key = (m.country? m.country.toUpperCase()+' - ':'') + m.leagueName.toUpperCase();
+  if(!groups[key]) groups[key]=[];
+  groups[key].push(m);
+ });
+
+ let html='';
+ Object.keys(groups).forEach(key=>{
+  html+=`<div class="group"><div class="group-head">${key} (${groups[key].length})</div>`;
+  groups[key].forEach(m=>{
+   html+=`
+   <div class="match">
+     <div class="left">
+       <div class="ft">${m.status}</div>
+       <div class="teams">⚽ ${m.home}<br>⚽ ${m.away}</div>
+     </div>
+     <div class="score">${m.hs} - ${m.as}</div>
+   </div>`;
+  });
+  html+=`</div>`;
+ });
+ list.innerHTML=html || '<p style="text-align:center;padding:20px">No matches</p>';
+}
+
+function setFilter(f,btn){
+ currentFilter=f;
+ document.querySelectorAll('.filter').forEach(b=>b.classList.remove('active'));
+ btn.classList.add('active');
+ render();
+}
+
+makeDates();
 loadMatches();
-setInterval(loadMatches, 30000);
+setInterval(loadMatches,30000);
 </script>
 </body>
 </html>
