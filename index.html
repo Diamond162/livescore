@@ -5,50 +5,65 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Diamond LiveScore - Live Football</title>
 <style>
-body{font-family:Arial,sans-serif;background:#0f172a;color:#fff;margin:0;padding:20px}
-h1{text-align:center;color:#22c55e}
-#status{text-align:center;margin:10px;color:#94a3b8}
-.match{background:#1e293b;margin:10px auto;max-width:600px;padding:15px;border-radius:12px;display:flex;justify-content:space-between;align-items:center}
-.team{font-weight:bold}
-.score{font-size:20px;background:#000;padding:5px 12px;border-radius:8px}
-.live{color:#ef4444;font-size:12px;font-weight:bold}
-button{display:block;margin:20px auto;padding:10px 20px;background:#22c55e;border:none;border-radius:8px;color:#000;font-weight:bold;cursor:pointer}
+body{font-family:Arial,sans-serif;background:#0f172a;color:#fff;margin:0;padding:10px}
+h1{text-align:center;color:#f59e0b}
+#status{text-align:center;color:#94a3b8;margin:10px}
+.match{background:#1e293b;margin:10px auto;max-width:500px;padding:15px;border-radius:12px;display:flex;justify-content:space-between;align-items:center}
+.league{color:#f87171;font-size:12px;margin-bottom:5px}
+.team{font-weight:bold;margin:3px 0}
+.score{background:#000;color:#fff;padding:10px 18px;border-radius:8px;font-weight:bold;font-size:18px}
+button{display:block;margin:15px auto;padding:10px 20px;background:#f59e0b;border:none;border-radius:10px;color:#000;font-weight:bold;cursor:pointer}
+.live{color:#22c55e;font-size:12px;font-weight:bold}
 </style>
 </head>
 <body>
-<h1>⚽ Diamond LiveScore</h1>
+<h1>💎 Diamond LiveScore</h1>
 <div id="status">Loading live matches...</div>
-<button onclick="loadMatches()">Refresh 🔄</button>
+<button onclick="loadMatches()">🔄 Refresh</button>
 <div id="matches"></div>
 
 <script>
 async function loadMatches(){
   const statusEl = document.getElementById('status');
   const box = document.getElementById('matches');
+  statusEl.textContent = 'Fetching live...';
   try{
-    statusEl.textContent = 'Fetching live...';
     const res = await fetch('/.netlify/functions/matches');
     const json = await res.json();
-    console.log(json);
-    if(!json.success ||!json.data || json.data.length===0){
-      statusEl.textContent = json.error? 'Error: '+json.error : 'No live matches right now - '+json.date;
-      box.innerHTML = '';
-      return;
-    }
-    statusEl.textContent = `Live - ${json.data.length} matches - ${json.date}`;
-    box.innerHTML = json.data.map(m => {
-      const home = m.homeTeam?.name || m.home_team || m.teams?.home || 'Home';
-      const away = m.awayTeam?.name || m.away_team || m.teams?.away || 'Away';
-      const hs = m.score?.fullTime?.home?? m.score?.home?? m.home_score?? '-';
-      const as = m.score?.fullTime?.away?? m.score?.away?? m.away_score?? '-';
-      const state = m.status || m.state || 'LIVE';
-      return `<div class="match">
-        <div><div class="live">${state}</div><div class="team">${home}</div><div class="team">${away}</div></div>
-        <div class="score">${hs} - ${as}</div>
-      </div>`;
-    }).join('');
+    console.log('API DATA:', json);
+    
+    if(json.error){ statusEl.textContent = 'Error: ' + json.error + ' - ' + json.details; return; }
+    
+    const matches = json.data?.matches || json.matches || json.data || [];
+    
+    if(!matches.length){ statusEl.textContent = 'No live matches right now - ' + (json.data?.length || 0) + ' found'; box.innerHTML=''; return; }
+    
+    statusEl.textContent = 'Live: ' + matches.length + ' matches';
+    box.innerHTML = '';
+    
+    matches.forEach(m=>{
+      // FIX: handle all possible formats
+      const league = m.league?.name || m.competition?.name || m.league_name || m.tournament || 'Live Match';
+      const home = m.homeTeam?.name || m.home_team?.name || m.home?.name || m.teams?.home?.name || (typeof m.home === 'string' ? m.home : 'Home');
+      const away = m.awayTeam?.name || m.away_team?.name || m.away?.name || m.teams?.away?.name || (typeof m.away === 'string' ? m.away : 'Away');
+      const homeScore = m.homeScore ?? m.score?.home ?? m.scores?.home ?? m.home_score ?? '-';
+      const awayScore = m.awayScore ?? m.score?.away ?? m.scores?.away ?? m.away_score ?? '-';
+      const state = m.status || m.state || m.minute || 'LIVE';
+      
+      box.innerHTML += `
+        <div class="match">
+          <div>
+            <div class="league">${league}</div>
+            <div class="team">${home}</div>
+            <div class="team">${away}</div>
+            <div class="live">${state}</div>
+          </div>
+          <div class="score">${homeScore} - ${awayScore}</div>
+        </div>
+      `;
+    });
   }catch(e){
-    statusEl.textContent = 'Failed to load: '+e.message;
+    statusEl.textContent = 'Failed to load: ' + e.message;
   }
 }
 loadMatches();
