@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Diamond Livescore - Flashscore Clone</title>
+<title>Diamond Livescore</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#000;color:#fff;font-family:Arial,sans-serif;font-size:13px}
@@ -14,15 +14,15 @@ body{background:#000;color:#fff;font-family:Arial,sans-serif;font-size:13px}
 .tab.active{background:#00b8d6;color:#fff}
 .country-head{background:#1c1c1c;color:#fff;padding:7px 10px;font-weight:bold;font-size:12px;display:flex;justify-content:space-between;text-transform:uppercase;border-top:1px solid #333}
 .country-head span:last-child{color:#00b8d6;font-weight:400}
-.match-row{display:flex;align-items:center;padding:8px 10px;background:#000;border-bottom:1px solid #1a1a1a}
-.score{width:60px;text-align:right;font-weight:bold}
+.match-row{display:flex;align-items:center;padding:10px;background:#000;border-bottom:1px solid #1a1a1a}
+.score{width:70px;text-align:right;font-weight:bold}
 .score.live{color:#ff2b2b}
 .score.ft{color:#fff}
 .score.up{color:#666}
-.live-dot{width:6px;height:6px;background:red;border-radius:50%;display:inline-block;margin-right:3px;animation:blink 1s infinite}
+.live-dot{width:6px;height:6px;background:red;border-radius:50%;display:inline-block;margin-right:4px;animation:blink 1s infinite}
 @keyframes blink{0%{opacity:1}50%{opacity:0.2}100%{opacity:1}}
-.time{width:50px;color:#888;font-size:11px}
-.teams{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.time{width:60px;color:#888;font-size:11px}
+.teams{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:10px}
 </style>
 </head>
 <body>
@@ -34,7 +34,7 @@ body{background:#000;color:#fff;font-family:Arial,sans-serif;font-size:13px}
 <div class="tab" data-f="finished" onclick="setFilter('finished')">Finished</div>
 <div class="tab" data-f="upcoming" onclick="setFilter('upcoming')">Upcoming</div>
 </div>
-<div id="app"><div style="padding:30px;text-align:center;color:#666">Loading...</div></div>
+<div id="app"><div style="padding:30px;text-align:center;color:#666">Loading matches...</div></div>
 <script>
 let all=[]; let cur='all';
 const SAMPLE = [
@@ -45,10 +45,8 @@ const SAMPLE = [
   {fixture:{id:5,date:new Date().toISOString(),time:"19:00",status:{short:"LIVE",display:"78'"}},league:{name:"Ligue 1",country:"FRANCE"},teams:{home:{name:"PSG"},away:{name:"Marseille"}},goals:{home:2,away:2}},
   {fixture:{id:6,date:new Date().toISOString(),time:"22:00",status:{short:"UPCOMING",display:"22:00"}},league:{name:"Brasileiro",country:"BRAZIL"},teams:{home:{name:"RB Bragantino"},away:{name:"Cruzeiro"}},goals:{home:null,away:null}},
 ];
-
 async function load(){
   try{
-    // Try ESPN direct - if blocked, use SAMPLE so it NEVER gets stuck
     const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard');
     const data = await r.json();
     let events = data.events || [];
@@ -63,24 +61,14 @@ async function load(){
         let hg=null,ag=null;
         if(s!=='UPCOMING'){ hg=parseInt(home.score)||0; ag=parseInt(away.score)||0; }
         const t=new Date(ev.date).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-        return {
-          fixture:{id:ev.id,date:ev.date,time:t,status:{short:s,display:comp.status.type.shortDetail||s}},
-          league:{name:ev.leagues?.[0]?.name||'Football',country:ev.leagues?.[0]?.country||'WORLD'},
-          teams:{home:{name:home.team.displayName},away:{name:away.team.displayName}},
-          goals:{home:hg,away:ag}
-        };
+        return {fixture:{id:ev.id,date:ev.date,time:t,status:{short:s,display:comp.status.type.shortDetail||s}},league:{name:ev.leagues?.[0]?.name||'Football',country:ev.leagues?.[0]?.country||'WORLD'},teams:{home:{name:home.team.displayName},away:{name:away.team.displayName}},goals:{home:hg,away:ag}};
       });
-    }else{
-      all=SAMPLE;
-    }
-  }catch(e){
-    all=SAMPLE;
-  }
+    }else{ all=SAMPLE; }
+  }catch(e){ all=SAMPLE; }
   document.getElementById('count').textContent=all.length+' matches';
   render();
 }
 function setFilter(f){ cur=f; document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.f===f)); render(); }
-function getInfo(m){ return m.fixture.status; }
 function render(){
   const app=document.getElementById('app'); const q=document.getElementById('search').value.toLowerCase();
   let filtered=all.filter(m=>{
@@ -88,34 +76,4 @@ function render(){
     if(cur==='live'&&type!=='LIVE') return false;
     if(cur==='finished'&&type!=='FT') return false;
     if(cur==='upcoming'&&type!=='UPCOMING') return false;
-    if(q){
-      const txt=`${m.league.country} ${m.league.name} ${m.teams.home.name} ${m.teams.away.name}`.toLowerCase();
-      if(!txt.includes(q)) return false;
-    }
-    return true;
-  });
-  const groups={};
-  filtered.forEach(m=>{
-    const key=`${m.league.country.toUpperCase()}: ${m.league.name}`;
-    if(!groups[key]) groups[key]=[];
-    groups[key].push(m);
-  });
-  let html='';
-  for(const [key,list] of Object.entries(groups)){
-    html+=`<div class="country-head"><span>${key}</span><span>Standings</span></div>`;
-    list.forEach(m=>{
-      const s=m.fixture.status.short;
-      let score='-'; let cls='up'; let time=m.fixture.time;
-      if(s==='LIVE'){ score=`${m.goals.home} - ${m.goals.away}`; cls='live'; time=`<span class="live-dot"></span>${m.fixture.status.display}`; }
-      else if(s==='FT'){ score=`${m.goals.home} - ${m.goals.away}`; cls='ft'; time='FT'; }
-      else { score='-'; cls='up'; time=m.fixture.time; }
-      html+=`<div class="match-row"><div class="time">${time}</div><div class="teams">${m.teams.home.name} - ${m.teams.away.name}</div><div class="score ${cls}">${score}</div></div>`;
-    });
-  }
-  if(!html) html=`<div style="padding:30px;text-align:center;color:#666">No matches for ${cur}</div>`;
-  app.innerHTML=html;
-}
-load();
-</script>
-</body>
-</html>
+    if(q){ const txt=`${m.league.country} ${m.league.name} ${m.teams.home.name} ${m.te
