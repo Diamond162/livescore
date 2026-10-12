@@ -1,1 +1,33 @@
-export async function onRequest(c){const u=new URL(c.request.url);let d=u.searchParams.get('date')||'today';let t=new Date();if(d=='yesterday')t.setDate(t.getDate()-1);if(d=='tomorrow')t.setDate(t.getDate()+1);let s=t.toISOString().split('T')[0];let k=c.env.API_FOOTBALL_KEY||c.env.FOOTBALL_API_KEY;try{if(k){let r=await fetch('https://v3.football.api-sports.io/fixtures?date='+s,{headers:{'x-apisports-key':k}});let j=await r.json();let f=(j.response||[]).map(x=>({fixture:{id:x.fixture.id,date:x.fixture.date,status:x.fixture.status},league:x.league,teams:x.teams,goals:x.goals}));return new Response(JSON.stringify(f),{headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}})}}catch(e){}let n=new Date();let at=(h,m)=>{let d=new Date(n);d.setHours(h,m,0,0);return d.toISOString()};let m=[{fixture:{id:101,date:at(19,0),status:{short:'NS',elapsed:null}},league:{name:'CHAMPIONS LEAGUE',country:'INT'},teams:{home:{name:'Lens'},away:{name:'Sporting CP'}},goals:{home:null,away:null}},{fixture:{id:102,date:at(19,0),status:{short:'NS',elapsed:null}},league:{name:'CHAMPIONS LEAGUE',country:'INT'},teams:{home:{name:'Arsenal'},away:{name:'Lille'}},goals:{home:null,away:null}},{fixture:{id:103,date:at(20,45),status:{short:'1H',elapsed:34}},league:{name:'3. LIGA',country:'GER'},teams:{home:{name:'Hansa Rostock'},away:{name:'Meppen'}},goals:{home:1,away:0}},{fixture:{id:104,date:n.toISOString(),status:{short:'FT',elapsed:90}},league:{name:'3. LIGA',country:'GER'},teams:{home:{name:'Verl'},away:{name:'Munich II'}},goals:{home:2,away:1}}];return new Response(JSON.stringify(m),{headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}})}
+export async function onRequest(context){
+const {request,env}=context;
+const url=new URL(request.url);
+const date=url.searchParams.get('date')||new Date().toISOString().slice(0,10);
+const API_KEY=env.API_FOOTBALL_KEY||env.RAPIDAPI_KEY||env.FOOTBALL_KEY||"";
+const headers={"x-apisports-key":API_KEY,"x-rapidapi-key":API_KEY,"x-rapidapi-host":"v3.football.api-sports.io"};
+try{
+let apiUrl=`https://v3.football.api-sports.io/fixtures?date=${date}`;
+let res=await fetch(apiUrl,{headers});
+let data=await res.json();
+if(!data.response||data.response.length===0){
+const mock=[
+{fixture:{id:1,date:`${date}T18:45:00Z`,status:{short:"NS"}},league:{name:"Champions League",country:"INT"},teams:{home:{name:"Lens"},away:{name:"Sporting CP"}},goals:{home:0,away:0}},
+{fixture:{id:2,date:`${date}T18:45:00Z`,status:{short:"NS"}},league:{name:"Champions League",country:"INT"},teams:{home:{name:"Sabah FK"},away:{name:"Slavia Prague"}},goals:{home:0,away:0}},
+{fixture:{id:3,date:`${date}T21:00:00Z`,status:{short:"NS"}},league:{name:"Champions League",country:"INT"},teams:{home:{name:"Arsenal"},away:{name:"Lille"}},goals:{home:0,away:0}},
+{fixture:{id:4,date:`${date}T21:00:00Z`,status:{short:"NS"}},league:{name:"Champions League",country:"INT"},teams:{home:{name:"Atlético Madrid"},away:{name:"Manchester United"}},goals:{home:0,away:0}},
+{fixture:{id:5,date:`${date}T21:00:00Z`,status:{short:"NS"}},league:{name:"Champions League",country:"INT"},teams:{home:{name:"Galatasaray"},away:{name:"Barcelona"}},goals:{home:0,away:0}},
+{fixture:{id:6,date:`${date}T21:00:00Z`,status:{short:"NS"}},league:{name:"Champions League",country:"INT"},teams:{home:{name:"Inter"},away:{name:"Club Brugge"}},goals:{home:0,away:0}},
+{fixture:{id:7,date:`${date}T21:00:00Z`,status:{short:"NS"}},league:{name:"Champions League",country:"INT"},teams:{home:{name:"RB Leipzig"},away:{name:"PSV Eindhoven"}},goals:{home:0,away:0}},
+{fixture:{id:8,date:`${date}T21:00:00Z`,status:{short:"NS"}},league:{name:"Champions League",country:"INT"},teams:{home:{name:"Viking"},away:{name:"Bayern München"}},goals:{home:0,away:0}},
+{fixture:{id:9,date:`${date}T21:00:00Z`,status:{short:"NS"}},league:{name:"Champions League",country:"INT"},teams:{home:{name:"Villarreal"},away:{name:"Napoli"}},goals:{home:0,away:0}},
+{fixture:{id:10,date:`${date}T19:00:00Z`,status:{short:"NS"}},league:{name:"3. Liga",country:"GERMANY"},teams:{home:{name:"Hansa Rostock"},away:{name:"Meppen"}},goals:{home:0,away:0}},
+{fixture:{id:11,date:`${date}T19:00:00Z`,status:{short:"NS"}},league:{name:"3. Liga",country:"GERMANY"},teams:{home:{name:"RW Essen"},away:{name:"Fortuna Köln"}},goals:{home:0,away:0}},
+{fixture:{id:12,date:`${date}T19:00:00Z`,status:{short:"NS"}},league:{name:"3. Liga",country:"GERMANY"},teams:{home:{name:"Saarbrücken"},away:{name:"MSV Duisburg"}},goals:{home:0,away:0}},
+{fixture:{id:13,date:`${date}T19:00:00Z`,status:{short:"NS"}},league:{name:"3. Liga",country:"GERMANY"},teams:{home:{name:"TSV Havelse"},away:{name:"Würzburger Kickers"}},goals:{home:0,away:0}},
+];
+return new Response(JSON.stringify({response:mock}),{headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*"}});
+}
+return new Response(JSON.stringify(data),{headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*"}});
+}catch(e){
+return new Response(JSON.stringify({response:[]}),{headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*"}});
+}
+}
