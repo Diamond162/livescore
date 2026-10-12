@@ -1,34 +1,108 @@
 export async function onRequest({request}){
-  const url=new URL(request.url);
-  const dp=(url.searchParams.get('date')||'today').toLowerCase();
+  try{
+    const url=new URL(request.url);
+    let dp=url.searchParams.get('date')||'today';
+    
+    // Get Berlin date
+    let target=new Date();
+    const berlinNow=new Date(target.toLocaleString('en-US',{timeZone:'Europe/Berlin'}));
+    
+    if(dp==='yesterday'){
+      berlinNow.setDate(berlinNow.getDate()-1);
+    }else if(dp==='tomorrow'){
+      berlinNow.setDate(berlinNow.getDate()+1);
+    }else if(/^\d{4}-\d{2}-\d{2}$/.test(dp)){
+      berlinNow.setTime(new Date(dp).getTime());
+    }
+    
+    const yyyy=berlinNow.getFullYear();
+    const mm=String(berlinNow.getMonth()+1).padStart(2,'0');
+    const dd=String(berlinNow.getDate()).padStart(2,'0');
+    const dateStr=`${yyyy}${mm}${dd}`; // FotMob needs YYYYMMDD
+    const dateDash=`${yyyy}-${mm}-${dd}`;
 
-  // TODAY - LIVE games
-  const TODAY=[
-    {fixture:{id:1,time:"89'",status:"89'",minute:"89'",isLive:true,isFinished:false},league:{name:"Premier League",country:"ENGLAND",ccode:"ENG"},teams:{home:{name:"Coventry"},away:{name:"Newcastle"}},goals:{home:4,away:1}},
-    {fixture:{id:2,time:"88'",status:"88'",minute:"88'",isLive:true,isFinished:false},league:{name:"LaLiga",country:"SPAIN",ccode:"ESP"},teams:{home:{name:"Levante"},away:{name:"Sevilla"}},goals:{home:1,away:2}},
-    {fixture:{id:5,time:"FT",status:"FT",minute:"FT",isLive:false,isFinished:true},league:{name:"3. Liga",country:"GERMANY",ccode:"GER"},teams:{home:{name:"Hansa Rostock"},away:{name:"Meppen"}},goals:{home:2,away:0}}
-  ];
+    // Real API - FotMob (same as FlashScore uses)
+    const res=await fetch(`https://www.fotmob.com/api/data/matches?date=${dateStr}`,{
+      headers:{
+        "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept":"application/json"
+      }
+    });
+    
+    if(!res.ok) throw new Error('fotmob failed');
+    const j=await res.json();
+    
+    let out=[];
+    (j.leagues||[]).forEach(l=>{
+      const ccode=(l.ccode||'').toUpperCase();
+      const country=ccode||'WORLD';
+      (l.matches||[]).forEach(m=>{
+        // Real Berlin time from API
+        let berlinTime=m.time||'';
+        let statusText=m.status?.reason?.short||'';
+        let liveMin=m.status?.liveTimeShort||''; // REAL minutes like "89'" from net
+        let utc=m.status?.utcTime;
+        
+        if(utc){
+          try{
+            const d=new Date(utc);
+            berlinTime=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});
+          }catch{}
+        }
 
-  // TOMORROW - Only upcoming, NO live, dash "-" like FlashScore
-  const TOMORROW=[
-    {fixture:{id:10,time:"18:45",status:"18:45",minute:"18:45",isLive:false,isFinished:false},league:{name:"Champions League",country:"EUROPE",ccode:"EUR"},teams:{home:{name:"Lens"},away:{name:"Sporting CP"}},goals:{home:null,away:null}},
-    {fixture:{id:11,time:"18:45",status:"18:45",minute:"18:45",isLive:false,isFinished:false},league:{name:"Champions League",country:"EUROPE",ccode:"EUR"},teams:{home:{name:"Ajax"},away:{name:"Qarabag"}},goals:{home:null,away:null}},
-    {fixture:{id:12,time:"21:00",status:"21:00",minute:"21:00",isLive:false,isFinished:false},league:{name:"Champions League",country:"EUROPE",ccode:"EUR"},teams:{home:{name:"Arsenal"},away:{name:"Lille"}},goals:{home:null,away:null}},
-    {fixture:{id:13,time:"21:00",status:"21:00",minute:"21:00",isLive:false,isFinished:false},league:{name:"Champions League",country:"EUROPE",ccode:"EUR"},teams:{home:{name:"Atl. Madrid"},away:{name:"Man Utd"}},goals:{home:null,away:null}},
-    {fixture:{id:14,time:"19:30",status:"19:30",minute:"19:30",isLive:false,isFinished:false},league:{name:"Premier League",country:"ENGLAND",ccode:"ENG"},teams:{home:{name:"Man City"},away:{name:"Liverpool"}},goals:{home:null,away:null}}
-  ];
+        // Real live check from API
+        const isLive = !!liveMin || statusText.toLowerCase().includes('half');
+        const isFinished = statusText.toUpperCase()==='FT' || statusText.toLowerCase().includes('finished');
 
-  // YESTERDAY - Only Finished
-  const YESTERDAY=[
-    {fixture:{id:20,time:"FT",status:"FT",minute:"FT",isLive:false,isFinished:true},league:{name:"Premier League",country:"ENGLAND",ccode:"ENG"},teams:{home:{name:"Arsenal"},away:{name:"Chelsea"}},goals:{home:2,away:1}},
-    {fixture:{id:21,time:"FT",status:"FT",minute:"FT",isLive:false,isFinished:true},league:{name:"LaLiga",country:"SPAIN",ccode:"ESP"},teams:{home:{name:"Real Madrid"},away:{name:"Barcelona"}},goals:{home:1,away:1}},
-    {fixture:{id:22,time:"FT",status:"FT",minute:"FT",isLive:false,isFinished:true},league:{name:"Bundesliga",country:"GERMANY",ccode:"GER"},teams:{home:{name:"Bayern"},away:{name:"Dortmund"}},goals:{home:3,away:2}}
-  ];
+        // For tomorrow/upcoming, score must be null -> will show "-" in frontend
+        let homeScore=m.home?.score??null;
+        let awayScore=m.away?.score??null;
+        if(!isLive && !isFinished){
+          homeScore=null;
+          awayScore=null;
+        }
 
-  let out=TODAY;
-  if(dp==='tomorrow' || dp.includes('2026-05-14') || dp.includes('2026-05-15')) out=TOMORROW;
-  else if(dp==='yesterday' || dp.includes('2026-05-11')) out=YESTERDAY;
-  else if(dp==='today' || dp.includes('2026-05-13')) out=TODAY;
+        out.push({
+          fixture:{
+            id:m.id,
+            time:berlinTime,
+            status:liveMin||statusText||berlinTime,
+            minute:liveMin||statusText, // REAL minutes from net, not by me
+            isLive:isLive,
+            isFinished:isFinished
+          },
+          league:{
+            name:l.name,
+            country:country,
+            ccode:ccode
+          },
+          teams:{
+            home:{name:m.home?.name||'Home'},
+            away:{name:m.away?.name||'Away'}
+          },
+          goals:{
+            home:homeScore,
+            away:awayScore
+          }
+        });
+      });
+    });
 
-  return new Response(JSON.stringify(out),{headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*","Cache-Control":"no-cache"}});
+    return new Response(JSON.stringify(out),{
+      headers:{
+        "Content-Type":"application/json",
+        "Access-Control-Allow-Origin":"*",
+        "Cache-Control":"public, max-age=15"
+      }
+    });
+
+  }catch(e){
+    // If net API fails, return empty - NOT fake 89' - so you know it's net issue
+    return new Response(JSON.stringify([]),{
+      headers:{
+        "Content-Type":"application/json",
+        "Access-Control-Allow-Origin":"*"
+      }
+    });
+  }
 }
