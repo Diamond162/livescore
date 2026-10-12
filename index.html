@@ -2,81 +2,75 @@
 <html>
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LiveScore - FlashScore Dark</title>
+<title>LiveScore - Football Only</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif;font-size:14px}
-.top{background:#000;border-bottom:2px solid #00c853;padding:8px 10px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
-.top h1{font-size:16px;display:flex;gap:6px;align-items:center}
-.top h1 small{color:#00e676;font-size:10px;font-weight:400}
+body{background:#000;color:#fff;font-family:Arial,sans-serif;font-size:14px}
+.top{background:#000;border-bottom:2px solid #00c853;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+.top h1{font-size:17px;cursor:pointer}
+.top small{color:#00e676;font-size:11px}
 .dot{width:8px;height:8px;background:#00e676;border-radius:50%;display:inline-block;animation:blink 1s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.nav{background:#0f0f0f;padding:6px 10px;font-size:12px;border-bottom:1px solid #222;color:#aaa}
-.nav a{color:#00e676;text-decoration:none;margin-right:3px;cursor:pointer}.nav a.active{color:#fff;font-weight:bold;text-decoration:underline}
-.nav2{background:#0f0f0f;padding:6px 10px;font-size:12px;border-bottom:1px solid #222}
-.nav2 a{color:#aaa;margin-right:6px;cursor:pointer}.nav2 a.active{color:#fff;font-weight:bold}
-.league{background:#1a1a1a;color:#fff;padding:6px 10px;font-weight:bold;font-size:13px;display:flex;justify-content:space-between;border-top:1px solid #333;text-transform:uppercase}
-.league span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.league a{color:#888;font-weight:400;text-transform:none;text-decoration:underline;font-size:11px;margin-left:10px;flex-shrink:0}
-.match{background:#111;display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid #222}
-.match:nth-child(even){background:#0e0e0e}
-.match:hover{background:#1f1f1f}
-.time{width:70px;font-size:12px;color:#aaa;flex-shrink:0}
+.football-label{background:#0f0f0f;padding:6px 12px;font-weight:bold;color:#00e676;font-size:13px;border-bottom:1px solid #222}
+.nav{padding:8px 12px;background:#0f0f0f;font-size:13px;border-bottom:1px solid #222;display:flex;gap:8px;flex-wrap:wrap}
+.nav a{color:#aaa;cursor:pointer;text-decoration:none;padding:2px 6px;border-radius:3px}
+.nav a.active{color:#fff;font-weight:bold;background:#222}
+.league{background:#1a1a1a;color:#fff;padding:6px 12px;font-weight:bold;font-size:13px;display:flex;justify-content:space-between;text-transform:uppercase;border-top:1px solid #333;cursor:pointer}
+.league a{color:#00e676;font-weight:400;text-transform:none;text-decoration:underline;font-size:11px}
+.match{background:#111;display:flex;align-items:center;padding:9px 12px;border-bottom:1px solid #222;cursor:pointer}
+.match:hover{background:#1e1e1e}
+.match:active{background:#2a2a2a}
+.time{width:72px;font-size:12px;color:#aaa;flex-shrink:0}
 .time.live{color:#ff3d00;font-weight:bold}
-.time.ht{color:#ff3d00;font-weight:bold}
 .teams{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:8px}
-.score{width:40px;text-align:right;font-weight:bold;color:#ff3d00;flex-shrink:0}
-.score.ft{color:#fff}
-.live-bar{width:3px;background:#00e676;align-self:stretch;margin-right:8px;flex-shrink:0}
-.refresh{padding:6px 10px;font-size:11px;color:#00e676;cursor:pointer}
+.score{width:42px;text-align:right;font-weight:bold;color:#ff3d00}
+.live-bar{width:3px;background:#00e676;align-self:stretch;margin-right:8px}
 </style>
 </head>
 <body>
-<div class="top"><h1>⚽ LiveScore <small><span class="dot"></span> Europe (Berlin) • Auto 60s</small></h1><div id="clock" style="color:#00e676;font-size:11px">--:-- Berlin</div></div>
-
-<div class="nav" id="sportNav">Football | Hockey | Tennis | Basketball | Handball | Volleyball</div>
-<div class="nav2" id="dateNav">
-<a data-d="today" class="active">Today</a> | <a data-d="yesterday">Yesterday</a> | <a data-d="tomorrow">Tomorrow</a> | <a data-d="more">More days »</a>
+<div class="top" onclick="location.reload()">
+  <h1>⚽ LiveScore <small><span class="dot"></span> Europe (Berlin)</small></h1>
+  <div id="clock" style="color:#00e676;font-size:12px">--:-- Berlin</div>
 </div>
-<div class="nav2" id="filterNav">
-<a data-f="all" class="active">All Games</a> | <a data-f="live">LIVE</a> | <a data-f="finished">Finished</a> | <a>Odds</a>
-</div>
-<div class="refresh" onclick="load()">REFRESH NOW</div>
 
-<div id="list" style="padding-bottom:40px"><div style="padding:30px;text-align:center;color:#00e676">Loading live matches...</div></div>
+<div class="football-label">⚽ Football</div>
+
+<div class="nav" id="dateNav">
+  <a data-d="today" class="active">Today</a>
+  <a data-d="yesterday">Yesterday</a>
+  <a data-d="tomorrow">Tomorrow</a>
+  <a data-d="more">More days »</a>
+</div>
+<div class="nav" id="filterNav">
+  <a data-f="all" class="active">All Games</a>
+  <a data-f="live">LIVE</a>
+  <a data-f="finished">Finished</a>
+</div>
+
+<div id="list"><div style="padding:30px;text-align:center;color:#00e676">Loading live matches...</div></div>
 
 <script>
-let currentDate='today'; let currentFilter='all'; let allData=[];
-const FULL_MAP={"ENG":"ENGLAND","SCO":"SCOTLAND","ESP":"SPAIN","ITA":"ITALY","GER":"GERMANY","FRA":"FRANCE","POR":"PORTUGAL","NED":"NETHERLANDS","BEL":"BELGIUM","TUR":"TURKEY","UKR":"UKRAINE","SIN":"SINGAPORE","TAN":"TANZANIA","ALG":"ALGERIA","ARG":"ARGENTINA","BRA":"BRAZIL","USA":"USA","RUS":"RUSSIA","POL":"POLAND","SUI":"SWITZERLAND","AUT":"AUSTRIA","DEN":"DENMARK","SWE":"SWEDEN","NOR":"NORWAY","GRE":"GREECE","CZE":"CZECH REPUBLIC","CRO":"CROATIA","SRB":"SERBIA","JPN":"JAPAN","KOR":"SOUTH KOREA","AUS":"AUSTRALIA","KEN":"KENYA","NAM":"NAMIBIA","CMR":"CAMEROON","COD":"D.R. CONGO","ATB":"ANTIGUA & BARBUDA","ANT":"ANTIGUA & BARBUDA","AFR":"AFRICA","INT":"WORLD"};
-
-const TOP=["Premier League","LaLiga","Serie A","Bundesliga","Ligue 1"];
+let curDate='today', curFilter='all', allData=[];
+const FULL_MAP={"ENG":"ENGLAND","SCO":"SCOTLAND","ESP":"SPAIN","ITA":"ITALY","GER":"GERMANY","FRA":"FRANCE","POR":"PORTUGAL","NED":"NETHERLANDS","BEL":"BELGIUM","TUR":"TURKEY","UKR":"UKRAINE","SIN":"SINGAPORE","TAN":"TANZANIA","ALG":"ALGERIA","ARG":"ARGENTINA","BRA":"BRAZIL","USA":"USA"};
 
 async function load(){
-  const r=await fetch(`/api/football?date=${currentDate}&t=`+Date.now());
-  allData=await r.json();
-  render();
+  try{
+    const r=await fetch(`/api/football?date=${curDate}&t=`+Date.now());
+    allData=await r.json();
+    render();
+  }catch(e){
+    document.getElementById('list').innerHTML='<div style="padding:30px;text-align:center;color:#888">Tap to retry</div>';
+  }
 }
 function render(){
   let data=allData;
-  if(currentFilter==='live') data=data.filter(m=>m.fixture.isLive);
-  if(currentFilter==='finished') data=data.filter(m=>m.fixture.isFinished);
-
-  // Sort top leagues first
-  data.sort((a,b)=>{
-    const ai=TOP.findIndex(x=>a.league.name.includes(x));
-    const bi=TOP.findIndex(x=>b.league.name.includes(x));
-    if(ai!==-1&&bi!==-1) return ai-bi;
-    if(ai!==-1) return -1;
-    if(bi!==-1) return 1;
-    return 0;
-  });
+  if(curFilter==='live') data=data.filter(m=>m.fixture.isLive);
+  if(curFilter==='finished') data=data.filter(m=>m.fixture.isFinished);
 
   const groups={};
   data.forEach(m=>{
-    let cc=(m.league.ccode||"").toUpperCase();
-    let country=FULL_MAP[cc]||m.league.country||cc;
-    // Fix: if still short like SIN, convert to full
-    if(FULL_MAP[country]) country=FULL_MAP[country];
+    let c=(m.league.ccode||m.league.country||"WORLD").toUpperCase();
+    let country=FULL_MAP[c]||m.league.country||c;
     const key=`${country.toUpperCase()}: ${m.league.name.toUpperCase()}`;
     if(!groups[key]) groups[key]=[];
     groups[key].push(m);
@@ -84,23 +78,47 @@ function render(){
 
   let html='';
   for(const [lname,matches] of Object.entries(groups)){
-    html+=`<div class="league"><span>${lname}</span><a>Standings</a></div>`;
+    html+=`<div class="league" onclick="alert('Standings: ${lname}')"><span>${lname}</span><a onclick="event.stopPropagation();alert('Standings for ${lname}')">Standings</a></div>`;
     matches.forEach(m=>{
       let raw=(m.fixture.minute||m.fixture.status||"").toString();
-      let t=m.fixture.time;
-      let tClass='';
-      let live=false;
-      if(raw.toLowerCase().includes('half')||raw==='HT'){
-        t='Half Time'; tClass='ht'; live=true;
-      }else if(raw.includes("'")||/^\d+$/.test(raw.trim())||raw.includes("+")){
-        t=raw.includes("'")?raw:raw+"'"; tClass='live'; live=true;
-      }else if(raw.toUpperCase().includes('FT')||m.fixture.isFinished){
-        t='FT';
-      }else{
-        t=m.fixture.time;
-      }
-      const gh=m.goals.home, ga=m.goals.away;
-      let score=(gh!==null&&ga!==null)?`${gh}-${ga}`:'-';
-      if(t==='FT' && score==='-') score=m.fixture.status;
+      let t=m.fixture.time, tClass='', live=false;
+      if(raw.toLowerCase().includes('half')){t='Half Time';tClass='live';live=true;}
+      else if(raw.includes("'")||/^\d+$/.test(raw.trim())){t=raw.includes("'")?raw:raw+"'";tClass='live';live=true;}
+      else if(raw.toUpperCase().includes('FT')||m.fixture.isFinished){t='FT';}
+      else t=m.fixture.time;
+      const score=(m.goals.home!==null&&m.goals.away!==null)?`${m.goals.home}-${m.goals.away}`:'-';
+      html+=`<div class="match" onclick="alert('${m.teams.home.name} vs ${m.teams.away.name}\\n${score} - ${t}\\n${lname}')">
+        ${live?'<div class="live-bar"></div>':''}
+        <div class="time ${tClass}">${t}</div>
+        <div class="teams">${m.teams.home.name} - ${m.teams.away.name}</div>
+        <div class="score">${score}</div>
+      </div>`;
+    });
+  }
+  if(!html) html='<div style="padding:30px;text-align:center;color:#666">No football matches - try Yesterday</div>';
+  document.getElementById('list').innerHTML=html;
+}
 
-      html+=`<div
+document.getElementById('dateNav').onclick=e=>{
+  if(e.target.dataset.d){
+    document.querySelectorAll('#dateNav a').forEach(a=>a.classList.remove('active'));
+    e.target.classList.add('active');
+    curDate=e.target.dataset.d;
+    if(curDate==='more'){let d=prompt('YYYY-MM-DD','2026-05-13'); if(d) curDate=d; else return;}
+    load();
+  }
+};
+document.getElementById('filterNav').onclick=e=>{
+  if(e.target.dataset.f){
+    document.querySelectorAll('#filterNav a').forEach(a=>a.classList.remove('active'));
+    e.target.classList.add('active');
+    curFilter=e.target.dataset.f;
+    render();
+  }
+};
+function tick(){const d=new Date();document.getElementById('clock').textContent=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'})+' Berlin';}
+tick();load();setInterval(tick,1000);setInterval(load,60000);
+document.getElementById('list').onclick=e=>{if(e.target.id==='list') load();};
+</script>
+</body>
+</html>
