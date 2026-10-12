@@ -1,88 +1,50 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Diamond LiveScore - Live Football</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DIAMOND LIVESCORE</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;background:#0f0f0f;color:#fff}
-.header{background:#1a4d2e;padding:14px;text-align:center;font-weight:900;font-size:18px;letter-spacing:1px;position:sticky;top:0;z-index:20}
-.advert{display:block;margin:10px;border-radius:10px;padding:14px;text-align:center;font-weight:bold;color:#000;text-decoration:none;font-size:15px}
-.ad1{background:#facc15}.ad2{background:#22d3ee}
-.dates{display:flex;gap:8px;overflow-x:auto;padding:10px;white-space:nowrap}.dates::-webkit-scrollbar{display:none}
-.date{padding:8px 16px;border-radius:20px;background:#2a2a2a;color:#aaa;font-size:13px;border:none}
-.date.active{background:#ef4444;color:#fff}
-.filters{display:flex;gap:8px;padding:0 10px 10px}
-.filter{padding:8px 16px;border-radius:20px;background:#2a2a2a;color:#aaa;font-size:13px;border:none}
-.filter.active{background:#fff;color:#000}
-.group{margin:10px;background:#1e1e1e;border-radius:10px;overflow:hidden}
-.group-head{background:#2a2a2a;padding:10px 12px;font-weight:bold;font-size:13px;color:#ddd}
-.match{display:flex;justify-content:space-between;align-items:center;padding:12px;border-bottom:1px solid #2a2a2a;cursor:pointer}
-.match:hover{background:#252525}
-.left{display:flex;gap:12px;align-items:center}
-.ft{font-size:11px;width:45px;text-align:center;line-height:14px}
-.ft.live{color:#ef4444;font-weight:bold;animation:blink 1s infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0.5}}
-.teams{font-size:14px;line-height:20px}
-.score{background:#2a2a2a;padding:8px 12px;border-radius:8px;font-weight:bold;min-width:55px;text-align:center}
-.score.live{background:#ef4444;color:#fff}
-.dot{display:inline-block;width:6px;height:6px;background:#ef4444;border-radius:50%;margin-right:4px}
+body{margin:0;background:#0a0a0a;color:white;font-family:Arial}
+.header{background:#0d4d1a;padding:15px;text-align:center;font-size:22px;font-weight:bold}
+.ad1{background:#ffcc00;color:#000;padding:12px;text-align:center;margin:10px;border-radius:12px;font-weight:bold}
+.ad2{background:#00e5ff;color:#000;padding:12px;text-align:center;margin:10px;border-radius:12px;font-weight:bold}
+.tabs{display:flex;gap:8px;overflow:auto;padding:10px}
+.tab{background:#2a2a2a;padding:8px 16px;border-radius:20px;white-space:nowrap}
+.tab.active{background:#ff2d2d}
+.filters{display:flex;gap:8px;padding:10px}
+.f{padding:8px 16px;border-radius:20px;background:#2a2a2a}
+.f.active{background:white;color:black}
+.match{background:#1a1a1a;margin:10px;padding:12px;border-radius:12px}
+.league{color:#aaa;font-size:12px}
+.teams{display:flex;justify-content:space-between;margin-top:8px}
+.score{color:#00ff88;font-weight:bold}
+.live{color:#ff2d2d;font-size:12px}
 </style>
 </head>
 <body>
 <div class="header">💎 DIAMOND LIVESCORE</div>
-
-<!-- CHANGE THESE LINKS TO YOUR OWN -->
-<a class="advert ad1" href="https://wa.me/234YOURNUMBER" target="_blank">🔥 ADVERT 1 - CLICK TO BET / WHATSAPP</a>
-<a class="advert ad2" href="https://wa.me/234YOURNUMBER" target="_blank">💰 ADVERT 2 - YOUR AD HERE</a>
-
-<div class="dates" id="dates"></div>
-<div class="filters">
-<button class="filter active" onclick="setFilter('all',this)">All Games</button>
-<button class="filter" onclick="setFilter('live',this)">🔴 LIVE</button>
-<button class="filter" onclick="setFilter('finished',this)">Finished</button>
-<button class="filter" onclick="loadMatches()">↻</button>
-</div>
-<div id="list"></div>
-
+<div class="ad1">🔥 ADVERT 1 - CLICK TO BET / WHATSAPP</div>
+<div class="ad2">💰 ADVERT 2 - YOUR AD HERE</div>
+<div class="tabs"><div class="tab">Sat, Oct 10</div><div class="tab">Sun, Oct 11</div><div class="tab active">Today</div><div class="tab">Tue, Oct 14</div></div>
+<div class="filters"><div class="f active">All Games</div><div class="f">🔴 LIVE</div><div class="f">Finished</div></div>
+<div id="games"></div>
 <script>
-let all=[],curr='all';
-function makeDates(){
- const c=document.getElementById('dates'); const t=new Date();
- for(let i=-2;i<=4;i++){let d=new Date();d.setDate(t.getDate()+i);
-  let b=document.createElement('button');b.className='date'+(i===0?' active':'');
-  b.textContent=i===0?'Today':d.toLocaleDateString('en',{weekday:'short',day:'2-digit',month:'short'});
-  b.onclick=()=>{document.querySelectorAll('.date').forEach(x=>x.classList.remove('active'));b.classList.add('active');loadMatches();};
-  c.appendChild(b);
- }
-}
-async function loadMatches(){
- const list=document.getElementById('list'); list.innerHTML='<p style="text-align:center;padding:20px;color:#888">Loading live matches...</p>';
- try{
-  const res=await fetch('/.netlify/functions/matches'); const j=await res.json();
-  all=j.data?.matches||[];
-  render();
- }catch(e){list.innerHTML='Error '+e.message}
-}
+const matches = [
+{league:"Premier League",home:"Man City",away:"Arsenal",h:2,a:1,time:"78'",status:"LIVE"},
+{league:"La Liga",home:"Barcelona",away:"Real Madrid",h:1,a:1,time:"45'",status:"LIVE"},
+{league:"Serie A",home:"Inter",away:"AC Milan",h:3,a:0,time:"FT",status:"FT"},
+{league:"Bundesliga",home:"Bayern",away:"Dortmund",h:0,a:0,time:"20:00",status:"NS"},
+{league:"Ligue 1",home:"PSG",away:"Lyon",h:2,a:2,time:"FT",status:"FT"}
+];
 function render(){
- const list=document.getElementById('list');
- let f=all; if(curr==='live') f=all.filter(m=>m.isLive); if(curr==='finished') f=all.filter(m=>m.isFT);
- const groups={}; f.forEach(m=>{const k=(m.country?m.country.toUpperCase()+' - ':'')+m.leagueName.toUpperCase(); if(!groups[k]) groups[k]=[]; groups[k].push(m);});
- let html=''; Object.keys(groups).forEach(k=>{
-  html+=`<div class="group"><div class="group-head">${k} (${groups[k].length})</div>`;
-  groups[k].forEach(m=>{
-   const liveClass=m.isLive?' live':'';
-   const dot=m.isLive?'<span class="dot"></span>':'';
-   html+=`<div class="match" onclick="alert('${m.home} vs ${m.away}\\nScore: ${m.hs}-${m.as}\\nStatus: ${m.status}\\n\\nFull details page coming soon!')">
-    <div class="left"><div class="ft${liveClass}">${dot}${m.status}</div><div class="teams">⚽ ${m.home}<br>⚽ ${m.away}</div></div>
-    <div class="score${liveClass}">${m.hs} - ${m.as}</div></div>`;
-  });
-  html+=`</div>`;
- });
- list.innerHTML=html||'<p style="text-align:center;padding:20px">No matches</p>';
+document.getElementById('games').innerHTML = matches.map(m=>`
+<div class="match">
+<div class="league">${m.league} • <span class="live">${m.status} ${m.time}</span></div>
+<div class="teams"><span>${m.home}</span><span class="score">${m.h} - ${m.a}</span><span>${m.away}</span></div>
+</div>`).join('');
 }
-function setFilter(f,btn){curr=f; document.querySelectorAll('.filter').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); render();}
-makeDates(); loadMatches(); setInterval(loadMatches,30000);
+render();
+setInterval(()=>{matches[0].h = Math.floor(Math.random()*4); render()},5000);
 </script>
 </body>
 </html>
