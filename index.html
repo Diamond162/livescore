@@ -1,44 +1,90 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LiveScore - FlashScore Clone</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#fff;font-family:Arial,sans-serif;font-size:14px}
-.topbar{background:#000;border-bottom:2px solid #00c853;padding:10px;display:flex;justify-content:space-between;position:sticky;top:0;z-index:9}
-.topbar h1{font-size:17px}.topbar span{color:#00e676;font-size:11px}
-.league-header{background:#222;color:#fff;padding:6px 10px;font-weight:bold;text-transform:uppercase;font-size:13px;display:flex;justify-content:space-between;border-top:1px solid #333}
-.league-header a{color:#aaa;text-decoration:underline;font-weight:400;text-transform:none;font-size:12px}
-.match-row{background:#111;display:flex;align-items:center;padding:7px 10px;border-bottom:1px solid #222}
-.match-row:nth-child(even){background:#0e0e0e}.m-time{width:80px;font-size:12px;color:#aaa;flex-shrink:0}.m-time.live{color:#ff3d00;font-weight:bold}.m-teams{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.m-score{width:50px;text-align:right;font-weight:bold;color:#ff3d00}.m-score.ft{color:#fff}
-.live-bar{width:3px;background:#00e676;align-self:stretch;margin-right:8px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif;font-size:14px}
+.topbar{background:#000;border-bottom:2px solid #00c853;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+.topbar h1{font-size:18px;display:flex;gap:8px;align-items:center}
+.topbar h1 small{color:#00e676;font-size:11px;font-weight:400}
+.dot{width:9px;height:9px;background:#00e676;border-radius:50%;display:inline-block;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.league-header{background:#1a1a1a;color:#fff;padding:7px 10px;font-weight:bold;text-transform:uppercase;font-size:13px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #333;margin-top:1px}
+.league-header span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.league-header a{color:#aaa;text-decoration:underline;font-weight:400;text-transform:none;font-size:12px;flex-shrink:0;margin-left:10px}
+.match-row{background:#111;display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid #222}
+.match-row:nth-child(even){background:#0e0e0e}
+.match-row:hover{background:#1e1e1e}
+.m-time{width:78px;font-size:12px;color:#aaa;flex-shrink:0}
+.m-time.live{color:#ff3d00;font-weight:bold}
+.m-time.ht{color:#ff3d00;font-weight:bold}
+.m-teams{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:8px}
+.m-score{width:50px;text-align:right;font-weight:bold;color:#ff3d00;flex-shrink:0}
+.m-score.ft{color:#fff}
+.live-bar{width:3px;background:#00e676;align-self:stretch;margin-right:8px;flex-shrink:0}
+.loading{padding:30px;text-align:center;color:#00e676}
 </style>
 </head>
 <body>
-<div class="topbar"><h1>⚽ LiveScore <span>● Europe (Berlin) • Auto 60s</span></h1><div id="clock" style="color:#00e676;font-size:12px">--:-- Berlin</div></div>
-<div id="list" style="padding-bottom:30px">Loading...</div>
+<div class="topbar">
+  <h1>⚽ LiveScore <small><span class="dot"></span> Europe (Berlin) • Auto 60s</small></h1>
+  <div id="clock" style="color:#00e676;font-size:12px">--:-- Berlin</div>
+</div>
+<div id="list"><div class="loading">Loading live matches...</div></div>
+
 <script>
+const COUNTRY_MAP={"ENG":"ENGLAND","ESP":"SPAIN","ITA":"ITALY","GER":"GERMANY","FRA":"FRANCE","POR":"PORTUGAL","NED":"NETHERLANDS","BEL":"BELGIUM","TUR":"TURKEY","SCO":"SCOTLAND","BRA":"BRAZIL","ARG":"ARGENTINA","USA":"USA","MEX":"MEXICO","SAU":"SAUDI ARABIA","IRN":"IRAN","ALG":"ALGERIA","INT":"INT","AFC":"AFC","AFR":"AFRICA"};
+const TOP_ORDER=["Premier League","LaLiga","Serie A","Bundesliga","Ligue 1","Eredivisie","Primeira Liga"];
+
 async function load(){
-  const r=await fetch('/api/football?t='+Date.now());const data=await r.json();
-  const groups={};data.forEach(m=>{const key=`${m.league.country}: ${m.league.name}`;if(!groups[key])groups[key]=[];groups[key].push(m);});
-  let html='';for(const [league,matches] of Object.entries(groups)){
-    html+=`<div class="league-header"><span>${league.toUpperCase()}</span><a>Standings</a></div>`;
-    matches.forEach(m=>{
-      let timeText=m.fixture.time;let timeClass='';let isLive=false;
-      const s=(m.fixture.minute||m.fixture.status.short||'').toString();
-      if(s.toLowerCase().includes('half')||s.toLowerCase().includes('ht')){timeText='Half Time';timeClass='live';isLive=true;}
-      else if(s.includes("'")||/^\d+$/.test(s.trim())||s.includes("+")){timeText=s;timeClass='live';isLive=true;}
-      else if(s.toLowerCase().includes('ft')){timeText='FT';}
-      else{timeText=m.fixture.time;}
-      const home=m.teams.home.name;const away=m.teams.away.name;
-      const gh=m.goals.home;const ga=m.goals.away;
-      let score='-';if(gh!==null&&ga!==null)score=`${gh}-${ga}`;
-      html+=`<div class="match-row">${isLive?'<div class="live-bar"></div>':''}<div class="m-time ${timeClass}">${timeText}</div><div class="m-teams">${home} - ${away}</div><div class="m-score">${score}</div></div>`;
+  try{
+    const r=await fetch('/api/football?t='+Date.now());
+    let data=await r.json();
+    if(!data.length){document.getElementById('list').innerHTML='<div class="loading">No matches now - check 19:45 CEST</div>';return;}
+
+    // Arrange leagues well - top leagues first
+    data.sort((a,b)=>{
+      const aTop=TOP_ORDER.findIndex(x=>a.league.name.includes(x));
+      const bTop=TOP_ORDER.findIndex(x=>b.league.name.includes(x));
+      if(aTop!==-1&&bTop!==-1) return aTop-bTop;
+      if(aTop!==-1) return -1;
+      if(bTop!==-1) return 1;
+      return a.league.country.localeCompare(b.league.country);
     });
-  }document.getElementById('list').innerHTML=html||'<div style="padding:20px;text-align:center;color:#888">No matches</div>';
-}
-function tick(){const d=new Date();document.getElementById('clock').textContent=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'})+' Berlin';}
-load();tick();setInterval(load,60000);setInterval(tick,1000);
-</script>
-</body>
-</html>
+
+    // Group by FULL country + league
+    const groups={};
+    data.forEach(m=>{
+      let country=m.league.country||"";
+      country=COUNTRY_MAP[country.toUpperCase()]||country.toUpperCase()||"WORLD";
+      // Keep full country like ENGLAND: Premier League
+      const key=`${country}: ${m.league.name}`;
+      if(!groups[key]) groups[key]=[];
+      groups[key].push(m);
+    });
+
+    let html='';
+    for(const [leagueName,matches] of Object.entries(groups)){
+      html+=`<div class="league-header"><span>${leagueName}</span><a>Standings</a></div>`;
+      matches.forEach(m=>{
+        let timeText=m.fixture.time||"00:00";
+        let timeClass='';
+        let isLive=false;
+        const raw=(m.fixture.minute||m.fixture.status.short||"").toString();
+
+        if(raw.toLowerCase().includes("half")||raw.toUpperCase()==="HT"){
+          timeText="Half Time"; timeClass="ht"; isLive=true;
+        }else if(raw.includes("'")||raw.includes("+")||/^\d{1,2}$/.test(raw.trim())){
+          // Live minutes like 56', 90+'
+          timeText=raw.includes("'")?raw:raw+"'"; timeClass="live"; isLive=true;
+        }else if(raw.toUpperCase().includes("FT")){
+          timeText="FT";
+        }else{
+          timeText=m.fixture.time;
+        }
+
+        const home=m.teams.home.name||"Home";
+        const away=m.teams.aw
