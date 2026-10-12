@@ -2,7 +2,6 @@ export async function onRequest(context) {
   const cache = caches.default
   const cacheKey = new Request(context.request.url)
 
-  // Try cache first
   const cached = await cache.match(cacheKey)
   if (cached) return cached
 
@@ -13,8 +12,8 @@ export async function onRequest(context) {
   if (dateType === 'yesterday') d.setDate(d.getDate() - 1)
   if (dateType === 'tomorrow') d.setDate(d.getDate() + 1)
 
-  const berlin = new Date(d.toLocaleString('en-US', {timeZone: 'Europe/Berlin'}))
-  const dateStr = berlin.getFullYear() + String(berlin.getMonth()+1).padStart(2,'0') + String(berlin.getDate()).padStart(2,'0')
+  const berlin = new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Berlin' }))
+  const dateStr = berlin.getFullYear() + String(berlin.getMonth() + 1).padStart(2, '0') + String(berlin.getDate()).padStart(2, '0')
 
   try {
     const r = await fetch(`https://www.fotmob.com/api/data/matches?date=${dateStr}`, {
@@ -59,7 +58,10 @@ export async function onRequest(context) {
 
   } catch (err) {
     return new Response(JSON.stringify([]), {
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
     })
   }
 }
