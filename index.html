@@ -3,134 +3,87 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FotMob - Livescore</title>
+<title>FotMob</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#121212;color:#fff;font-family:Roboto,Arial,sans-serif}
-.header{background:#000;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #222;position:sticky;top:0;z-index:10}
-.logo{font-weight:900;font-size:20px}.logo span{color:#2ec17c}
-.nav{background:#1f1f1f;display:flex;gap:8px;padding:10px 12px;overflow-x:auto;border-bottom:1px solid #2a2a2a;position:sticky;top:49px;z-index:9}
-.nav a{padding:6px 12px;border-radius:6px;background:#2a2a2a;color:#888;font-weight:700;font-size:13px;text-decoration:none;white-space:nowrap}
+*{margin:0;padding:0;box-sizing:border-box}body{background:#121212;color:#fff;font-family:Roboto,Arial,sans-serif}
+.top{background:#000;padding:14px 14px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+.logo{font-weight:900;font-size:22px}.logo span{color:#2ec17c}
+.nav{background:#1e1e1e;display:flex;gap:8px;padding:10px 12px;overflow-x:auto}
+.nav a{padding:7px 14px;border-radius:8px;background:#2a2a2a;color:#8a8a8a;font-weight:700;font-size:14px;text-decoration:none;white-space:nowrap}
 .nav a.active{background:#fff;color:#000}
-.filter{background:#1f1f1f;display:flex;gap:10px;padding:8px 12px;border-bottom:2px solid #000;position:sticky;top:90px;z-index:8}
-.filter a{padding:4px 12px;border-radius:20px;background:#2a2a2a;color:#888;font-weight:700;font-size:12px;text-decoration:none}
+.filter{background:#1e1e1e;display:flex;gap:8px;padding:8px 12px}
+.filter a{padding:5px 14px;border-radius:20px;background:#2a2a2a;color:#8a8a8a;font-weight:700;font-size:13px;text-decoration:none}
 .filter a.active{background:#3a3a3a;color:#fff}
-.count{padding:8px 12px;color:#666;font-size:11px}
-.league{background:#2a2a2a;margin-top:4px}
-.leagueHead{padding:9px 12px;display:flex;justify-content:space-between;align-items:center;background:#222;border-bottom:1px solid #333}
+.count{padding:8px 12px;color:#666;font-size:12px}
+.league{margin-top:4px;background:#222}
+.leagueHead{padding:10px 12px;display:flex;justify-content:space-between;background:#2a2a2a}
 .leagueHead b{font-size:13px;text-transform:uppercase}
-.leagueHead a{color:#2ec17c;font-size:12px;text-decoration:underline}
-.match{background:#1a1a1a;display:flex;align-items:center;padding:12px 12px;border-bottom:1px solid #252525}
-.time{width:52px;font-size:13px;color:#999;font-weight:600}
-.teams{flex:1;overflow:hidden}
-.teams div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
-.score{width:52px;text-align:right;font-weight:900;font-size:14px}
-.score.scheduled{color:#666}
-.score.live{color:#ff3b30}
-.score.finished{color:#fff}
-.dot{width:6px;height:6px;background:#ff3b30;border-radius:50%;display:inline-block;margin-right:4px;animation:blink 1s infinite}
+.row{display:flex;padding:13px 12px;background:#1a1a1a;border-bottom:1px solid #252525}
+.time{width:60px;color:#999;font-size:13px;font-weight:600}
+.name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.score{width:45px;text-align:right;font-weight:900}
+.score.ns{color:#555}.score.live{color:#ff3b30}.score.ft{color:#fff}
+.dot{width:6px;height:6px;background:#ff3b30;border-radius:50%;display:inline-block;margin-right:5px;animation:blink 1s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 </style>
 </head>
 <body>
-<div class="header">
-<div style="display:flex;gap:12px;align-items:center"><div style="font-size:22px">←</div><div><b id="dBig">Oct 13, 2026</b><div style="font-size:11px;color:#888" id="tSmall">FotMob API</div></div></div>
-<div class="logo">fot<span>mob</span></div>
-</div>
-<div class="nav" id="dateNav"><a data-d="yesterday">Yesterday</a><a data-d="today">Today</a><a data-d="tomorrow" class="active">Tomorrow</a><a data-d="more">More days »</a></div>
-<div class="filter" id="filterNav"><a data-f="all" class="active">All Games</a><a data-f="live">LIVE</a><a data-f="finished">Finished</a></div>
+<div class="top"><div><b id="dateBig">Oct 13, 2026</b><small id="dateSmall">FotMob API • Europe Time (CET)</small></div><div class="logo">fot<span>mob</span></div></div>
+<div class="nav" id="nav"><a data-d="yesterday">Yesterday</a><a data-d="today">Today</a><a data-d="tomorrow" class="active">Tomorrow</a><a data-d="more">More days »</a></div>
+<div class="filter" id="fil"><a data-f="all" class="active">All Games</a><a data-f="live">LIVE</a><a data-f="finished">Finished</a></div>
 <div class="count" id="count">Loading...</div>
 <div id="list"></div>
 <script>
-let all=[],cur='tomorrow',filter='all';
-function toISO(d){return d.toISOString().slice(0,10)}
-function getDateStr(){
- if(cur==='today') return toISO(new Date());
- if(cur==='yesterday'){let d=new Date();d.setDate(d.getDate()-1);return toISO(d);}
- if(cur==='tomorrow'){let d=new Date();d.setDate(d.getDate()+1);return toISO(d);}
- return cur;
-}
+let all=[],cur='tomorrow',fil='all';
+function iso(d){return d.toISOString().slice(0,10)}
+function getDate(){if(cur==='today')return iso(new Date());if(cur==='yesterday'){let d=new Date();d.setDate(d.getDate()-1);return iso(d)}if(cur==='tomorrow'){let d=new Date();d.setDate(d.getDate()+1);return iso(d)}return cur}
 async function load(){
- let dateStr=getDateStr();
- document.getElementById('dBig').textContent=new Date(dateStr).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
- document.getElementById('tSmall').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' • FotMob API • '+dateStr;
- document.getElementById('count').textContent='Loading '+dateStr+'...';
- try{
-  let r=await fetch('/api/football?date='+dateStr+'&t='+Date.now());
-  let j=await r.json();
-  all=j.response||[];
- }catch{all=[]}
+ let date=getDate();
+ document.getElementById('dateBig').textContent=new Date(date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+ document.getElementById('dateSmall').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' • Europe/Berlin • '+date;
+ document.getElementById('count').textContent='Loading '+date+'...';
+ try{let r=await fetch('/api/football?date='+date+'&t='+Date.now());let j=await r.json();all=j.response||[]}catch(e){all=[]}
  render();
 }
 function render(){
  let filtered=all.filter(m=>{
-  let s=(m.fixture?.status?.short||'').toUpperCase();
-  if(filter==='live' &&!['LIVE','1H','2H','HT'].includes(s)) return false;
-  if(filter==='finished' && s!=='FT') return false;
+  let s=(m.fixture?.status?.short||'NS').toUpperCase();
+  if(fil==='live'&&!['LIVE','1H','2H','HT'].includes(s))return false;
+  if(fil==='finished'&&s!=='FT')return false;
   return true;
  });
  let groups={};
  filtered.forEach(m=>{
-  let key=(m.league?.country||'INT').toUpperCase()+': '+(m.league?.name||'').toUpperCase();
-  if(key.includes('CHAMPIONS')) key='INT: CHAMPIONS LEAGUE';
-  if(!groups[key]) groups[key]=[];
-  groups[key].push(m);
+  let k=(m.league?.country||'INT')+': '+m.league.name.toUpperCase();
+  if(k.includes('CHAMPIONS'))k='INT: CHAMPIONS LEAGUE';
+  if(!groups[k])groups[k]=[];
+  groups[k].push(m);
  });
- document.getElementById('count').textContent=filtered.length+' games • '+getDateStr()+' • FotMob API';
+ document.getElementById('count').textContent=filtered.length+' games • '+getDate()+' • Europe Time';
  let html='';
  for(let k in groups){
-  html+='<div class="league"><div class="leagueHead"><b>'+k+'</b><a>Standings</a></div>';
+  html+='<div class="league"><div class="leagueHead"><b>'+k+'</b><a style="color:#2ec17c">Standings</a></div>';
   groups[k].forEach(m=>{
-   // CORRECT TIME - Lagos WAT (UTC+1)
-   let utc=m.fixture?.date||m.status?.utcTime;
-   let timeStr='--:--';
-   let dateObj=utc?new Date(utc):null;
-   if(dateObj) timeStr=dateObj.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Africa/Lagos'});
-
-   let short=(m.fixture?.status?.short||'').toUpperCase();
-   let isLive=['LIVE','1H','2H','HT'].includes(short);
-   let isFT=short==='FT';
-   let isNS=short==='NS'||!short;
-
-   // CORRECT SCORE LOGIC
-   let scoreHtml='',scoreClass='';
-   if(isLive){
-     scoreClass='live';
-     let h=m.goals?.home??'-'; let a=m.goals?.away??'-';
-     scoreHtml=h+'-'+a;
-     if(m.fixture?.status?.elapsed) timeStr=m.fixture.status.elapsed+"'";
-     timeStr='<span class="dot"></span>'+timeStr;
-   } else if(isFT){
-     scoreClass='finished';
-     scoreHtml=(m.goals?.home??0)+'-'+(m.goals?.away??0);
-     timeStr='FT';
-   } else {
-     // Not started - NO 0-0, show -
-     scoreClass='scheduled';
-     scoreHtml='-';
-     // timeStr stays as kickoff time
-   }
-   html+='<div class="match"><div class="time">'+timeStr+'</div><div class="teams"><div>'+(m.teams?.home?.name||'')+' - '+(m.teams?.away?.name||'')+'</div></div><div class="score '+scoreClass+'">'+scoreHtml+'</div></div>';
+   let d=new Date(m.fixture?.date||new Date());
+   // EUROPE TIME - CET/CEST (Berlin)
+   let t=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Europe/Berlin'});
+   let short=(m.fixture?.status?.short||'NS').toUpperCase();
+   let score='',cls='';
+   if(short==='NS'){cls='ns';score='-';}
+   else if(['LIVE','1H','2H','HT'].includes(short)){cls='live';score=(m.goals?.home??0)+'-'+(m.goals?.away??0);t='<span class="dot"></span>'+(m.fixture?.status?.elapsed||'')+"' "+t;}
+   else if(short==='FT'){cls='ft';score=(m.goals?.home??0)+'-'+(m.goals?.away??0);t='FT';}
+   else{cls='ns';score='-';}
+   html+='<div class="row"><div class="time">'+t+'</div><div class="name">'+m.teams.home.name+' - '+m.teams.away.name+'</div><div class="score '+cls+'">'+score+'</div></div>';
   });
   html+='</div>';
  }
- if(!html) html='<div style="padding:40px;text-align:center;color:#666">No matches</div>';
+ if(!html) html='<div style="padding:50px;text-align:center;color:#666">No matches</div>';
  document.getElementById('list').innerHTML=html;
 }
-document.getElementById('dateNav').onclick=e=>{
- let a=e.target.closest('a'); if(!a) return;
- if(a.dataset.d==='more'){let d=prompt('YYYY-MM-DD'); if(d){cur=d; load();} return}
- cur=a.dataset.d;
- document.querySelectorAll('#dateNav a').forEach(x=>x.classList.remove('active'));
- a.classList.add('active');
- load();
-};
-document.getElementById('filterNav').onclick=e=>{
- let a=e.target.closest('a'); if(!a) return;
- filter=a.dataset.f;
- document.querySelectorAll('#filterNav a').forEach(x=>x.classList.remove('active'));
- a.classList.add('active');
- render();
-};
+document.getElementById('nav').onclick=e=>{let a=e.target.closest('a');if(!a)return;if(a.dataset.d==='more'){let d=prompt('YYYY-MM-DD');if(!d)return;cur=d}else{cur=a.dataset.d;document.querySelectorAll('#nav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');}load();};
+document.getElementById('fil').onclick=e=>{let a=e.target.closest('a');if(!a)return;fil=a.dataset.f;document.querySelectorAll('#fil a').forEach(x=>x.classList.remove('active'));a.classList.add('active');render();};
 load();
 setInterval(load,60000);
+</script>
+</body>
+</html>
