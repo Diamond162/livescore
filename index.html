@@ -11,15 +11,17 @@ body{background:#fff;color:#000;font-family:Arial,sans-serif;font-size:13px}
 .ad{background:#ffcc00;color:#000;padding:10px;text-align:center;margin:6px 8px;border-radius:8px;font-weight:bold;display:block;text-decoration:none;font-size:13px}
 .ad2{background:#00c8ff;color:#000;padding:10px;text-align:center;margin:6px 8px;border-radius:8px;font-weight:bold;display:block;text-decoration:none;font-size:13px}
 .count{background:#e8ffe8;padding:8px;text-align:center;color:#0a5a0a;font-weight:bold;font-size:12px;border-bottom:1px solid #ccc}
-.league{background:#333;color:#fff;padding:7px 10px;font-weight:bold;font-size:12px;display:flex;justify-content:space-between}
+.league{background:#222;color:#fff;padding:7px 10px;font-weight:bold;font-size:12px;display:flex;justify-content:space-between}
 .league span{font-weight:normal;color:#bbb;font-size:11px}
 .row{display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid #e5e5e5}
 .row.live{background:#ffecec}
-.t{width:50px;font-size:12px;color:#333}
+.t{width:55px;font-size:12px;color:#333}
 .t.live{color:#d00;font-weight:bold}
+.t.ft{color:#555;font-weight:bold}
 .m{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.s{width:35px;text-align:center;font-weight:bold}
+.s{width:50px;text-align:center;font-weight:bold}
 .s.live{color:#d00}
+.s.ft{color:#0056d6}
 .s.pre{color:#888}
 </style>
 </head>
@@ -27,7 +29,7 @@ body{background:#fff;color:#000;font-family:Arial,sans-serif;font-size:13px}
 <div class="top">💎 DIAMOND LIVESCORE</div>
 <a class="ad" href="https://wa.me/2348012345678">🔥 ADVERT 1 - BET HERE / WhatsApp Us</a>
 <a class="ad2" href="https://wa.me/2348012345678">💰 ADVERT 2 - YOUR AD HERE</a>
-<div class="count" id="count">⏳ Loading leagues...</div>
+<div class="count" id="count">⏳ Loading Europe time...</div>
 <div id="box"></div>
 
 <script>
@@ -41,8 +43,14 @@ const LEAGUES=[
 {id:'bra.1',n:'BRAZIL: Serie A'},{id:'rsa.1',n:'SOUTH AFRICA: PSL'},
 {id:'ind.1',n:'INDIA: ISL'},{id:'nga.1',n:'NIGERIA: NPFL'},
 {id:'uefa.champions',n:'EUROPE: Champions League'},{id:'uefa.europa',n:'EUROPE: Europa League'},
-{id:'eng.fa',n:'ENGLAND: FA Cup'}
+{id:'arg.1',n:'ARGENTINA: Liga Profesional'},{id:'alg.1',n:'ALGERIA: Ligue 1'},
+{id:'caf.nations',n:'AFRICA: Africa Cup of Nations U20 - Qualification'}
 ];
+
+function toEuropeTime(dateStr){
+  // EUROPE TIME like Flashscore - CET/CEST
+  return new Date(dateStr).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Europe/Berlin'});
+}
 
 async function getOne(L){
  try{
@@ -54,10 +62,11 @@ async function getOne(L){
    const h=c.competitors.find(x=>x.homeAway=='home');
    const a=c.competitors.find(x=>x.homeAway=='away');
    const st=c.status.type.state;
-   let timeLabel=new Date(e.date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-   if(st==='in') timeLabel=c.status.displayClock+"'";
-   if(st==='post') timeLabel="FT";
-   return {home:h.team.shortDisplayName||h.team.displayName,away:a.team.shortDisplayName||a.team.displayName,hS:h.score,aS:a.score,time:timeLabel,st:st,live:st==='in'}
+   let timeLabel=toEuropeTime(e.date);
+   let isLive=false; let isFT=false;
+   if(st==='in'){ timeLabel=c.status.displayClock+"'"; isLive=true; }
+   if(st==='post'){ timeLabel="FT"; isLive=false; isFT=true; }
+   return {home:h.team.shortDisplayName||h.team.displayName,away:a.team.shortDisplayName||a.team.displayName,hS:h.score,aS:a.score,time:timeLabel,st:st,live:isLive,ft:isFT, europeKick:toEuropeTime(e.date)}
   });
   return {name:L.n,matches:ms};
  }catch{return null}
@@ -70,7 +79,7 @@ async function loadAll(){
   const g=await getOne(LEAGUES[i]);
   if(g){groups.push(g); total+=g.matches.length; draw(groups,total);}
  }
- document.getElementById('count').innerText=`✅ Found ${total} matches from ${groups.length} leagues today`;
+ document.getElementById('count').innerText=`✅ ${total} matches - EUROPE TIME (CET)`;
 }
 
 function draw(groups,total){
@@ -78,10 +87,19 @@ function draw(groups,total){
  groups.forEach(g=>{
   h+=`<div class="league">${g.name} <span>Standings</span></div>`;
   g.matches.forEach(m=>{
+   // LOGIC: Pre = Europe time left, - right | Live = 44' left, 1-2 RED right | FT = 21:00? No, show FT left? Actually Flashscore shows 44' + score. For FT show score blue. We show FT or time + score
+   let leftTime = m.live? m.time : m.ft? m.europeKick : m.europeKick;
+   let leftClass = m.live? 'live' : m.ft? 'ft' : '';
+   let scoreDisplay = m.st==='pre'? '-' : `${m.hS}-${m.aS}`;
+   let scoreClass = m.live? 'live' : m.ft? 'ft' : 'pre';
+   // For finished, show score in blue, left show europe time like Flashscore does? In your Flashscore screenshot finished shows no time, just score. But you said show time - so we show europe kick time for FT too? Let's show FT badge + score
+   if(m.ft){ leftTime = m.europeKick; scoreDisplay = `${m.hS}-${m.aS}`; }
+   if(m.live){ scoreDisplay = `${m.hS}-${m.aS}`; }
+
    h+=`<div class="row ${m.live?'live':''}">
-    <div class="t ${m.live?'live':''}">${m.live?m.time:m.time}</div>
+    <div class="t ${leftClass}">${leftTime}</div>
     <div class="m">${m.home} - ${m.away}</div>
-    <div class="s ${m.live?'live':m.st==='pre'?'pre':''}">${m.st==='pre'?'-':m.hS+'-'+m.aS}</div>
+    <div class="s ${scoreClass}">${scoreDisplay}</div>
    </div>`;
   });
  });
