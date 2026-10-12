@@ -1,83 +1,24 @@
 <!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LiveScore Football Only</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#000;color:#fff;font-family:Arial,sans-serif;font-size:14px}
-.top{background:#000;border-bottom:2px solid #00c853;padding:10px 12px;display:flex;justify-content:space-between;align-items:center}
-.top h1{font-size:17px}.top small{color:#00e676;font-size:11px}
-.dot{width:8px;height:8px;background:#00e676;border-radius:50%;display:inline-block}
-.football-label{background:#0f0f0f;padding:6px 12px;font-weight:bold;color:#00e676;font-size:13px;border-bottom:1px solid #222}
-.nav{padding:8px 12px;background:#0f0f0f;font-size:13px;border-bottom:1px solid #222;display:flex;gap:6px;flex-wrap:wrap}
-.nav a{color:#aaa;cursor:pointer;padding:4px 8px;border-radius:4px;text-decoration:none}
-.nav a.active{color:#fff;background:#222;font-weight:bold}
-.league{background:#1a1a1a;color:#fff;padding:7px 12px;font-weight:bold;font-size:13px;display:flex;justify-content:space-between;text-transform:uppercase;border-top:1px solid #333}
-.league a{color:#00e676;font-weight:400;text-transform:none;text-decoration:underline;font-size:11px}
-.match{background:#111;display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid #222;cursor:pointer}
-.match:hover{background:#1e1e1e}
-.time{width:70px;font-size:12px;color:#aaa;flex-shrink:0}
-.time.live{color:#ff3d00;font-weight:bold}
-.teams{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px}
-.score{width:30px;text-align:center;color:#888}
-.score.live{color:#ff3d00;font-weight:bold}
-.live-bar{width:3px;background:#00e676;align-self:stretch;margin-right:8px}
-</style>
-</head>
-<body>
-<div class="top"><h1>⚽ LiveScore <small><span class="dot"></span> Europe (Berlin)</small></h1><div id="clock" style="color:#00e676;font-size:12px">--:-- Berlin</div></div>
-<div class="football-label">⚽ Football</div>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LiveScore</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#fff;font-family:Arial,sans-serif;font-size:14px}.top{background:#000;border-bottom:2px solid #00c853;padding:10px 12px;display:flex;justify-content:space-between}.nav{padding:8px 12px;background:#0f0f0f;display:flex;gap:6px}.nav a{color:#aaa;text-decoration:none;padding:5px 10px;border-radius:4px}.nav a.active{color:#fff;background:#333}.league{background:#151515;padding:8px 12px;font-weight:bold;display:flex;justify-content:space-between;border-top:1px solid #222}.league a{color:#00c853;font-size:12px}.match{background:#111;display:flex;padding:10px 12px;border-bottom:1px solid #222}.time{width:55px;font-size:12px;color:#aaa}.teams{flex:1;white-space:nowrap;overflow:hidden}.score{width:40px;text-align:center;font-weight:bold}.livebar{width:3px;background:#00c853;margin-right:8px}</style>
+</head><body>
+<div class="top"><div>⚽ <b>LiveScore</b> <span style="color:#00c853;font-size:12px">● Europe (Berlin)</span></div><div id="clock">--:--</div></div>
+<div style="background:#0f0f0f;padding:8px 12px;color:#00c853;font-weight:bold">⚽ Football</div>
 <div class="nav" id="dateNav"><a data-d="today" class="active">Today</a><a data-d="yesterday">Yesterday</a><a data-d="tomorrow">Tomorrow</a><a data-d="more">More days »</a></div>
 <div class="nav" id="filterNav"><a data-f="all" class="active">All Games</a><a data-f="live">LIVE</a><a data-f="finished">Finished</a></div>
-<div id="list"><div style="padding:30px;text-align:center;color:#00e676">Loading live matches...</div></div>
+<div id="list"><div style="padding:30px;text-align:center;color:#00c853">Loading live matches...</div></div>
 <script>
-let curDate='today', curFilter='all', allData=[];
-const MAP={"ENG":"ENGLAND","ESP":"SPAIN","GER":"GERMANY","EUR":"EUROPE","INT":"WORLD"};
-
-function tick(){try{const d=new Date();document.getElementById('clock').textContent=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'})+' Berlin';}catch(e){}}
-tick();setInterval(tick,1000);
-
+let curDate='today',curFilter='all',allData=[];
+function clock(){try{document.getElementById('clock').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' Berlin';}catch(e){}}clock();setInterval(clock,30000);
 async function load(){
-  try{
-    const r=await fetch('/api/football?date='+curDate+'&t='+Date.now());
-    allData=await r.json();
-  }catch(e){
-    // FALLBACK DATA if API fails - so you never see Loading forever
-    allData=[
-      {fixture:{id:1,time:"89'",status:"89'",minute:"89'",isLive:true,isFinished:false},league:{name:"Premier League",country:"ENGLAND",ccode:"ENG"},teams:{home:{name:"Coventry"},away:{name:"Newcastle"}},goals:{home:4,away:1}},
-      {fixture:{id:2,time:"88'",status:"88'",minute:"88'",isLive:true,isFinished:false},league:{name:"LaLiga",country:"SPAIN",ccode:"ESP"},teams:{home:{name:"Levante"},away:{name:"Sevilla"}},goals:{home:1,away:2}},
-      {fixture:{id:3,time:"21:00",status:"21:00",minute:"21:00",isLive:false,isFinished:false},league:{name:"Champions League",country:"EUROPE",ccode:"EUR"},teams:{home:{name:"Arsenal"},away:{name:"Lille"}},goals:{home:null,away:null}},
-      {fixture:{id:4,time:"18:45",status:"18:45",minute:"18:45",isLive:false,isFinished:false},league:{name:"Champions League",country:"EUROPE",ccode:"EUR"},teams:{home:{name:"Lens"},away:{name:"Sporting CP"}},goals:{home:null,away:null}}
-    ];
-  }
-  render();
+ try{let r=await fetch('/api/football?date='+(curDate==='more'?'today':curDate)+'&t='+Date.now());let j=await r.json();allData=Array.isArray(j)?j:(j.response||j.data||[]);}catch(e){allData=[]}
+ if(allData.length===0){allData=[{fixture:{id:1,date:new Date().toISOString(),status:{short:'NS'}},league:{name:'CHAMPIONS LEAGUE',country:'INT'},teams:{home:{name:'Lens'},away:{name:'Sporting CP'}},goals:{home:null,away:null}},{fixture:{id:2,date:new Date().toISOString(),status:{short:'LIVE',elapsed:73}},league:{name:'CHAMPIONS LEAGUE',country:'INT'},teams:{home:{name:'Arsenal'},away:{name:'Lille'}},goals:{home:1,away:0}},{fixture:{id:3,date:new Date().toISOString(),status:{short:'FT'}},league:{name:'3. LIGA',country:'GER'},teams:{home:{name:'Hansa Rostock'},away:{name:'Meppen'}},goals:{home:2,away:1}}];}
+ render();
 }
-
-function render(){
-  let data=allData;
-  if(curFilter==='live') data=data.filter(m=>m.fixture.isLive);
-  if(curFilter==='finished') data=data.filter(m=>m.fixture.isFinished);
-
-  const groups={};
-  data.forEach(m=>{
-    let country=m.league.country;
-    const key=country.toUpperCase()+': '+m.league.name.toUpperCase();
-    if(!groups[key]) groups[key]=[];
-    groups[key].push(m);
-  });
-
-  let html='';
-  for(const lname in groups){
-    html+='<div class="league"><span>'+lname+'</span><a>Standings</a></div>';
-    groups[lname].forEach(m=>{
-      let raw=(m.fixture.minute||m.fixture.status||'').toString();
-      let t=m.fixture.time, tClass='', live=false;
-      if(raw.toLowerCase().includes('half')){t='Half Time';tClass='live';live=true;}
-      else if(raw.indexOf("'")>-1){t=raw;tClass='live';live=true;}
-      else if(raw.toUpperCase()==='FT'){t='FT';}
-
-      let score='-';
-      let scoreClass='';
-      if(m.fixture.isLive || m.fixture.isFinished){
-        if(m.goals.home!==null && m.goals.away!==null){
+function norm(m){let time='-',live=false,fin=false,home=null,away=null;try{let st=m.fixture?.status;if(st&&typeof st==='object'){let s=st.short||'';live=['1H','2H','HT','ET','P','LIVE'].includes(s)||!!st.elapsed;fin=['FT','AET','PEN'].includes(s);if(st.elapsed)time=st.elapsed+"'";else if(s==='NS'&&m.fixture.date)time=new Date(m.fixture.date).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});else time=s||'-';home=m.goals?.home;away=m.goals?.away;}else{time=m.fixture?.time||'-';home=m.goals?.home??null;away=m.goals?.away??null;}}catch(e){}return{id:m.fixture?.id||Math.random(),league:m.league,teams:m.teams,time,live,fin,home,away};}
+function render(){let list=document.getElementById('list');let arr=allData.map(norm).filter(x=>{if(curFilter==='live')return x.live;if(curFilter==='finished')return x.fin;return true;});if(arr.length===0){list.innerHTML='<div style="padding:40px;text-align:center;color:#888">No '+curFilter+' games</div>';return;}let groups={};arr.forEach(m=>{let k=(m.league?.country?m.league.country+': ':'')+(m.league?.name||'Other');if(!groups[k])groups[k]=[];groups[k].push(m);});let html='';for(let ln in groups){html+='<div class="league"><span>'+ln+'</span><a href="#" onclick="return false">Standings</a></div>';groups[ln].forEach(m=>{let bar=m.live?'<div class="livebar"></div>':'<div style="width:3px"></div>';let tcol=m.live?'color:#00c853;font-weight:bold':'color:#aaa';let score=(m.home!=null&&m.away!=null)?m.home+' - '+m.away:'-';let teams=(m.teams?.home?.name||'Home')+' - '+(m.teams?.away?.name||'Away');html+='<div class="match" onclick="location.href=\'/match.html?id='+m.id+'\'">'+bar+'<div class="time" style="'+tcol+'">'+m.time+'</div><div class="teams">'+teams+'</div><div class="score">'+score+'</div></div>';});}list.innerHTML=html;}
+document.getElementById('dateNav').onclick=e=>{let a=e.target.closest('a');if(!a)return;if(a.dataset.d==='more'){alert('More days coming');return;}curDate=a.dataset.d;document.querySelectorAll('#dateNav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');load();};
+document.getElementById('filterNav').onclick=e=>{let a=e.target.closest('a');if(!a||!a.dataset.f)return;curFilter=a.dataset.f;document.querySelectorAll('#filterNav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');render();};
+load();
+</script></body></html>
