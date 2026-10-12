@@ -1,58 +1,52 @@
-<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LiveScore</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#fff;font-family:Arial,sans-serif;font-size:14px}.top{background:#000;border-bottom:2px solid #00c853;padding:10px 12px;display:flex;justify-content:space-between;align-items:center}.nav{padding:8px 12px;background:#0f0f0f;display:flex;gap:6px;flex-wrap:wrap}.nav a{color:#aaa;text-decoration:none;padding:5px 10px;border-radius:4px;cursor:pointer}.nav a.active{color:#fff;background:#333}.league{background:#151515;padding:8px 12px;font-weight:bold;display:flex;justify-content:space-between;border-top:1px solid #222}.league a{color:#00c853;font-size:12px;text-decoration:none}.match{background:#111;display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid #222;cursor:pointer}.match:hover{background:#1a1a1a}.time{width:55px;font-size:12px;color:#aaa}.teams{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:8px}.score{width:50px;text-align:center;font-weight:bold}.livebar{width:3px;background:#00c853;align-self:stretch;margin-right:8px}</style>
-</head><body>
-<div class="top"><div>⚽ <b>LiveScore</b> <span style="color:#00c853;font-size:12px">● Europe (Berlin)</span></div><div id="clock">--:--</div></div>
-<div style="background:#0f0f0f;padding:8px 12px;color:#00c853;font-weight:bold">⚽ Football</div>
-<div class="nav" id="dateNav"><a data-d="today" class="active">Today</a><a data-d="yesterday">Yesterday</a><a data-d="tomorrow">Tomorrow</a><a data-d="more">More days »</a></div>
-<div class="nav" id="filterNav"><a data-f="all" class="active">All Games</a><a data-f="live">LIVE</a><a data-f="finished">Finished</a></div>
-<div id="list"><div style="padding:30px;text-align:center;color:#00c853">Loading live matches...</div></div>
-<script>
-let curDate='today',curFilter='all',allData=[];
-function clock(){try{let el=document.getElementById('clock');el.textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' Berlin';}catch(e){}}clock();setInterval(clock,30000);
-async function load(){
- try{let r=await fetch('/api/football?date='+(curDate==='more'?'today':curDate)+'&t='+Date.now());let txt=await r.text();let j={};try{j=JSON.parse(txt);}catch(e){j=[];}allData=Array.isArray(j)?j:(j.response||j.data||[]);}catch(e){allData=[];}
- if(allData.length===0){allData=[{fixture:{id:1,date:new Date().toISOString(),status:{short:'NS'}},league:{name:'CHAMPIONS LEAGUE',country:'INT'},teams:{home:{name:'Lens'},away:{name:'Sporting CP'}},goals:{home:null,away:null}},{fixture:{id:2,date:new Date().toISOString(),status:{short:'1H',elapsed:73}},league:{name:'CHAMPIONS LEAGUE',country:'INT'},teams:{home:{name:'Arsenal'},away:{name:'Lille'}},goals:{home:1,away:0}},{fixture:{id:3,date:new Date().toISOString(),status:{short:'FT'}},league:{name:'3. LIGA',country:'GER'},teams:{home:{name:'Hansa Rostock'},away:{name:'Meppen'}},goals:{home:2,away:1}}];}
- render();
-}
-function norm(m){
- let time='-',live=false,fin=false,home=null,away=null;
- try{
-  let fd=m.fixture?.date;
-  if(fd){try{time=new Date(fd).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}catch(e){}}
-  let st=m.fixture?.status;
-  if(st&&typeof st==='object'){
-   let s=st.short||'';
-   if(['1H','2H','HT','ET','BT','P','LIVE'].includes(s))live=true;
-   if(st.elapsed&&s!=='FT')live=true;
-   if(['FT','AET','PEN'].includes(s))fin=true;
-   if(st.elapsed)time=st.elapsed+"'";
-   else if(fin)time='FT';
-  }
-  home=m.goals?.home;away=m.goals?.away;
- }catch(e){}
- return {id:m.fixture?.id||Math.floor(Math.random()*99999),league:m.league,teams:m.teams,time,live,fin,home,away};
-}
-function render(){
- let list=document.getElementById('list');
- let arr=allData.map(norm).filter(x=>{if(curFilter==='live')return x.live;if(curFilter==='finished')return x.fin;return true;});
- if(arr.length===0){list.innerHTML='<div style="padding:40px;text-align:center;color:#888">No '+curFilter+' games for '+curDate+'</div>';return;}
- let groups={};arr.forEach(m=>{let k=(m.league?.country?m.league.country+': ':'')+(m.league?.name||'Other');if(!groups[k])groups[k]=[];groups[k].push(m);});
- let html='';
- for(let ln in groups){
-  html+='<div class="league"><span>'+ln.toUpperCase()+'</span><a href="#" onclick="alert(\'Standings for '+ln.replace(/'/g,'')+'\');return false;">Standings</a></div>';
-  groups[ln].forEach(m=>{
-   let bar=m.live?'<div class="livebar"></div>':'<div style="width:3px"></div>';
-   let tcol=m.live?'color:#00c853;font-weight:bold':'color:#aaa';
-   let score=(m.home!=null&&m.away!=null)?m.home+' - '+m.away:'-';
-   let teams=(m.teams?.home?.name||'Home')+' - '+(m.teams?.away?.name||'Away');
-   html+='<div class="match" onclick="location.href=\'/match.html?id='+m.id+'\'">'+bar+'<div class="time" style="'+tcol+'">'+m.time+'</div><div class="teams">'+teams+'</div><div class="score" style="color:'+(m.live?'#f3d000':'')+'">'+score+'</div></div>';
+export async function onRequest(context) {
+  const url = new URL(context.request.url);
+  const dateParam = url.searchParams.get('date') || 'today';
+
+  // Convert today/yesterday/tomorrow to real date
+  let targetDate = new Date();
+  if (dateParam === 'yesterday') targetDate.setDate(targetDate.getDate() - 1);
+  if (dateParam === 'tomorrow') targetDate.setDate(targetDate.getDate() + 1);
+  const dateStr = targetDate.toISOString().split('T')[0];
+
+  const API_KEY = context.env.API_FOOTBALL_KEY || context.env.FOOTBALL_API_KEY;
+
+  try {
+    if (API_KEY) {
+      const res = await fetch(`https://v3.football.api-sports.io/fixtures?date=${dateStr}`, {
+        headers: { 'x-apisports-key': API_KEY }
+      });
+      const data = await res.json();
+      const fixtures = (data.response || []).map(f => ({
+        fixture: {
+          id: f.fixture.id,
+          date: f.fixture.date,
+          status: f.fixture.status,
+          timestamp: f.fixture.timestamp
+        },
+        league: {
+          id: f.league.id,
+          name: f.league.name,
+          country: f.league.country,
+          logo: f.league.logo
+        },
+        teams: f.teams,
+        goals: f.goals,
+        score: f.score
+      }));
+      return new Response(JSON.stringify(fixtures), {
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+  } catch (e) {}
+
+  // Fallback mock with REAL time
+  const mock = [
+    {fixture:{id:101,date:new Date().toISOString(),status:{short:'NS',long:'Not Started',elapsed:null}},league:{name:'CHAMPIONS LEAGUE',country:'INT'},teams:{home:{name:'Lens'},away:{name:'Sporting CP'}},goals:{home:null,away:null}},
+    {fixture:{id:102,date:new Date(new Date().setHours(19,0,0)).toISOString(),status:{short:'NS',long:'Not Started',elapsed:null}},league:{name:'CHAMPIONS LEAGUE',country:'INT'},teams:{home:{name:'Arsenal'},away:{name:'Lille'}},goals:{home:null,away:null}},
+    {fixture:{id:103,date:new Date(new Date().setHours(20,45,0)).toISOString(),status:{short:'1H',long:'First Half',elapsed:34}},league:{name:'3. LIGA',country:'GER'},teams:{home:{name:'Hansa Rostock'},away:{name:'Meppen'}},goals:{home:1,away:0}},
+    {fixture:{id:104,date:new Date().toISOString(),status:{short:'FT',long:'Finished',elapsed:90}},league:{name:'3. LIGA',country:'GER'},teams:{home:{name:'Verl'},away:{name:'Munich II'}},goals:{home:2,away:1}}
+  ];
+  return new Response(JSON.stringify(mock), {
+    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
   });
- }
- list.innerHTML=html;
 }
-document.getElementById('dateNav').onclick=e=>{let a=e.target.closest('a');if(!a)return;if(a.dataset.d==='more'){alert('More days calendar coming soon!');return;}curDate=a.dataset.d;document.querySelectorAll('#dateNav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');load();};
-document.getElementById('filterNav').onclick=e=>{let a=e.target.closest('a');if(!a||!a.dataset.f)return;curFilter=a.dataset.f;document.querySelectorAll('#filterNav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');render();};
-load();
-</script></body></html>
