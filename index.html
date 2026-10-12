@@ -1,102 +1,95 @@
 <!DOCTYPE html>
 <html>
 <head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DIAMOND LIVESCORE</title>
 <style>
-body{margin:0;background:#0a0a0a;color:white;font-family:Arial}
-.header{background:#0d4d1a;padding:15px;text-align:center;font-size:22px;font-weight:bold;position:sticky;top:0;z-index:10}
-.ad1{background:#ffcc00;color:#000;padding:12px;text-align:center;margin:10px;border-radius:12px;font-weight:bold;display:block;text-decoration:none}
-.ad2{background:#00e5ff;color:#000;padding:12px;text-align:center;margin:10px;border-radius:12px;font-weight:bold;display:block;text-decoration:none}
-.match{background:#1a1a1a;margin:8px 10px;padding:12px;border-radius:12px;border-left:3px solid #333}
-.league{color:#888;font-size:11px;text-transform:uppercase}
-.teams{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
-.team{flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.team.right{text-align:right}
-.center{flex:0 0 90px;text-align:center}
-.score{color:#00ff88;font-weight:bold;font-size:18px}
-.time{color:#ffcc00;font-weight:bold;font-size:15px}
-.live{color:#ff2d2d;font-size:11px;font-weight:bold}
-.count{padding:10px;text-align:center;color:#00ff88;font-weight:bold;font-size:14px}
-.loading{text-align:center;padding:20px;color:#aaa}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#fff;color:#000;font-family:Arial,sans-serif;font-size:13px}
+.top{background:#0a5a0a;padding:12px;text-align:center;color:white;font-weight:bold;font-size:18px;position:sticky;top:0;z-index:10}
+.ad{background:#ffcc00;color:#000;padding:10px;text-align:center;margin:6px 8px;border-radius:8px;font-weight:bold;display:block;text-decoration:none;font-size:13px}
+.ad2{background:#00c8ff;color:#000;padding:10px;text-align:center;margin:6px 8px;border-radius:8px;font-weight:bold;display:block;text-decoration:none;font-size:13px}
+.count{background:#e8ffe8;padding:8px;text-align:center;color:#0a5a0a;font-weight:bold;font-size:12px;border-bottom:1px solid #ccc}
+.league{background:#333;color:#fff;padding:7px 10px;font-weight:bold;font-size:12px;display:flex;justify-content:space-between}
+.league span{font-weight:normal;color:#bbb;font-size:11px}
+.row{display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid #e5e5e5}
+.row.live{background:#ffecec}
+.t{width:50px;font-size:12px;color:#333}
+.t.live{color:#d00;font-weight:bold}
+.m{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s{width:35px;text-align:center;font-weight:bold}
+.s.live{color:#d00}
+.s.pre{color:#888}
 </style>
 </head>
 <body>
-<div class="header">💎 DIAMOND LIVESCORE</div>
-<a class="ad1" href="https://wa.me/2348012345678" target="_blank">🔥 ADVERT 1 - BET HERE / WhatsApp Us</a>
-<a class="ad2" href="https://wa.me/2348012345678" target="_blank">💰 ADVERT 2 - YOUR AD HERE</a>
-<div class="count" id="count">Loading 34 leagues...</div>
-<div id="games"><div class="loading">⏳ Loading real matches...</div></div>
+<div class="top">💎 DIAMOND LIVESCORE</div>
+<a class="ad" href="https://wa.me/2348012345678">🔥 ADVERT 1 - BET HERE / WhatsApp Us</a>
+<a class="ad2" href="https://wa.me/2348012345678">💰 ADVERT 2 - YOUR AD HERE</a>
+<div class="count" id="count">⏳ Loading leagues...</div>
+<div id="box"></div>
 
 <script>
-const leagues = [
-{id:'eng.1',name:'PREMIER LEAGUE'},{id:'eng.2',name:'CHAMPIONSHIP'},
-{id:'esp.1',name:'LA LIGA'},{id:'esp.2',name:'SEGUNDA'},
-{id:'ita.1',name:'SERIE A'},{id:'ger.1',name:'BUNDESLIGA'},
-{id:'fra.1',name:'LIGUE 1'},{id:'ned.1',name:'EREDIVISIE'},
-{id:'por.1',name:'PORTUGAL'},{id:'sco.1',name:'SCOTLAND'},
-{id:'tur.1',name:'TURKEY'},{id:'bel.1',name:'BELGIUM'},
-{id:'uefa.champions',name:'CHAMPIONS LEAGUE'},{id:'uefa.europa',name:'EUROPA LEAGUE'},
-{id:'usa.1',name:'MLS'},{id:'bra.1',name:'BRAZIL'},{id:'rsa.1',name:'SOUTH AFRICA'},
-{id:'ind.1',name:'INDIA - ISL'},{id:'nga.1',name:'NIGERIA NPFL'},
-{id:'eng.fa',name:'FA CUP'},{id:'esp.copa_del_rey',name:'COPA DEL REY'}
+const LEAGUES=[
+{id:'eng.1',n:'ENGLAND: Premier League'},{id:'eng.2',n:'ENGLAND: Championship'},
+{id:'ita.1',n:'ITALY: Serie A'},{id:'esp.1',n:'SPAIN: LaLiga'},
+{id:'ger.1',n:'GERMANY: Bundesliga'},{id:'fra.1',n:'FRANCE: Ligue 1'},
+{id:'ned.1',n:'NETHERLANDS: Eredivisie'},{id:'por.1',n:'PORTUGAL: Liga'},
+{id:'sco.1',n:'SCOTLAND: Premiership'},{id:'tur.1',n:'TURKEY: Super Lig'},
+{id:'bel.1',n:'BELGIUM: Pro League'},{id:'usa.1',n:'USA: MLS'},
+{id:'bra.1',n:'BRAZIL: Serie A'},{id:'rsa.1',n:'SOUTH AFRICA: PSL'},
+{id:'ind.1',n:'INDIA: ISL'},{id:'nga.1',n:'NIGERIA: NPFL'},
+{id:'uefa.champions',n:'EUROPE: Champions League'},{id:'uefa.europa',n:'EUROPE: Europa League'},
+{id:'eng.fa',n:'ENGLAND: FA Cup'}
 ];
 
-async function fetchLeague(l){
+async function getOne(L){
  try{
-  const r=await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${l.id}/scoreboard`);
+  const r=await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${L.id}/scoreboard`);
   const d=await r.json();
-  if(!d.events) return [];
-  return d.events.map(e=>{
-   const comp=e.competitions[0];
-   const home=comp.competitors.find(c=>c.homeAway==='home');
-   const away=comp.competitors.find(c=>c.homeAway==='away');
-   const state=comp.status.type.state;
-   const shortDetail=comp.status.type.shortDetail;
-   let displayTime = shortDetail;
-   let kickoff = new Date(e.date).toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit',hour12:true});
-   if(state==='pre'){ displayTime = kickoff; }
-   return {
-    league:l.name,
-    home:home.team.shortDisplayName || home.team.displayName,
-    away:away.team.shortDisplayName || away.team.displayName,
-    hScore:home.score, aScore:away.score,
-    time:displayTime, state:state,
-    isLive:state==='in', isPre:state==='pre',
-    kickoff:kickoff, rawDate:e.date
-   }
+  if(!d.events||!d.events.length) return null;
+  const ms=d.events.map(e=>{
+   const c=e.competitions[0];
+   const h=c.competitors.find(x=>x.homeAway=='home');
+   const a=c.competitors.find(x=>x.homeAway=='away');
+   const st=c.status.type.state;
+   let timeLabel=new Date(e.date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+   if(st==='in') timeLabel=c.status.displayClock+"'";
+   if(st==='post') timeLabel="FT";
+   return {home:h.team.shortDisplayName||h.team.displayName,away:a.team.shortDisplayName||a.team.displayName,hS:h.score,aS:a.score,time:timeLabel,st:st,live:st==='in'}
   });
- }catch{return []}
+  return {name:L.n,matches:ms};
+ }catch{return null}
 }
 
-async function load(){
- let all=[];
- for(let i=0;i<leagues.length;i++){
-  document.getElementById('count').innerText=`Scanning ${leagues[i].name}... ${i+1}/${leagues.length}`;
-  const m=await fetchLeague(leagues[i]);
-  all=all.concat(m);
-  if(all.length>0) render(all);
+async function loadAll(){
+ let groups=[]; let total=0;
+ for(let i=0;i<LEAGUES.length;i++){
+  document.getElementById('count').innerText=`Loading ${LEAGUES[i].n} ${i+1}/${LEAGUES.length}...`;
+  const g=await getOne(LEAGUES[i]);
+  if(g){groups.push(g); total+=g.matches.length; draw(groups,total);}
  }
- document.getElementById('count').innerText=`✅ Found ${all.length} matches from ${leagues.length} leagues today`;
- if(all.length===0){
-  document.getElementById('games').innerHTML='<div class="loading">No games today. Come back Saturday/Sunday!</div>';
- }
+ document.getElementById('count').innerText=`✅ Found ${total} matches from ${groups.length} leagues today`;
 }
 
-function render(list){
- list.sort((a,b)=>b.isLive-a.isLive);
- document.getElementById('games').innerHTML=list.map(m=>`
- <div class="match" style="border-left-color:${m.isLive?'#ff2d2d':m.isPre?'#ffcc00':'#333'}">
-  <div class="league">${m.league} • <span class="${m.isLive?'live':''}">${m.isLive?m.time+' LIVE':m.isPre?'⏰ '+m.time:m.time}</span></div>
-  <div class="teams">
-   <div class="team">${m.home}</div>
-   <div class="center">${m.isPre?`<span class="time">${m.time}</span>`:`<span class="score">${m.hScore} - ${m.aScore}</span>`}</div>
-   <div class="team right">${m.away}</div>
-  </div>
- </div>`).join('');
+function draw(groups,total){
+ let h='';
+ groups.forEach(g=>{
+  h+=`<div class="league">${g.name} <span>Standings</span></div>`;
+  g.matches.forEach(m=>{
+   h+=`<div class="row ${m.live?'live':''}">
+    <div class="t ${m.live?'live':''}">${m.live?m.time:m.time}</div>
+    <div class="m">${m.home} - ${m.away}</div>
+    <div class="s ${m.live?'live':m.st==='pre'?'pre':''}">${m.st==='pre'?'-':m.hS+'-'+m.aS}</div>
+   </div>`;
+  });
+ });
+ document.getElementById('box').innerHTML=h;
 }
-load();
-setInterval(load, 120000);
+
+loadAll();
+setInterval(loadAll,90000);
 </script>
 </body>
 </html>
