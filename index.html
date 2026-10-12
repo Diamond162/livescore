@@ -5,71 +5,54 @@
 <title>Diamond Livescore - Flashscore Clone</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif;font-size:13px}
-.header{background:#001e28;padding:10px 8px;position:sticky;top:0;z-index:10;border-bottom:2px solid #00b8d6}
-.header h1{color:#fff;font-size:16px;font-weight:800}
-.header small{color:#aaa;font-size:11px}
-.search-box{padding:6px 8px;background:#0a0a0a}
-.search-box input{width:100%;background:#222;border:1px solid #333;border-radius:4px;padding:8px 10px;color:#fff;font-size:13px;outline:none}
-.tabs{display:flex;gap:4px;padding:6px 8px;background:#1a1a1a;overflow:auto}
-.tab{padding:5px 12px;border-radius:12px;background:#2a2a2a;color:#bbb;font-size:12px;white-space:nowrap;cursor:pointer;border:1px solid #333}
-.tab.active{background:#00b8d6;color:#fff;border-color:#00b8d6}
-.country-head{background:#222;color:#fff;padding:6px 8px;font-weight:bold;font-size:12px;display:flex;justify-content:space-between;text-transform:uppercase;border-top:1px solid #333}
-.country-head span:last-child{font-weight:400;color:#00b8d6;text-decoration:underline;cursor:pointer}
-.match-row{display:flex;align-items:center;padding:5px 8px;background:#000;border-bottom:1px solid #1a1a1a;font-size:12px}
+body{background:#000;color:#fff;font-family:Arial,sans-serif;font-size:13px}
+.header{background:#001e28;padding:12px 10px;position:sticky;top:0;z-index:10;border-bottom:2px solid #00b8d6}
+.header h1{color:#fff;font-size:16px;font-weight:800;letter-spacing:.5px}
+.search-box{padding:8px;background:#0a0a0a}
+.search-box input{width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:10px;color:#fff;outline:none}
+.tabs{display:flex;gap:6px;padding:8px;background:#111;overflow:auto}
+.tab{padding:6px 14px;border-radius:15px;background:#222;color:#aaa;font-size:12px;white-space:nowrap;cursor:pointer}
+.tab.active{background:#00b8d6;color:#fff}
+.country-head{background:#1c1c1c;color:#fff;padding:7px 10px;font-weight:bold;font-size:12px;display:flex;justify-content:space-between;text-transform:uppercase;border-top:1px solid #333}
+.country-head span:last-child{color:#00b8d6;font-weight:400;text-decoration:underline}
+.match-row{display:flex;align-items:center;padding:8px 10px;background:#000;border-bottom:1px solid #1a1a1a}
 .match-row:hover{background:#111}
-.time{width:38px;color:#aaa;font-size:11px}
-.teams{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.score{width:55px;text-align:right;font-weight:bold}
-.score.live{color:#ff0000}
+.time{width:45px;color:#888;font-size:11px}
+.teams{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.score{width:60px;text-align:right;font-weight:bold;font-size:13px}
+.score.live{color:#ff2b2b}
 .score.ft{color:#fff}
-.score.up{color:#00b8d6}
-.small{font-size:11px;color:#aaa}
-.crest{width:14px;height:14px;margin-right:4px;vertical-align:middle}
-.live-min{color:#ff0000;font-size:11px;margin-right:3px}
+.score.up{color:#666}
+.live-dot{width:6px;height:6px;background:red;border-radius:50%;display:inline-block;margin-right:3px;animation:blink 1s infinite}
+@keyframes blink{0%{opacity:1}50%{opacity:0.3}100%{opacity:1}}
 </style>
 </head>
 <body>
-<div class="header"><div style="display:flex;justify-content:space-between;align-items:center"><h1>💎 DIAMOND LIVESCORE</h1><small id="count">Loading...</small></div></div>
+<div class="header"><div style="display:flex;justify-content:space-between;align-items:center"><h1>💎 DIAMOND LIVESCORE</h1><small id="count" style="color:#aaa">Loading...</small></div></div>
 <div class="search-box"><input id="search" placeholder="Search country, league, team..." oninput="render()"></div>
 <div class="tabs">
-  <div class="tab active" data-f="all" onclick="setFilter('all')">All</div>
-  <div class="tab" data-f="live" onclick="setFilter('live')">Live</div>
-  <div class="tab" data-f="finished" onclick="setFilter('finished')">Finished</div>
-  <div class="tab" data-f="upcoming" onclick="setFilter('upcoming')">Upcoming</div>
+<div class="tab active" data-f="all" onclick="setFilter('all')">All</div>
+<div class="tab" data-f="live" onclick="setFilter('live')">🔴 Live</div>
+<div class="tab" data-f="finished" onclick="setFilter('finished')">Finished</div>
+<div class="tab" data-f="upcoming" onclick="setFilter('upcoming')">Upcoming</div>
 </div>
-<div id="app" style="padding-bottom:40px"><div style="padding:20px;text-align:center;color:#aaa">Loading matches...</div></div>
-
+<div id="app"><div style="padding:30px;text-align:center;color:#666">Loading real scores...</div></div>
 <script>
 let all=[]; let cur='all';
 async function load(){
   try{
     const r=await fetch('/api/football'); const j=await r.json(); all=j.response||[];
-    document.getElementById('count').textContent=all.length+' matches • '+new Date().toLocaleTimeString();
+    document.getElementById('count').textContent=all.length+' matches • '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
     render();
-  }catch(e){ document.getElementById('app').innerHTML='Error '+e.message }
+  }catch(e){ document.getElementById('app').innerHTML='Error: '+e.message }
 }
 function setFilter(f){ cur=f; document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.f===f)); render(); }
 function getInfo(m){
-  let s=m.fixture?.status?.short; if(typeof s!=='string') s=s?.display||s?.short||s?.long||'';
-  s=String(s).toUpperCase();
-  let type='FT'; let timeLabel='';
-  const rawDate=m.fixture?.date||m.kickoff||m.date||'';
-  let d=null; try{ d=new Date(rawDate); if(isNaN(d.getTime())) d=null; }catch{ d=null; }
-  if(s.includes('LIVE')||s.includes('1H')||s.includes('2H')||s.includes('HT')||s==='LIVE'){
-    type='LIVE';
-    const min=m.fixture?.status?.elapsed||m.minute||m.elapsed||'';
-    timeLabel = min? (min+"'") : (s.includes('HT')?'HT':"LIVE");
-  }else if(s.includes('FT')||s.includes('AET')||s==='FT'){
-    type='FT'; timeLabel='';
-  }else if(s.includes('CANC')||s.includes('POSTP')||s.includes('ABD')){
-    type='CANC'; timeLabel=s;
-  }else{
-    type='UPCOMING';
-    if(d) timeLabel=d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-    else timeLabel=rawDate?.slice(11,16)||'';
-  }
-  return {type,timeLabel,dateObj:d,rawStatus:s};
+  let s=(m.fixture?.status?.short||'').toString().toUpperCase();
+  if(s.includes('LIVE')||s.includes('1H')||s.includes('2H')||s.includes('HT')) return {type:'LIVE',label:m.fixture?.status?.display||s};
+  if(s==='FT' || s.includes('FT')) return {type:'FT',label:'FT'};
+  if(s==='NS' || s==='UPCOMING' || s==='TBD' || s.includes('SCHEDULED')) return {type:'UPCOMING',label:m.fixture?.time||''};
+  return {type:'FT',label:s||'FT'};
 }
 function render(){
   const app=document.getElementById('app'); const q=document.getElementById('search').value.toLowerCase();
@@ -84,42 +67,7 @@ function render(){
     }
     return true;
   });
-  // Group by COUNTRY: League
   const groups={};
   filtered.forEach(m=>{
-    const country=(m.league?.country||m.country||'WORLD').toUpperCase();
-    const league=m.league?.name||'Other';
-    const key=`${country}: ${league}`;
-    if(!groups[key]) groups[key]=[];
-    groups[key].push(m);
-  });
-  let html='';
-  for(const [key,list] of Object.entries(groups)){
-    html+=`<div class="country-head"><span>${key}</span><span>Standings</span></div>`;
-    list.forEach(m=>{
-      const info=getInfo(m);
-      const home=m.teams?.home?.name||'Home'; const away=m.teams?.away?.name||'Away';
-      const hg=m.goals?.home; const ag=m.goals?.away;
-      let scoreText='-'; let cls='up';
-      if(info.type==='LIVE'){
-        scoreText=`${hg??0}-${ag??0}`; cls='live';
-      }else if(info.type==='FT'){
-        if(hg!=null&&ag!=null) scoreText=`${hg}-${ag}`; else scoreText='-';
-        cls='ft';
-      }else if(info.type==='UPCOMING'){
-        scoreText='-'; cls='up';
-      }else{
-        scoreText=info.timeLabel; cls='ft';
-      }
-      // Flashscore row style
-      const timeDisplay = info.type==='LIVE'? `<span class="live-min">${info.timeLabel}</span>` : (info.type==='UPCOMING'? info.timeLabel : (info.type==='FT'?'FT':info.timeLabel));
-      html+=`<div class="match-row"><div class="time">${timeDisplay}</div><div class="teams">${home} - ${away}</div><div class="score ${cls}">${scoreText}</div></div>`;
-    });
-  }
-  if(!html) html=`<div style="padding:20px;text-align:center;color:#aaa">No matches for ${cur}</div>`;
-  app.innerHTML=html;
-}
-load(); setInterval(load,30000);
-</script>
-</body>
-</html>
+    const country=(m.league?.country||'WORLD').toUpperCase();
+    const league=m.league?.name||'FO
