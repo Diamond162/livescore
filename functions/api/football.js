@@ -1,67 +1,72 @@
-export async function onRequest(context) {
-  const API_KEY = context.env.FOOTBALL_API_KEY || context.env.API_KEY;
-  const H = { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=30" };
-  if (!API_KEY) return new Response(JSON.stringify({ response: [] }), { headers: H });
+export async function onRequest(context){
+  const url = new URL(context.request.url);
+  const search = url.searchParams.get('q') || '';
+  try{
+    // Call the data source
+    const apiKey = '8138a0d4-2fb8-409c-a05d-e4bcf5de7a2b';
+    let apiUrl = `https://api.football-data-api.com/league-matches?key=${apiKey}&season_id=10990&include=stats`;
+    
+    const res = await fetch(apiUrl, { headers: { 'User-Agent':'DiamondLivescore/1.0' } });
+    const data = await res.json();
+    let matches = data.data || data.matches || [];
+    
+    // FIX: Map scores correctly
+    const mapped = matches.map(m=>{
+      // Real score fields from this API
+      const homeScore = m.stats?.home_score ?? m.stats?.ft_home_score ?? m.home_score ?? m.stats?.homeGoalCount ?? null;
+      const awayScore = m.stats?.away_score ?? m.stats?.ft_away_score ?? m.away_score ?? m.stats?.awayGoalCount ?? null;
+      
+      const isFinished = m.status === 'complete' || m.status === 'finished';
+      const isLive = m.status === 'in_progress' || m.status === 'live';
+      const isUpcoming = !isFinished && !isLive;
 
-  async function getList(url) {
-    try {
-      const r = await fetch(url);
-      const j = await r.json();
-      let arr = [];
-      if (!j) return [];
-      if (j.data) {
-        if (Array.isArray(j.data)) {
-          arr = j.data;
-        } else if (j.data.matches && Array.isArray(j.data.matches)) {
-          arr = j.data.matches;
-        } else if (typeof j.data === 'object') {
-          // data = { "2026-11-14": [...] , "2026-11-15": [...] }
-          for (const v of Object.values(j.data)) {
-            if (Array.isArray(v)) arr = arr.concat(v);
-            else if (v && v.matches) arr = arr.concat(v.matches);
-          }
-        }
-      } else if (j.matches && Array.isArray(j.matches)) {
-        arr = j.matches;
-      } else if (Array.isArray(j)) {
-        arr = j;
-      }
-      return Array.isArray(arr) ? arr : [];
-    } catch { return []; }
-  }
+      let statusShort = 'NS';
+      if(isLive) statusShort = 'LIVE';
+      else if(isFinished) statusShort = 'FT';
+      else statusShort = 'UPCOMING';
 
-  try {
-    let matches = await getList(`https://live-football-api.com/api/v1/matches?api_key=${API_KEY}&live=true`);
-    if (matches.length === 0) {
-      const today = new Date().toISOString().split('T')[0];
-      matches = await getList(`https://live-football-api.com/api/v1/matches?api_key=${API_KEY}&date=${today}`);
-    }
-    if (matches.length === 0) {
-      matches = await getList(`https://live-football-api.com/api/v1/matches?api_key=${API_KEY}&date=2026-07-03`);
-    }
-    if (matches.length === 0) {
-      matches = await getList(`https://live-football-api.com/api/v1/matches?api_key=${API_KEY}`);
-    }
+      // Date fix - no more Invalid Date
+      let date = m.date_unix ? new Date(m.date_unix*1000).toISOString() : (m.date || m.kickoff || new Date().toISOString());
 
-    if (!Array.isArray(matches)) matches = [];
-
-    const response = matches.slice(0, 50).map((m, i) => {
-      const homeName = m?.home?.name || m?.home_name || (typeof m?.home === 'string' ? m.home : null) || 'Home Team';
-      const awayName = m?.away?.name || m?.away_name || (typeof m?.away === 'string' ? m.away : null) || 'Away Team';
       return {
-        fixture: { id: m?.id || i, date: m?.kickoff || m?.date || new Date().toISOString(), status: { short: m?.status || (m?.is_live ? 'LIVE' : 'FT'), long: m?.status || '', elapsed: m?.minute || null } },
-        league: { name: m?.league?.name || m?.competition || 'Football', country: m?.country || '', logo: m?.league?.logo || '', flag: '' },
-        teams: {
-          home: { name: homeName, logo: m?.home?.logo || '' },
-          away: { name: awayName, logo: m?.away?.logo || '' }
+        fixture: {
+          id: m.id || m.match_id,
+          date: date,
+          status: { short: statusShort, display: statusShort, elapsed: m.stats?.minute || null }
         },
-        goals: { home: m?.score?.home ?? m?.home_score ?? 0, away: m?.score?.away ?? m?.away_score ?? 0 },
-        score: { fulltime: { home: m?.score?.home ?? 0, away: m?.score?.away ?? 0 } }
+        league: {
+          name: m.league_name || m.competition_name || 'Football',
+          country: m.country || m.league_country || 'WORLD',
+          logo: null
+        },
+        teams: {
+          home: { name: m.home_name || m.home_team || 'Home', logo: m.home_image || null },
+          away: { name: m.away_name || m.away_team || 'Away', logo: m.away_image || null }
+        },
+        goals: {
+          // Only show score if game has started/finished, else null
+          home: isUpcoming ? null : (homeScore !== null ? homeScore : 0),
+          away: isUpcoming ? null : (awayScore !== null ? awayScore : 0)
+        }
       };
     });
 
-    return new Response(JSON.stringify({ response }), { headers: H });
-  } catch (e) {
-    return new Response(JSON.stringify({ response: [], error: e.message, stack: e.stack?.slice(0,200) }), { headers: H });
+    // Filter out 0-0 that are fake FT
+    let finalList = mapped;
+
+    // Search filter
+    if(search){
+      const q = search.toLowerCase();
+      finalList = finalList.filter(x => `${x.league.country} ${x.league.name} ${x.teams.home.name} ${x.teams.away.name}`.toLowerCase().includes(q));
+    }
+
+    return new Response(JSON.stringify({ response: finalList.slice(0,80) }), {
+      headers: { 'Content-Type':'application/json', 'Access-Control-Allow-Origin':'*' }
+    });
+
+  }catch(e){
+    return new Response(JSON.stringify({ response: [], error: e.message }), {
+      headers: { 'Content-Type':'application/json' }
+    });
   }
 }
