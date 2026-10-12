@@ -3,21 +3,71 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Diamond Livescore - Real API</title>
+<title>LiveScore - Europe Time</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#000;color:#fff;font-family:Arial,sans-serif;font-size:13px}
-.header{background:#001e28;padding:12px 10px;position:sticky;top:0;z-index:10;border-bottom:2px solid #00b8d6}
-.search-box{padding:8px;background:#0a0a0a}
-.search-box input{width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:10px;color:#fff;outline:none}
-.tabs{display:flex;gap:6px;padding:8px;background:#111;overflow:auto}
-.tab{padding:6px 14px;border-radius:15px;background:#222;color:#aaa;font-size:12px;white-space:nowrap;cursor:pointer}
-.tab.active{background:#00b8d6;color:#fff}
-.country-head{background:#1c1c1c;color:#fff;padding:7px 10px;font-weight:bold;font-size:12px;display:flex;justify-content:space-between;text-transform:uppercase;border-top:1px solid #333}
-.match-row{display:flex;align-items:center;padding:10px;background:#000;border-bottom:1px solid #1a1a1a}
-.score{width:70px;text-align:right;font-weight:bold}
-.score.live{color:#ff2b2b}
-.score.ft{color:#fff}
-.score.up{color:#666}
-.live-dot{width:6px;height:6px;background:red;border-radius:50%;display:inline-block;margin-right:4px;animation:blink 1s infinite}
-@keyframes blink{0%{opacity:1}50%{opacity:0.2}100%{opacity:1
+body{background:#0f0f0f;color:#fff;font-family:Arial,sans-serif;padding:10px}
+.header{background:#1a1a1a;padding:15px;border-radius:12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.header h1{font-size:18px}
+.header span{color:#00d084;font-size:12px}
+.match{background:#1e1e1e;border-radius:12px;padding:12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.team{width:35%;text-align:center}
+.team b{display:block;margin-top:5px;font-size:14px}
+.center{width:30%;text-align:center}
+.time{font-size:18px;font-weight:bold;color:#00d084}
+.score{font-size:22px;font-weight:bold}
+.status{font-size:11px;padding:3px 8px;border-radius:20px;display:inline-block;margin-top:4px}
+.live{background:#ff2a2a}
+.ft{background:#555}
+.upcoming{background:#333;color:#aaa}
+.league{font-size:11px;color:#888;margin-bottom:10px;padding-left:5px}
+.loading{padding:50px;text-align:center;color:#888}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>⚽ LiveScore</h1>
+<span>Europe (Berlin) • Auto Refresh 60s</span>
+</div>
+<div id="list"><div class="loading">Loading Europe matches...</div></div>
+
+<script>
+async function load(){
+  try{
+    const res = await fetch('/api/football?t='+Date.now());
+    const data = await res.json();
+    if(!Array.isArray(data)){ document.getElementById('list').innerHTML='<div class=loading>'+JSON.stringify(data).slice(0,200)+'</div>'; return; }
+    let html='';
+    let currentLeague='';
+    data.forEach(m=>{
+      const league = m.league?.name || 'Football';
+      if(league!==currentLeague){ html+=`<div class=league>${m.league?.country||''} • ${league}</div>`; currentLeague=league; }
+      const isLive = m.fixture?.status?.short==='LIVE';
+      const isFT = m.fixture?.status?.short==='FT';
+      const time = m.fixture?.time || 'TBD';
+      // Don't show 00:00 as time, show TBD
+      const displayTime = (time==='00:00' && !isLive && !isFT) ? 'TBD' : time;
+      const displayStatus = isLive ? (m.fixture?.status?.display||'LIVE') : isFT ? 'FT' : displayTime;
+      const score = (m.goals?.home!==null && m.goals?.home!==undefined) ? `${m.goals.home} - ${m.goals.away}` : displayTime;
+      const statusClass = isLive?'live':isFT?'ft':'upcoming';
+      
+      html+=`
+      <div class="match">
+        <div class="team"><b>${m.teams?.home?.name||'Home'}</b></div>
+        <div class="center">
+          <div class="${(m.goals?.home!==null)?'score':'time'}">${score}</div>
+          <span class="status ${statusClass}">${displayStatus}</span>
+        </div>
+        <div class="team"><b>${m.teams?.away?.name||'Away'}</b></div>
+      </div>`;
+    });
+    document.getElementById('list').innerHTML=html||'<div class=loading>No matches with Europe time now. Try later - top leagues start 19:45 CEST</div>';
+  }catch(e){
+    document.getElementById('list').innerHTML='<div class=loading>Error: '+e.message+'<br>Check /api/football</div>';
+  }
+}
+load();
+setInterval(load,60000);
+</script>
+</body>
+</html>
