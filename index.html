@@ -1,20 +1,53 @@
 <!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LiveScore</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#fff;font-family:Arial,sans-serif;font-size:14px}.top{background:#000;border-bottom:2px solid #00c853;padding:10px 12px;display:flex;justify-content:space-between;align-items:center}.nav{padding:8px 12px;background:#0f0f0f;display:flex;gap:6px;flex-wrap:wrap}.nav a{color:#aaa;text-decoration:none;padding:5px 10px;border-radius:4px;cursor:pointer}.nav a.active{color:#fff;background:#333}.league{background:#151515;padding:8px 12px;font-weight:bold;display:flex;justify-content:space-between;border-top:1px solid #222}.league a{color:#00c853;font-size:12px;text-decoration:none}.match{background:#111;display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid #222;cursor:pointer}.match:hover{background:#1a1a1a}.time{width:55px;font-size:12px;color:#aaa}.teams{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:8px}.score{width:50px;text-align:center;font-weight:bold}.livebar{width:3px;background:#00c853;align-self:stretch;margin-right:8px}</style>
+<title>FotMob - Livescore</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#f5f5f7;color:#111;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;font-size:14px}
+.header{background:#fff;border-bottom:1px solid #e5e5e5;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+.logo{font-weight:900;font-size:20px;letter-spacing:-0.5px}.logo span{color:#00b050}
+.search{background:#f0f0f0;border-radius:20px;padding:6px 12px;color:#888;font-size:13px;display:flex;align-items:center;gap:6px}
+.tabs{background:#fff;display:flex;gap:18px;padding:0 12px;border-bottom:1px solid #e5e5e5;overflow-x:auto}
+.tabs a{padding:12px 2px;font-weight:600;color:#888;text-decoration:none;border-bottom:3px solid transparent;white-space:nowrap;cursor:pointer}
+.tabs a.active{color:#111;border-color:#00b050}
+.datebar{background:#fff;display:flex;gap:8px;padding:10px 12px;overflow-x:auto;border-bottom:1px solid #e5e5e5}
+.datebar a{padding:6px 14px;border-radius:20px;background:#f0f0f0;color:#555;text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer}
+.datebar a.active{background:#111;color:#fff}
+.filterbar{background:#f5f5f7;padding:8px 12px;display:flex;gap:8px}
+.filterbar a{padding:5px 12px;border-radius:16px;background:#fff;border:1px solid #e0e0e0;color:#555;text-decoration:none;font-size:12px;font-weight:600}
+.filterbar a.active{background:#111;color:#fff;border-color:#111}
+.section{background:#fff;margin:8px 0;border-top:1px solid #e5e5e5;border-bottom:1px solid #e5e5e5}
+.leagueHead{padding:10px 12px;display:flex;justify-content:space-between;align-items:center;background:#fff;border-bottom:1px solid #f0f0f0}
+.leagueHead.left{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px}
+.leagueHead.right{color:#00b050;font-size:12px;font-weight:600;text-decoration:none}
+.matchRow{display:flex;align-items:center;padding:12px;border-bottom:1px solid #f5f5f5;cursor:pointer}
+.matchRow:last-child{border:none}
+.matchRow:hover{background:#fafafa}
+.mtime{width:52px;font-size:12px;color:#777;font-weight:600}
+.mlive{width:52px;font-size:12px;color:#e00000;font-weight:800}
+.mft{width:52px;font-size:12px;color:#999;font-weight:700}
+.mteams{flex:1}
+.mteams div{line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mteams.home{font-weight:500}
+.mteams.away{font-weight:500}
+.mscore{width:48px;text-align:center;font-weight:700}
+.dot{width:8px;height:8px;background:#e00000;border-radius:50%;display:inline-block;margin-right:4px;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+</style>
 </head><body>
-<div class="top"><div>⚽ <b>LiveScore</b> <span style="color:#00c853;font-size:12px">● Europe (Berlin)</span></div><div id="clock">--:--</div></div>
-<div style="background:#0f0f0f;padding:8px 12px;color:#00c853;font-weight:bold">⚽ Football</div>
-<div class="nav" id="dateNav"><a data-d="today" class="active">Today</a><a data-d="yesterday">Yesterday</a><a data-d="tomorrow">Tomorrow</a><a data-d="more">More days »</a></div>
-<div class="nav" id="filterNav"><a data-f="all" class="active">All Games</a><a data-f="live">LIVE</a><a data-f="finished">Finished</a></div>
-<div id="list"><div style="padding:30px;text-align:center;color:#00c853">Loading live matches...</div></div>
+<div class="header"><div class="logo">fot<span>mob</span></div><div style="display:flex;align-items:center;gap:10px"><div class="search">🔍 Search</div><div id="clock" style="font-size:12px;color:#666"></div></div></div>
+<div class="tabs"><a class="active">Matches</a><a onclick="alert('News coming')">News</a><a onclick="alert('Leagues coming')">Leagues</a><a onclick="alert('Follow coming')">Following</a></div>
+<div class="datebar" id="dateNav"><a data-d="yesterday">YESTERDAY</a><a data-d="today" class="active">TODAY</a><a data-d="tomorrow">TOMORROW</a><a data-d="more">📅 MORE</a></div>
+<div class="filterbar" id="filterNav"><a data-f="all" class="active">All</a><a data-f="live">Live</a><a data-f="finished">Finished</a><a data-f="fav">⭐ My teams</a></div>
+<div id="list"><div style="padding:40px;text-align:center;color:#00b050">Loading matches...</div></div>
 <script>
 let curDate='today',curFilter='all',allData=[];
-function clock(){try{let e=document.getElementById('clock');e.textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' Berlin';}catch{}}clock();setInterval(clock,30000);
-async function load(){try{let r=await fetch('/api/football?date='+(curDate==='more'?'today':curDate)+'&t='+Date.now());let j=await r.json();allData=Array.isArray(j)?j:(j.response||j.data||[]);}catch{allData=[]}if(allData.length===0){let n=new Date();let at=(h,m)=>{let d=new Date(n);d.setHours(h,m,0,0);return d.toISOString()};allData=[{fixture:{id:101,date:at(19,0),status:{short:'NS'}},league:{name:'CHAMPIONS LEAGUE',country:'INT'},teams:{home:{name:'Lens'},away:{name:'Sporting CP'}},goals:{home:null,away:null}},{fixture:{id:102,date:at(19,0),status:{short:'NS'}},league:{name:'CHAMPIONS LEAGUE',country:'INT'},teams:{home:{name:'Arsenal'},away:{name:'Lille'}},goals:{home:null,away:null}},{fixture:{id:103,date:at(20,45),status:{short:'1H',elapsed:34}},league:{name:'3. LIGA',country:'GER'},teams:{home:{name:'Hansa Rostock'},away:{name:'Meppen'}},goals:{home:1,away:0}},{fixture:{id:104,date:n.toISOString(),status:{short:'FT'}},league:{name:'3. LIGA',country:'GER'},teams:{home:{name:'Verl'},away:{name:'Munich II'}},goals:{home:2,away:1}}]}render()}
+function clock(){try{document.getElementById('clock').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}catch{}}clock();setInterval(clock,30000);
+async function load(){try{let r=await fetch('/api/football?date='+(curDate==='more'?'today':curDate)+'&t='+Date.now());let j=await r.json();allData=Array.isArray(j)?j:(j.response||j.data||[]);}catch{allData=[]}if(allData.length===0){let n=new Date();let at=(h,m)=>{let d=new Date(n);d.setHours(h,m,0,0);return d.toISOString()};allData=[{fixture:{id:101,date:at(19,0),status:{short:'NS'}},league:{name:'Champions League',country:'Europe',flag:'🏆'},teams:{home:{name:'RC Lens'},away:{name:'Sporting CP'}},goals:{home:null,away:null}},{fixture:{id:102,date:at(19,0),status:{short:'NS'}},league:{name:'Champions League',country:'Europe',flag:'🏆'},teams:{home:{name:'Arsenal'},away:{name:'Lille OSC'}},goals:{home:null,away:null}},{fixture:{id:103,date:at(19,45),status:{short:'1H',elapsed:34}},league:{name:'3. Liga',country:'Germany',flag:'🇩🇪'},teams:{home:{name:'Hansa Rostock'},away:{name:'Meppen'}},goals:{home:1,away:0}},{fixture:{id:104,date:n.toISOString(),status:{short:'FT'}},league:{name:'3. Liga',country:'Germany',flag:'🇩🇪'},teams:{home:{name:'Verl'},away:{name:'Bayern Munich II'}},goals:{home:2,away:1}},{fixture:{id:105,date:at(21,0),status:{short:'NS'}},league:{name:'Premier League',country:'England',flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿'},teams:{home:{name:'Man City'},away:{name:'Chelsea'}},goals:{home:null,away:null}}]}render()}
 function norm(m){let time='-',live=false,fin=false,home=null,away=null;try{let fd=m.fixture?.date;if(fd){try{time=new Date(fd).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}catch{}}let s=m.fixture?.status;if(s){let sh=s.short||'';if(['1H','2H','HT','ET','BT','P','LIVE'].includes(sh))live=true;if(s.elapsed&&sh!=='FT')live=true;if(['FT','AET','PEN'].includes(sh))fin=true;if(s.elapsed)time=s.elapsed+"'";else if(fin)time='FT'}home=m.goals?.home;away=m.goals?.away;}catch{}return{id:m.fixture?.id||Math.random(),league:m.league,teams:m.teams,time,live,fin,home,away}}
-function render(){let list=document.getElementById('list');let arr=allData.map(norm).filter(x=>{if(curFilter==='live')return x.live;if(curFilter==='finished')return x.fin;return true});if(arr.length===0){list.innerHTML='<div style="padding:40px;text-align:center;color:#888">No '+curFilter+' games for '+curDate+'</div>';return}let g={};arr.forEach(m=>{let k=(m.league?.country?m.league.country+': ':'')+(m.league?.name||'Other');if(!g[k])g[k]=[];g[k].push(m)});let h='';for(let ln in g){h+='<div class="league"><span>'+ln.toUpperCase()+'</span><a href="#" onclick="return false">Standings</a></div>';g[ln].forEach(m=>{let bar=m.live?'<div class="livebar"></div>':'<div style="width:3px"></div>';let col=m.live?'color:#00c853;font-weight:bold':'color:#aaa';let score=(m.home!=null&&m.away!=null)?m.home+' - '+m.away:'-';let teams=(m.teams?.home?.name||'Home')+' - '+(m.teams?.away?.name||'Away');h+='<div class="match" onclick="location.href=\'/match.html?id='+m.id+'\'">'+bar+'<div class="time" style="'+col+'">'+m.time+'</div><div class="teams">'+teams+'</div><div class="score" style="color:'+(m.live?'#f3d000':'')+'">'+score+'</div></div>'})}list.innerHTML=h}
-document.getElementById('dateNav').onclick=e=>{let a=e.target.closest('a');if(!a)return;if(a.dataset.d==='more'){alert('More days soon');return}curDate=a.dataset.d;document.querySelectorAll('#dateNav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');load()};
+function render(){let list=document.getElementById('list');let arr=allData.map(norm).filter(x=>{if(curFilter==='live')return x.live;if(curFilter==='finished')return x.fin;return true});if(arr.length===0){list.innerHTML='<div style="padding:40px;text-align:center;color:#888">No '+curFilter+' games</div>';return}let g={};arr.forEach(m=>{let k=(m.league?.flag||'⚽')+' '+(m.league?.country?m.league.country+' - ':'')+(m.league?.name||'Other');if(!g[k])g[k]=[];g[k].push(m)});let h='';for(let ln in g){h+='<div class="section"><div class="leagueHead"><div class="left"><span>'+ln+'</span></div><a class="right" href="#" onclick="return false">Table ›</a></div>';g[ln].forEach(m=>{let timeClass=m.live?'mlive':(m.fin?'mft':'mtime');let timeHtml=m.live?'<span class="dot"></span>'+m.time:m.time;let score=(m.home!=null&&m.away!=null)?'<div style="font-weight:800">'+m.home+'</div><div style="font-weight:800">'+m.away+'</div>':'<div style="color:#bbb">-</div><div style="color:#bbb">-</div>';h+='<div class="matchRow" onclick="location.href=\'/match.html?id='+m.id+'\'"><div class="'+timeClass+'">'+timeHtml+'</div><div class="mteams"><div class="home">'+(m.teams?.home?.name||'Home')+'</div><div class="away">'+(m.teams?.away?.name||'Away')+'</div></div><div class="mscore">'+score+'</div></div>'});h+='</div>'}list.innerHTML=h}
+document.getElementById('dateNav').onclick=e=>{let a=e.target.closest('a');if(!a)return;if(a.dataset.d==='more'){alert('Calendar coming');return}curDate=a.dataset.d;document.querySelectorAll('#dateNav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');load()};
 document.getElementById('filterNav').onclick=e=>{let a=e.target.closest('a');if(!a||!a.dataset.f)return;curFilter=a.dataset.f;document.querySelectorAll('#filterNav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');render()};
 load();
-</script></body></html>
+</script>
+</body></html>
