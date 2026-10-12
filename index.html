@@ -2,60 +2,69 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DIAMOND LIVESCORE - 300 Leagues</title>
+<title>DIAMOND LIVESCORE</title>
 <style>
 body{margin:0;background:#0a0a0a;color:white;font-family:Arial}
-.header{background:#0d4d1a;padding:15px;text-align:center;font-size:20px;font-weight:bold;position:sticky;top:0;z-index:10}
+.header{background:#0d4d1a;padding:15px;text-align:center;font-size:22px;font-weight:bold;position:sticky;top:0;z-index:10}
 .ad1{background:#ffcc00;color:#000;padding:12px;text-align:center;margin:10px;border-radius:12px;font-weight:bold;display:block;text-decoration:none}
 .ad2{background:#00e5ff;color:#000;padding:12px;text-align:center;margin:10px;border-radius:12px;font-weight:bold;display:block;text-decoration:none}
-.tabs{display:flex;gap:8px;overflow:auto;padding:10px;background:#111}
-.tab{background:#2a2a2a;padding:8px 16px;border-radius:20px;white-space:nowrap;font-size:13px}
-.tab.active{background:#ff2d2d}
-.match{background:#1a1a1a;margin:8px 10px;padding:12px;border-radius:12px;border-left:3px solid #0d4d1a}
-.league{color:#aaa;font-size:11px;text-transform:uppercase}
-.teams{display:flex;justify-content:space-between;margin-top:6px;align-items:center}
+.match{background:#1a1a1a;margin:8px 10px;padding:12px;border-radius:12px;border-left:3px solid #333}
+.league{color:#888;font-size:11px;text-transform:uppercase}
+.teams{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.team{flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.team.right{text-align:right}
+.center{flex:0 0 90px;text-align:center}
 .score{color:#00ff88;font-weight:bold;font-size:18px}
-.live{color:#ff2d2d;font-weight:bold}
-.loading{text-align:center;padding:30px;color:#aaa}
-.count{padding:10px;text-align:center;color:#00ff88;font-weight:bold}
+.time{color:#ffcc00;font-weight:bold;font-size:15px}
+.live{color:#ff2d2d;font-size:11px;font-weight:bold}
+.count{padding:10px;text-align:center;color:#00ff88;font-weight:bold;font-size:14px}
+.loading{text-align:center;padding:20px;color:#aaa}
 </style>
 </head>
 <body>
 <div class="header">💎 DIAMOND LIVESCORE</div>
 <a class="ad1" href="https://wa.me/2348012345678" target="_blank">🔥 ADVERT 1 - BET HERE / WhatsApp Us</a>
 <a class="ad2" href="https://wa.me/2348012345678" target="_blank">💰 ADVERT 2 - YOUR AD HERE</a>
-<div class="count" id="count">Loading 40+ leagues...</div>
-<div id="games"><div class="loading">⏳ Scanning 300+ leagues... Please wait 10 seconds</div></div>
+<div class="count" id="count">Loading 34 leagues...</div>
+<div id="games"><div class="loading">⏳ Loading real matches...</div></div>
 
 <script>
 const leagues = [
-{id:'eng.1',name:'England - Premier League'},{id:'eng.2',name:'England - Championship'},
-{id:'esp.1',name:'Spain - La Liga'},{id:'esp.2',name:'Spain - Segunda'},
-{id:'ita.1',name:'Italy - Serie A'},{id:'ger.1',name:'Germany - Bundesliga'},
-{id:'fra.1',name:'France - Ligue 1'},{id:'ned.1',name:'Netherlands - Eredivisie'},
-{id:'por.1',name:'Portugal - Liga'},{id:'sco.1',name:'Scotland - Premiership'},
-{id:'tur.1',name:'Turkey - Super Lig'},{id:'bel.1',name:'Belgium - Pro League'},
-{id:'uefa.champions',name:'Champions League'},{id:'uefa.europa',name:'Europa League'},
-{id:'uefa.europa.conf',name:'Conference League'},{id:'fifa.world',name:'World Cup'},
-{id:'concacaf.champions',name:'CONCACAF'},{id:'eng.fa',name:'FA Cup'},
-{id:'usa.1',name:'USA - MLS'},{id:'mex.1',name:'Mexico - Liga MX'},
-{id:'bra.1',name:'Brazil - Serie A'},{id:'arg.1',name:'Argentina - Liga'},
-{id:'rsa.1',name:'South Africa - PSL'},{id:'egy.1',name:'Egypt - Premier'},
-{id:'nga.1',name:'Nigeria - NPFL'},{id:'jpn.1',name:'Japan - J-League'},
-{id:'aus.1',name:'Australia - A-League'},{id:'ind.1',name:'India - ISL'},
-{id:'chn.1',name:'China - Super League'},{id:'uefa.nations',name:'Nations League'},
-{id:'eng.league_cup',name:'Carabao Cup'},{id:'esp.copa_del_rey',name:'Copa del Rey'},
-{id:'ita.coppa_italia',name:'Coppa Italia'},{id:'ger.dfb_pokal',name:'DFB Pokal'}
+{id:'eng.1',name:'PREMIER LEAGUE'},{id:'eng.2',name:'CHAMPIONSHIP'},
+{id:'esp.1',name:'LA LIGA'},{id:'esp.2',name:'SEGUNDA'},
+{id:'ita.1',name:'SERIE A'},{id:'ger.1',name:'BUNDESLIGA'},
+{id:'fra.1',name:'LIGUE 1'},{id:'ned.1',name:'EREDIVISIE'},
+{id:'por.1',name:'PORTUGAL'},{id:'sco.1',name:'SCOTLAND'},
+{id:'tur.1',name:'TURKEY'},{id:'bel.1',name:'BELGIUM'},
+{id:'uefa.champions',name:'CHAMPIONS LEAGUE'},{id:'uefa.europa',name:'EUROPA LEAGUE'},
+{id:'usa.1',name:'MLS'},{id:'bra.1',name:'BRAZIL'},{id:'rsa.1',name:'SOUTH AFRICA'},
+{id:'ind.1',name:'INDIA - ISL'},{id:'nga.1',name:'NIGERIA NPFL'},
+{id:'eng.fa',name:'FA CUP'},{id:'esp.copa_del_rey',name:'COPA DEL REY'}
 ];
 
 async function fetchLeague(l){
  try{
   const r=await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${l.id}/scoreboard`);
   const d=await r.json();
-  if(!d.events||d.events.length==0) return [];
+  if(!d.events) return [];
   return d.events.map(e=>{
-   const c=e.competitions[0]; const h=c.competitors.find(x=>x.homeAway=='home'); const a=c.competitors.find(x=>x.homeAway=='away');
-   return {league:l.name, home:h.team.displayName, away:a.team.displayName, hScore:h.score, aScore:a.score, time:c.status.type.shortDetail, state:c.status.type.state, isLive:c.status.type.state=='in'}
+   const comp=e.competitions[0];
+   const home=comp.competitors.find(c=>c.homeAway==='home');
+   const away=comp.competitors.find(c=>c.homeAway==='away');
+   const state=comp.status.type.state;
+   const shortDetail=comp.status.type.shortDetail;
+   let displayTime = shortDetail;
+   let kickoff = new Date(e.date).toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit',hour12:true});
+   if(state==='pre'){ displayTime = kickoff; }
+   return {
+    league:l.name,
+    home:home.team.shortDisplayName || home.team.displayName,
+    away:away.team.shortDisplayName || away.team.displayName,
+    hScore:home.score, aScore:away.score,
+    time:displayTime, state:state,
+    isLive:state==='in', isPre:state==='pre',
+    kickoff:kickoff, rawDate:e.date
+   }
   });
  }catch{return []}
 }
@@ -63,22 +72,27 @@ async function fetchLeague(l){
 async function load(){
  let all=[];
  for(let i=0;i<leagues.length;i++){
-  document.getElementById('count').innerText = `Scanning ${leagues[i].name}... (${i+1}/${leagues.length})`;
+  document.getElementById('count').innerText=`Scanning ${leagues[i].name}... ${i+1}/${leagues.length}`;
   const m=await fetchLeague(leagues[i]);
   all=all.concat(m);
   if(all.length>0) render(all);
  }
- document.getElementById('count').innerText = `✅ Found ${all.length} matches from ${leagues.length} leagues today`;
- if(all.length==0){
-  document.getElementById('games').innerHTML = `<div class="loading">No games today in 40 leagues.<br><br>Leagues play mostly Sat/Sun.<br>Your site is READY for 300 leagues!<br><br>To get 300+ leagues with odds, you need paid API later ($15/month). But this FREE version already covers all major leagues.</div>`;
+ document.getElementById('count').innerText=`✅ Found ${all.length} matches from ${leagues.length} leagues today`;
+ if(all.length===0){
+  document.getElementById('games').innerHTML='<div class="loading">No games today. Come back Saturday/Sunday!</div>';
  }
 }
+
 function render(list){
  list.sort((a,b)=>b.isLive-a.isLive);
- document.getElementById('games').innerHTML = list.map(m=>`
- <div class="match" style="border-left-color:${m.isLive?'#ff2d2d':'#0d4d1a'}">
- <div class="league">${m.league} • <span class="${m.isLive?'live':''}">${m.time}</span></div>
- <div class="teams"><span>${m.home}</span><span class="score">${m.hScore} - ${m.aScore}</span><span>${m.away}</span></div>
+ document.getElementById('games').innerHTML=list.map(m=>`
+ <div class="match" style="border-left-color:${m.isLive?'#ff2d2d':m.isPre?'#ffcc00':'#333'}">
+  <div class="league">${m.league} • <span class="${m.isLive?'live':''}">${m.isLive?m.time+' LIVE':m.isPre?'⏰ '+m.time:m.time}</span></div>
+  <div class="teams">
+   <div class="team">${m.home}</div>
+   <div class="center">${m.isPre?`<span class="time">${m.time}</span>`:`<span class="score">${m.hScore} - ${m.aScore}</span>`}</div>
+   <div class="team right">${m.away}</div>
+  </div>
  </div>`).join('');
 }
 load();
