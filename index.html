@@ -1,68 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Diamond Livescore</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diamond Livescore - Real API</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#fff;font-family:Arial,sans-serif;font-size:13px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;color:#fff;font-family:Arial,sans-serif;font-size:13px}
 .header{background:#001e28;padding:12px 10px;position:sticky;top:0;z-index:10;border-bottom:2px solid #00b8d6}
-.search-box{padding:8px;background:#0a0a0a}.search-box input{width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:10px;color:#fff}
-.tabs{display:flex;gap:6px;padding:8px;background:#111;overflow:auto}.tab{padding:6px 14px;border-radius:15px;background:#222;color:#aaa;font-size:12px;white-space:nowrap;cursor:pointer}.tab.active{background:#00b8d6;color:#fff}
-.country-head{background:#1c1c1c;padding:7px 10px;font-weight:bold;font-size:12px;display:flex;justify-content:space-between;text-transform:uppercase;border-top:1px solid #333}
+.search-box{padding:8px;background:#0a0a0a}
+.search-box input{width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:10px;color:#fff;outline:none}
+.tabs{display:flex;gap:6px;padding:8px;background:#111;overflow:auto}
+.tab{padding:6px 14px;border-radius:15px;background:#222;color:#aaa;font-size:12px;white-space:nowrap;cursor:pointer}
+.tab.active{background:#00b8d6;color:#fff}
+.country-head{background:#1c1c1c;color:#fff;padding:7px 10px;font-weight:bold;font-size:12px;display:flex;justify-content:space-between;text-transform:uppercase;border-top:1px solid #333}
 .match-row{display:flex;align-items:center;padding:10px;background:#000;border-bottom:1px solid #1a1a1a}
-.score{width:70px;text-align:right;font-weight:bold}.score.live{color:#ff2b2b}.score.ft{color:#fff}.score.up{color:#666}
+.score{width:70px;text-align:right;font-weight:bold}
+.score.live{color:#ff2b2b}
+.score.ft{color:#fff}
+.score.up{color:#666}
 .live-dot{width:6px;height:6px;background:red;border-radius:50%;display:inline-block;margin-right:4px;animation:blink 1s infinite}
-@keyframes blink{0%{opacity:1}50%{opacity:0.2}100%{opacity:1}}
-.time{width:60px;color:#888;font-size:11px}.teams{flex:1;overflow:hidden;white-space:nowrap;padding-right:10px}
-</style>
-</head>
-<body>
-<div class="header"><div style="display:flex;justify-content:space-between"><h1>💎 DIAMOND LIVESCORE</h1><small id="count"></small></div></div>
-<div class="search-box"><input id="search" placeholder="Search team, league..." oninput="render()"></div>
-<div class="tabs">
-<div class="tab active" data-f="all" onclick="setFilter('all')">All</div>
-<div class="tab" data-f="live" onclick="setFilter('live')">🔴 Live</div>
-<div class="tab" data-f="finished" onclick="setFilter('finished')">Finished</div>
-<div class="tab" data-f="upcoming" onclick="setFilter('upcoming')">Upcoming</div>
-</div>
-<div id="app"><div style="padding:40px;text-align:center;color:#666">Loading YOUR API (471 credits)...</div></div>
-<script>
-let all=[]; let cur='all';
-async function load(){
-  try{
-    const r = await fetch('/api/football?t='+Date.now());
-    all = await r.json();
-    document.getElementById('count').textContent = all.length + ' matches - YOUR API';
-    render();
-  }catch(e){
-    document.getElementById('app').innerHTML = '<div style="padding:20px;color:red">Error: '+e.message+'</div>';
-  }
-}
-function setFilter(f){cur=f;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.f===f));render();}
-function render(){
-  const app=document.getElementById('app'); const q=document.getElementById('search').value.toLowerCase();
-  let filtered=all.filter(m=>{
-    const t=m.fixture.status.short;
-    if(cur==='live'&&t!=='LIVE') return false;
-    if(cur==='finished'&&t!=='FT') return false;
-    if(cur==='upcoming'&&t!=='UPCOMING') return false;
-    if(q){const txt=`${m.league.country} ${m.league.name} ${m.teams.home.name} ${m.teams.away.name}`.toLowerCase(); if(!txt.includes(q)) return false;}
-    return true;
-  });
-  const groups={}; filtered.forEach(m=>{const key=`${m.league.country.toUpperCase()}: ${m.league.name}`; if(!groups[key]) groups[key]=[]; groups[key].push(m);});
-  let html=''; for(const [key,list] of Object.entries(groups)){
-    html+=`<div class="country-head"><span>${key}</span><span>${list.length}</span></div>`;
-    list.forEach(m=>{
-      const s=m.fixture.status.short; let score='-'; let cls='up'; let time=m.fixture.time;
-      if(s==='LIVE'){score=`${m.goals.home??0} - ${m.goals.away??0}`; cls='live'; time=`<span class="live-dot"></span>${m.fixture.status.display}`;}
-      else if(s==='FT'){score=`${m.goals.home} - ${m.goals.away}`; cls='ft'; time='FT';}
-      html+=`<div class="match-row"><div class="time">${time}</div><div class="teams">${m.teams.home.name} - ${m.teams.away.name}</div><div class="score ${cls}">${score}</div></div>`;
-    });
-  }
-  if(!html) html='<div style="padding:30px;text-align:center">No matches</div>';
-  app.innerHTML=html;
-}
-load(); setInterval(load,30000);
-</script>
-</body>
-</html>
+@keyframes blink{0%{opacity:1}50%{opacity:0.2}100%{opacity:1
