@@ -1,108 +1,101 @@
-export async function onRequest({request}){
-  try{
-    const url=new URL(request.url);
-    let dp=url.searchParams.get('date')||'today';
-    
-    // Get Berlin date
-    let target=new Date();
-    const berlinNow=new Date(target.toLocaleString('en-US',{timeZone:'Europe/Berlin'}));
-    
-    if(dp==='yesterday'){
-      berlinNow.setDate(berlinNow.getDate()-1);
-    }else if(dp==='tomorrow'){
-      berlinNow.setDate(berlinNow.getDate()+1);
-    }else if(/^\d{4}-\d{2}-\d{2}$/.test(dp)){
-      berlinNow.setTime(new Date(dp).getTime());
+export async function onRequest(context) {
+  const cache = caches.default
+  const cacheKey = new Request(context.request.url)
+
+  // 1. Serve from Cloudflare cache first - for 100M fans
+  let cachedResponse = await cache.match(cacheKey)
+  if (cachedResponse) {
+    return cachedResponse
+  }
+
+  try {
+    const url = new URL(context.request.url)
+    let dateParam = url.searchParams.get('date') || 'today'
+
+    let targetNow = new Date()
+    if (dateParam === 'yesterday') targetNow.setDate(targetNow.getDate() - 1)
+    if (dateParam === 'tomorrow') targetNow.setDate(targetNow.getDate() + 1)
+
+    const berlinNow = new Date(targetNow.toLocaleString('en-US', { timeZone: 'Europe/Berlin' }))
+    const yyyy = berlinNow.getFullYear()
+    const mm = String(berlinNow.getMonth() + 1).padStart(2, '0')
+    const dd = String(berlinNow.getDate()).padStart(2, '0')
+    const dateStr = `${yyyy}${mm}${dd}`
+
+    const fotmobRes = await fetch(`https://www.fotmob.com/api/data/matches?date=${dateStr}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+        'Accept-Language': 'en-US,en;q=0.9'
+      }
+    })
+
+    if (!fotmobRes.ok) throw new Error(`FotMob status ${fotmobRes.status}`)
+
+    const j = await fotmobRes.json()
+    let out = []
+
+    if (j && j.leagues) {
+      j.leagues.forEach(league => {
+        const leagueName = league.name || 'Unknown League'
+        const country = league.ccode ? league.ccode.toUpperCase() : 'INT'
+        if (league.matches && league.matches.length > 0) {
+          league.matches.forEach(m => {
+            let homeScore = null
+            let awayScore = null
+            if (m.status && m.status.scoreStr) {
+              const parts = m.status.scoreStr.split('-')
+              homeScore = parseInt(parts[0]) || 0
+              awayScore = parseInt(parts[1]) || 0
+            }
+
+            out.push({
+              fixture: { id: m.id, date: m.time || m.status?.utcTime },
+              league: {
+                name: leagueName,
+                country: country,
+                logo: `https://images.fotmob.com/image_resources/logo/leaguelogo/${league.id}.png`
+              },
+              teams: {
+                home: { name: m.home?.name || 'Home', logo: `https://images.fotmob.com/image_resources/logo/teamlogo/${m.home?.id}_xsmall.png` },
+                away: { name: m.away?.name || 'Away', logo: `https://images.fotmob.com/image_resources/logo/teamlogo/${m.away?.id}_xsmall.png` }
+              },
+              goals: { home: homeScore, away: awayScore },
+              score: { fulltime: { home: homeScore, away: awayScore } },
+              status: {
+                short: m.status?.liveTime ? 'LIVE' : (m.status?.finished ? 'FT' : 'NS'),
+                long: m.status?.reason?.long || m.status?.liveTime || 'Not Started'
+              }
+            })
+          })
+        }
+      })
     }
-    
-    const yyyy=berlinNow.getFullYear();
-    const mm=String(berlinNow.getMonth()+1).padStart(2,'0');
-    const dd=String(berlinNow.getDate()).padStart(2,'0');
-    const dateStr=`${yyyy}${mm}${dd}`; // FotMob needs YYYYMMDD
-    const dateDash=`${yyyy}-${mm}-${dd}`;
 
-    // Real API - FotMob (same as FlashScore uses)
-    const res=await fetch(`https://www.fotmob.com/api/data/matches?date=${dateStr}`,{
-      headers:{
-        "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Accept":"application/json"
+    const response = new Response(JSON.stringify(out), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=60, s-maxage=120',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS'
       }
-    });
-    
-    if(!res.ok) throw new Error('fotmob failed');
-    const j=await res.json();
-    
-    let out=[];
-    (j.leagues||[]).forEach(l=>{
-      const ccode=(l.ccode||'').toUpperCase();
-      const country=ccode||'WORLD';
-      (l.matches||[]).forEach(m=>{
-        // Real Berlin time from API
-        let berlinTime=m.time||'';
-        let statusText=m.status?.reason?.short||'';
-        let liveMin=m.status?.liveTimeShort||''; // REAL minutes like "89'" from net
-        let utc=m.status?.utcTime;
-        
-        if(utc){
-          try{
-            const d=new Date(utc);
-            berlinTime=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});
-          }catch{}
-        }
+    })
 
-        // Real live check from API
-        const isLive = !!liveMin || statusText.toLowerCase().includes('half');
-        const isFinished = statusText.toUpperCase()==='FT' || statusText.toLowerCase().includes('finished');
+    // Save to Cloudflare cache for 120 sec
+    context.waitUntil(cache.put(cacheKey, response.clone()))
 
-        // For tomorrow/upcoming, score must be null -> will show "-" in frontend
-        let homeScore=m.home?.score??null;
-        let awayScore=m.away?.score??null;
-        if(!isLive && !isFinished){
-          homeScore=null;
-          awayScore=null;
-        }
+    return response
 
-        out.push({
-          fixture:{
-            id:m.id,
-            time:berlinTime,
-            status:liveMin||statusText||berlinTime,
-            minute:liveMin||statusText, // REAL minutes from net, not by me
-            isLive:isLive,
-            isFinished:isFinished
-          },
-          league:{
-            name:l.name,
-            country:country,
-            ccode:ccode
-          },
-          teams:{
-            home:{name:m.home?.name||'Home'},
-            away:{name:m.away?.name||'Away'}
-          },
-          goals:{
-            home:homeScore,
-            away:awayScore
-          }
-        });
-      });
-    });
+  } catch (e) {
+    // If FotMob fails, try return old cache instead of blank
+    const fallback = await cache.match(cacheKey)
+    if (fallback) return fallback
 
-    return new Response(JSON.stringify(out),{
-      headers:{
-        "Content-Type":"application/json",
-        "Access-Control-Allow-Origin":"*",
-        "Cache-Control":"public, max-age=15"
+    return new Response(JSON.stringify([]), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
       }
-    });
-
-  }catch(e){
-    // If net API fails, return empty - NOT fake 89' - so you know it's net issue
-    return new Response(JSON.stringify([]),{
-      headers:{
-        "Content-Type":"application/json",
-        "Access-Control-Allow-Origin":"*"
-      }
-    });
+    })
   }
 }
