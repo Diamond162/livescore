@@ -9,46 +9,56 @@
 body{background:#fff;color:#000;font-family:Arial,sans-serif;font-size:13px}
 .top{background:#0a2a4a;padding:10px;text-align:center;color:white;font-weight:bold;font-size:18px}
 .date-bar{background:#fff;padding:8px 10px;border-bottom:1px solid #ccc;font-size:12px;overflow-x:auto;white-space:nowrap}
-.date-bar a{color:#0044cc;text-decoration:none;margin-right:10px;cursor:pointer}
-.date-bar a.active{font-weight:bold;color:#000;background:#ffcc00;padding:2px 6px;border-radius:4px}
+.date-bar a{color:#0044cc;text-decoration:none;margin-right:10px;cursor:pointer;padding:3px 6px;display:inline-block}
+.date-bar a.active{font-weight:bold;color:#000;background:#ffcc00;border-radius:4px}
 .filter-bar{background:#fff;padding:8px 10px;border-bottom:2px solid #ddd;font-size:12px}
-.filter-bar a{color:#0044cc;text-decoration:none;margin-right:10px;cursor:pointer}
-.filter-bar a.active{font-weight:bold;color:#d00;background:#ffecec;padding:2px 6px;border-radius:4px}
+.filter-bar a{color:#0044cc;text-decoration:none;margin-right:10px;cursor:pointer;padding:3px 6px;display:inline-block}
+.filter-bar a.active{font-weight:bold;color:#d00;background:#ffecec;border-radius:4px}
 .refresh-bar{background:#eef;padding:6px 10px;display:flex;justify-content:space-between}
 .refresh-bar a{color:#0044cc;font-weight:bold;font-size:12px;text-decoration:none;cursor:pointer}
 .myad{background:#ffcc00;color:#000;padding:10px;text-align:center;margin:6px 8px;border-radius:8px;font-weight:bold;display:block;text-decoration:none}
 .myad2{background:#00c8ff;color:#000;padding:10px;text-align:center;margin:6px 8px;border-radius:8px;font-weight:bold;display:block;text-decoration:none}
 .count{background:#e8ffe8;padding:8px;text-align:center;color:#0a5a0a;font-weight:bold;font-size:12px;border-bottom:1px solid #ccc}
-.league{background:#222;color:#fff;padding:7px 10px;font-weight:bold;font-size:12px;display:flex;justify-content:space-between}
-.league span{font-weight:normal;color:#bbb;font-size:11px}
-.row{display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid #e5e5e5}
+.league{background:#222;color:#fff;padding:7px 10px;font-weight:bold;font-size:12px;display:flex;justify-content:space-between;cursor:pointer}
+.league span{font-weight:normal;color:#bbb;font-size:11px;cursor:pointer}
+.row{display:flex;align-items:center;padding:10px 10px;border-bottom:1px solid #e5e5e5;cursor:pointer}
+.row:active{background:#eef}
 .row.live{background:#ffecec}
-.t{width:50px;font-size:12px;color:#333}
+.t{width:50px;font-size:12px;color:#333;pointer-events:none}
 .t.live{color:#d00;font-weight:bold}
-.m{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.s{width:50px;text-align:center;font-weight:bold}
+.m{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.s{width:50px;text-align:center;font-weight:bold;pointer-events:none}
 .s.live{color:#d00}
 .s.ft{color:#0044cc}
 .s.pre{color:#888}
+/* POPUP */
+#popup{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:none;z-index:100;align-items:center;justify-content:center}
+#popupBox{background:white;width:90%;max-width:400px;border-radius:12px;padding:0;overflow:hidden}
+#popupHead{background:#0a2a4a;color:white;padding:12px;font-weight:bold;text-align:center}
+#popupBody{padding:20px;text-align:center}
+#popupBody b{font-size:18px}
+.closeBtn{background:#ffcc00;padding:10px;text-align:center;font-weight:bold;cursor:pointer;margin-top:10px}
 </style>
 </head>
 <body>
 <div class="top">💎 DIAMOND LIVESCORE - FOOTBALL</div>
-
-<!-- ONLY FOOTBALL + MANY DATES -->
 <div class="date-bar" id="dateBar"></div>
 <div class="filter-bar"><a id="f-all" class="active" onclick="setFilter('all')">All Games</a> | <a id="f-live" onclick="setFilter('live')">LIVE</a> | <a id="f-ft" onclick="setFilter('ft')">Finished</a> | <a>Odds</a></div>
-<div class="refresh-bar"><a onclick="loadAll()">REFRESH NOW</a><span style="font-size:11px;color:#555" id="todayDate"></span></div>
-
+<div class="refresh-bar"><a onclick="loadAll()">🔄 REFRESH NOW</a><span style="font-size:11px;color:#555" id="todayDate"></span></div>
 <a class="myad" href="https://wa.me/2348012345678">🔥 ADVERT 1 - BET HERE / WhatsApp Us</a>
 <a class="myad2" href="https://wa.me/2348012345678">💰 ADVERT 2 - YOUR AD HERE</a>
 <div class="count" id="count">⏳ Loading...</div>
 <div id="box"></div>
 
+<!-- CLICK POPUP -->
+<div id="popup" onclick="closePop()"><div id="popupBox" onclick="event.stopPropagation()">
+<div id="popupHead">Match Details</div>
+<div id="popupBody"></div>
+<div class="closeBtn" onclick="closePop()">CLOSE</div>
+</div></div>
+
 <script>
-let currentFilter='all';
-let allGroups=[];
-let selectedDateOffset=0; // 0=today
+let currentFilter='all'; let allGroups=[]; let selectedDateOffset=0;
 const LEAGUES=[
 {id:'eng.1',n:'ENGLAND: Premier League'},{id:'eng.2',n:'ENGLAND: Championship'},
 {id:'ita.1',n:'ITALY: Serie A'},{id:'esp.1',n:'SPAIN: LaLiga'},
@@ -61,91 +71,69 @@ const LEAGUES=[
 {id:'uefa.europa',n:'EUROPE: Europa League'},{id:'caf.nations',n:'AFRICA: U20 Qual.'},{id:'alg.1',n:'ALGERIA: Ligue 1'}
 ];
 
+function openMatch(home,away,time,score,status){
+ const body=document.getElementById('popupBody');
+ body.innerHTML=`<div style="color:#666">${time} - EUROPE TIME</div><br><b>${home} vs ${away}</b><br><br><div style="font-size:28px;font-weight:bold;color:${status==='live'?'#d00':'#0044cc'}">${score==='-'?'VS':score}</div><br><div>${status==='pre'?'Match not started':status==='live'?'LIVE NOW!':'Full Time'}</div><br><a href="https://www.google.com/search?q=${home}+vs+${away}+live+score" target="_blank" style="background:#0a2a4a;color:white;padding:8px 15px;border-radius:6px;text-decoration:none;display:inline-block">View Live Stats</a>`;
+ document.getElementById('popup').style.display='flex';
+}
+function closePop(){document.getElementById('popup').style.display='none';}
+function openStandings(name){alert(name + ' Standings - Coming soon!');}
+
 function buildDateBar(){
- const bar=document.getElementById('dateBar');
- const today=new Date();
- let html='';
+ const bar=document.getElementById('dateBar'); const today=new Date(); let html='';
  for(let i=-3;i<=4;i++){
   let d=new Date(); d.setDate(today.getDate()+i);
-  let label=d.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short'});
-  let name='';
-  if(i==-1) name='Yesterday';
-  else if(i==0) name='Today';
-  else if(i==1) name='Tomorrow';
-  else name=label;
+  let label=d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+  let name=''; if(i==-1) name='Yesterday'; else if(i==0) name='Today'; else if(i==1) name='Tomorrow'; else name=`${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]} ${label}`;
   let active=i===selectedDateOffset?'active':'';
   html+=`<a class="${active}" onclick="pickDate(${i},this)">${name}</a> | `;
  }
- html+=`<a>More days »</a>`;
- bar.innerHTML=html;
+ bar.innerHTML=html+'<a>More »</a>';
  document.getElementById('todayDate').innerText=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
 }
-function pickDate(offset,el){
- selectedDateOffset=offset;
- document.querySelectorAll('.date-bar a').forEach(a=>a.classList.remove('active'));
- el.classList.add('active');
- loadAll();
-}
+function pickDate(offset,el){ selectedDateOffset=offset; document.querySelectorAll('.date-bar a').forEach(a=>a.classList.remove('active')); el.classList.add('active'); loadAll(); }
 function toEuropeTime(d){return new Date(d).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Europe/Berlin'});}
-function setFilter(f){
- currentFilter=f;
- document.querySelectorAll('.filter-bar a').forEach(a=>a.classList.remove('active'));
- document.getElementById('f-'+f).classList.add('active');
- draw();
-}
+function setFilter(f){ currentFilter=f; document.querySelectorAll('.filter-bar a').forEach(a=>a.classList.remove('active')); document.getElementById('f-'+f).classList.add('active'); draw(); }
 async function getOne(L,dateStr){
  try{
   const r=await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${L.id}/scoreboard?dates=${dateStr}`);
-  const d=await r.json();
-  if(!d.events||!d.events.length) return null;
+  const d=await r.json(); if(!d.events||!d.events.length) return null;
   const ms=d.events.map(e=>{
    const c=e.competitions[0]; const h=c.competitors.find(x=>x.homeAway=='home'); const a=c.competitors.find(x=>x.homeAway=='away');
-   const st=c.status.type.state;
-   let timeLabel=toEuropeTime(e.date); let live=false, ft=false;
-   if(st==='in'){timeLabel=c.status.displayClock+"'"; live=true;}
-   if(st==='post'){ft=true;}
+   const st=c.status.type.state; let timeLabel=toEuropeTime(e.date); let live=false, ft=false;
+   if(st==='in'){timeLabel=c.status.displayClock+"'"; live=true;} if(st==='post'){ft=true;}
    return {home:h.team.shortDisplayName||h.team.displayName,away:a.team.shortDisplayName||a.team.displayName,hS:h.score,aS:a.score,time:timeLabel,euro:toEuropeTime(e.date),st,live,ft}
   });
   return {name:L.n,matches:ms};
  }catch{return null}
 }
 async function loadAll(){
- buildDateBar();
- allGroups=[];
- let target=new Date(); target.setDate(target.getDate()+selectedDateOffset);
+ buildDateBar(); allGroups=[]; let target=new Date(); target.setDate(target.getDate()+selectedDateOffset);
  let dateStr=target.toISOString().split('T')[0].replace(/-/g,'');
  document.getElementById('count').innerText=`⏳ Loading ${target.toLocaleDateString()}...`;
- for(let i=0;i<LEAGUES.length;i++){
-  const g=await getOne(LEAGUES[i],dateStr);
-  if(g){allGroups.push(g); draw();}
- }
+ for(let i=0;i<LEAGUES.length;i++){ const g=await getOne(LEAGUES[i],dateStr); if(g){allGroups.push(g); draw();} }
  draw();
 }
 function draw(){
  let filtered=allGroups.map(g=>{
-  let ms=g.matches;
-  if(currentFilter==='live') ms=ms.filter(m=>m.live);
-  if(currentFilter==='ft') ms=ms.filter(m=>m.ft);
-  return {...g,matches:ms};
+  let ms=g.matches; if(currentFilter==='live') ms=ms.filter(m=>m.live); if(currentFilter==='ft') ms=ms.filter(m=>m.ft); return {...g,matches:ms};
  }).filter(g=>g.matches.length>0);
  let h=''; let total=0;
  filtered.forEach(g=>{
   total+=g.matches.length;
-  h+=`<div class="league">${g.name} <span>Standings</span></div>`;
+  h+=`<div class="league" onclick="openStandings('${g.name}')">${g.name} <span>Standings ></span></div>`;
   g.matches.forEach(m=>{
-   let left=m.live?m.time:m.euro;
-   let score=m.st==='pre'?'-':`${m.hS}-${m.aS}`;
-   let cls=m.live?'live':m.ft?'ft':'pre';
-   h+=`<div class="row ${m.live?'live':''}"><div class="t ${cls}">${left}</div><div class="m">${m.home} - ${m.away}</div><div class="s ${cls}">${score}</div></div>`;
+   let left=m.live?m.time:m.euro; let score=m.st==='pre'?'-':`${m.hS}-${m.aS}`; let cls=m.live?'live':m.ft?'ft':'pre';
+   // ESCAPE quotes for onclick
+   let safeHome=m.home.replace(/'/g,"\\'"); let safeAway=m.away.replace(/'/g,"\\'");
+   h+=`<div class="row ${m.live?'live':''}" onclick="openMatch('${safeHome}','${safeAway}','${left}','${score}','${m.st}')"><div class="t ${cls}">${left}</div><div class="m">${m.home} - ${m.away}</div><div class="s ${cls}">${score}</div></div>`;
   });
  });
- if(total===0){h='<div style="padding:20px;text-align:center;color:#888">No games for this date. Try Today or Yesterday</div>';}
+ if(total===0){h='<div style="padding:20px;text-align:center;color:#888">No games. Click All Games or Today</div>';}
  document.getElementById('box').innerHTML=h;
- document.getElementById('count').innerText=`✅ ${total} matches - ${currentFilter==='all'?'All Games':currentFilter==='live'?'LIVE':'Finished'} - EUROPE TIME`;
+ document.getElementById('count').innerText=`✅ ${total} matches - ${currentFilter==='all'?'All Games':currentFilter==='live'?'LIVE':'Finished'} - EUROPE TIME (Click any match!)`;
 }
-buildDateBar();
-loadAll();
-setInterval(loadAll,90000);
+buildDateBar(); loadAll(); setInterval(loadAll,90000);
 </script>
 </body>
 </html>
