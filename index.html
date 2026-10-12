@@ -6,24 +6,85 @@
 <title>Diamond Livescore - Live Football Scores</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0f1115;color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif}
-.header{background:#1a1d25;padding:15px;text-align:center;position:sticky;top:0;z-index:10;border-bottom:1px solid #2a2e39}
-.header h1{font-size:22px;color:#00d084}
-.tabs{display:flex;gap:10px;padding:12px;overflow-x:auto;background:#1a1d25}
-.tab{padding:8px 16px;border-radius:20px;background:#2a2e39;border:none;color:#aaa;white-space:nowrap}
-.tab.active{background:#00d084;color:#000;font-weight:700}
-.match{background:#1a1d25;margin:8px;border-radius:10px;padding:12px;border-left:3px solid #2a2e39}
-.match.live{border-left-color:#ff3b30}
-.league{font-size:11px;color:#888;text-transform:uppercase;margin-bottom:6px}
-.teams{display:flex;justify-content:space-between;align-items:center}
-.team{display:flex;align-items:center;gap:8px;font-size:15px}
-.score{font-weight:800;font-size:18px;background:#0f1115;padding:4px 10px;border-radius:6px}
-.status{font-size:11px;margin-top:6px}
-.status.live{color:#ff3b30;animation:blink 1s infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0.5}}
-.loading{text-align:center;padding:50px;color:#888}
+body{background:#0f1419;color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif}
+.header{padding:16px;text-align:center;position:sticky;top:0;z-index:10;border-bottom:1px solid #1a2a3a;background:#15202b}
+.header h1{font-size:22px;color:#1d9bf0}
+#count{color:#8b98a5;font-size:13px}
+.container{max-width:600px;margin:0 auto;padding:12px}
+.league{background:#192734;border-radius:12px;margin-bottom:12px;overflow:hidden;border:1px solid #253341}
+.league-head{padding:10px 14px;background:#1e2f42;display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;text-transform:uppercase}
+.match{padding:12px 14px;border-top:1px solid #253341;display:flex;justify-content:space-between;align-items:center}
+.team{display:flex;align-items:center;gap:8px;font-size:14px}
+.team img{width:20px;height:20px;object-fit:contain}
+.score{font-weight:800;background:#1d9bf0;padding:6px 10px;border-radius:8px;min-width:50px;text-align:center}
+.status{font-size:10px;color:#1d9bf0;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+#loading{text-align:center;padding:40px;color:#8899a6}
 </style>
 </head>
 <body>
-<div class="header"><h1>💎 DIAMOND LIVESCORE</h1><small id="count">Loading...</small></div>
-<div class="
+<div class="header"><h1>DIAMOND LIVESCORE</h1><small id="count">Loading...</small></div>
+<div class="container" id="app"><div id="loading">Loading live matches...</div></div>
+<script>
+async function load() {
+  const app = document.getElementById('app');
+  const countEl = document.getElementById('count');
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    // Try live first, then today's games
+    let res = await fetch(`/api/football?live=all`);
+    let json = await res.json();
+    let matches = json.response || [];
+    if (matches.length === 0) {
+      res = await fetch(`/api/football?date=${today}`);
+      json = await res.json();
+      matches = json.response || [];
+    }
+    if (matches.length === 0) {
+      app.innerHTML = '<div id="loading">No matches today. Try again later.</div>';
+      countEl.textContent = '0 matches';
+      return;
+    }
+    countEl.textContent = `${matches.length} matches • Live`;
+    // Group by league
+    const groups = {};
+    matches.forEach(m => {
+      const lname = m.league?.name || 'Other';
+      if (!groups[lname]) groups[lname] = [];
+      groups[lname].push(m);
+    });
+    let html = '';
+    for (const [lname, list] of Object.entries(groups)) {
+      html += `<div class="league"><div class="league-head">${lname}</div>`;
+      list.forEach(m => {
+        const home = m.teams?.home?.name || 'Home';
+        const away = m.teams?.away?.name || 'Away';
+        const hLogo = m.teams?.home?.logo? `<img src="${m.teams.home.logo}" onerror="this.style.display='none'">` : '';
+        const aLogo = m.teams?.away?.logo? `<img src="${m.teams.away.logo}" onerror="this.style.display='none'">` : '';
+        const hg = m.goals?.home?? m.score?.fulltime?.home?? '-';
+        const ag = m.goals?.away?? m.score?.fulltime?.away?? '-';
+        const isLive = m.fixture?.status?.short?.includes('LIVE') || m.fixture?.status?.short?.includes('H');
+        html += `<div class="match">
+          <div>
+            <div class="team">${hLogo} ${home}</div>
+            <div class="team" style="margin-top:6px">${aLogo} ${away}</div>
+          </div>
+          <div style="text-align:center">
+            <div class="score">${hg} - ${ag}</div>
+            ${isLive? '<div class="status">LIVE</div>' : `<div style="font-size:11px;color:#8899a6;margin-top:4px">${m.fixture?.status?.short||''}</div>`}
+          </div>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+    app.innerHTML = html;
+  } catch(e) {
+    app.innerHTML = `<div id="loading">Error: ${e.message}<br><br>Check /api/football?live=all</div>`;
+    console.error(e);
+  }
+}
+load();
+setInterval(load, 60000);
+</script>
+</body>
+</html>
