@@ -1,7 +1,9 @@
 export async function onRequest() {
   const today = new Date().toISOString().split('T')[0].replace(/-/g,"");
   try{
-    const r = await fetch(`https://www.fotmob.com/api/data/matches?date=${today}`);
+    const r = await fetch(`https://www.fotmob.com/api/data/matches?date=${today}`, {
+      headers: { "User-Agent": "Mozilla/5.0" }
+    });
     const j = await r.json();
     let out=[];
     (j.leagues||[]).forEach(l=>{
@@ -15,14 +17,16 @@ export async function onRequest() {
         }
         out.push({
           fixture:{id:m.id, time:berlin, status:{short:m.status?.liveTimeShort||m.status?.reason?.short||berlin, display:m.status?.reason?.short||berlin}},
-          league:{name:l.name, country:l.ccode||""},
+          league:{name:l.name, country:l.ccode||l.name},
           teams:{home:{name:m.home?.name}, away:{name:m.away?.name}},
           goals:{home:m.home?.score??null, away:m.away?.score??null}
         });
       });
     });
-    return new Response(JSON.stringify(out), {headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*","Cache-Control":"public, max-age=60"}});
+    return new Response(JSON.stringify(out), {
+      headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*","Cache-Control":"public, max-age=60"}
+    });
   }catch(e){
-    return new Response(JSON.stringify([]), {headers:{"Access-Control-Allow-Origin":"*"}});
+    return new Response(JSON.stringify({error:e.message}), {headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*"}});
   }
 }
