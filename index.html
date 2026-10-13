@@ -35,7 +35,6 @@ header{background:#900;padding:12px;text-align:center;font-size:22px;font-weight
 </div>
 <input id="search" placeholder="Search team, league..." oninput="draw()">
 <div id="app">Loading...</div>
-<div id="loading" style="display:none;padding:20px;text-align:center;color:#777">Loading...</div>
 </div>
 <script>
 let all=[],curFilter='all',curDate='today',actualDateStr='';
@@ -45,21 +44,22 @@ function setFilter(f){
  document.querySelectorAll('#filters button').forEach(b=>b.classList.remove('active'));
  document.getElementById('f-'+f)?.classList.add('active');
  draw();
+ if(f==='live') load(actualDateStr,true);
 }
 function setDate(d){
- curDate=d;
+ curDate=d; actualDateStr='';
  document.querySelectorAll('#dateBar button').forEach(b=>b.classList.remove('active'));
  document.getElementById('d-'+d)?.classList.add('active');
  load();
 }
-function pick(v){ actualDateStr=v; load(v,true); }
+function pick(v){ actualDateStr=v; curDate='picked'; load(v,true); }
 function fmtDate(d){ return d.toLocaleDateString('en-CA',{timeZone:'Europe/Berlin'}); }
 function getDateStr(){
- if(actualDateStr && actualDateStr.includes('-') && curDate==='picked') return actualDateStr;
+ if(actualDateStr && actualDateStr.includes('-')) return actualDateStr;
  if(curDate==='today') return fmtDate(new Date());
  if(curDate==='yesterday'){let d=new Date();d.setDate(d.getDate()-1);return fmtDate(d);}
  if(curDate==='tomorrow'){let d=new Date();d.setDate(d.getDate()+1);return fmtDate(d);}
- return actualDateStr||fmtDate(new Date());
+ return fmtDate(new Date());
 }
 function getStatus(m){
  let s=(m.fixture.status.short||'NS');
@@ -87,7 +87,8 @@ function draw(){
   grouped[league].forEach(m=>{
    let st=getStatus(m);
    let t=new Date(m.fixture.date).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-   let timeTxt=m.fixture.status.elapsed?m.fixture.status.elapsed+"'":(st==='FT'?'FT':st==='HT'?'HT':st==='LIVE'?'LIVE':t);
+   let elapsed=m.fixture.status.elapsed;
+   let timeTxt=st==='LIVE' && elapsed? elapsed+"'" : (st==='FT'?'FT':st==='HT'?'HT':st==='LIVE'?'LIVE':t);
    let color=st==='LIVE'?'#00ff00':st==='FT'?'#999':'#aaa';
    let score=m.goals.home!=null?`${m.goals.home}-${m.goals.away}`:':';
    html+=`<div class="match"><div class="time" style="color:${color}">${timeTxt}</div><div class="team" style="text-align:right">${m.teams.home.name}</div><div class="score">${score}</div><div class="team">${m.teams.away.name}</div></div>`;
@@ -96,30 +97,29 @@ function draw(){
  document.getElementById('app').innerHTML=html||'<div style="padding:20px;text-align:center;color:#777">No matches</div>';
 }
 async function load(dateOverride,force){
- if(dateOverride && dateOverride.includes('-')){actualDateStr=dateOverride;curDate='picked';}
+ if(dateOverride && dateOverride.includes('-')) actualDateStr=dateOverride;
  let dateStr=dateOverride||getDateStr();
  if(!actualDateStr) actualDateStr=dateStr;
 
- // INSTANT 0.1s - show cache first
- if(!force){
+ // INSTANT 0.1s - only for All/Scheduled, NOT for Live
+ if(!force && curFilter!=='live'){
   let cacheKey='ls_'+dateStr;
   let cached=localStorage.getItem(cacheKey);
   if(cached){try{all=JSON.parse(cached);if(all.length) draw();}catch(e){}}
  }
 
  try{
-  document.getElementById('loading').style.display='block';
   let res=await fetch(`/api/football?date=${dateStr}`);
   let data=await res.json();
   all=data.response||data.data||[];
-  if(all.length){
+  // Save cache only if not Live
+  if(all.length && curFilter!=='live'){
    localStorage.setItem('ls_'+dateStr,JSON.stringify(all));
   }
   draw();
  }catch(e){
-  document.getElementById('app').innerHTML='Error loading: '+e.message;
+  document.getElementById('app').innerHTML='Error: '+e.message;
  }
- document.getElementById('loading').style.display='none';
 }
 load();
 </script>
