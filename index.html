@@ -11,7 +11,7 @@ header{background:#900;padding:12px;text-align:center;font-size:22px;font-weight
 #filters button,#dateBar button{padding:6px 12px;border-radius:16px;border:1px solid #333;background:#111;color:#ccc;margin:2px;font-size:13px}
 #filters button.active,#dateBar button.active{background:#FF6600;color:#fff;border-color:#FF6600}
 #search{width:100%;padding:10px;background:#111;border:1px solid #333;color:#fff;border-radius:8px;margin:8px 0}
-.league{background:#111;padding:8px 12px;font-weight:700;border-bottom:1px solid #151515}
+.league{background:#1a1a1a;padding:8px 12px;font-weight:700;border-bottom:1px solid #222;color:#FF6600}
 .match{padding:10px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #151515;background:#000}
 .time{font-size:12px;width:55px;text-align:center;color:#aaa}
 .team{flex:1;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -39,12 +39,42 @@ header{background:#900;padding:12px;text-align:center;font-size:22px;font-weight
 <script>
 let all=[],curFilter='all',curDate='today',actualDateStr='';
 
+// TOP LEAGUES ORDER - Big countries on top!
+const LEAGUE_ORDER = {
+ 'UEFA Champions League':1,
+ 'UEFA Europa League':2,
+ 'England: Premier League':3,
+ 'England: Championship':4,
+ 'Spain: La Liga':5,
+ 'Italy: Serie A':6,
+ 'Germany: Bundesliga':7,
+ 'France: Ligue 1':8,
+ 'England: National':9,
+ 'AFC Champions League':50
+};
+
+function getLeagueRank(name){
+ if(LEAGUE_ORDER[name]!==undefined) return LEAGUE_ORDER[name];
+ if(name.includes('Champions League')) return 1;
+ if(name.includes('Premier League')) return 3;
+ if(name.includes('La Liga')) return 5;
+ if(name.includes('Serie A')) return 6;
+ if(name.includes('Bundesliga')) return 7;
+ if(name.includes('Ligue 1')) return 8;
+ if(name.includes('England')) return 10;
+ if(name.includes('Spain')) return 11;
+ if(name.includes('Italy')) return 12;
+ if(name.includes('Germany')) return 13;
+ if(name.includes('France')) return 14;
+ if(name.includes('Europe')) return 15;
+ return 100;
+}
+
 function setFilter(f){
  curFilter=f;
  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
  document.getElementById('f-'+f)?.classList.add('active');
  draw();
- if(f==='live') load(actualDateStr,true);
 }
 function setDate(d){
  curDate=d; actualDateStr='';
@@ -81,8 +111,10 @@ function draw(){
  });
  let grouped={};
  list.forEach(m=>{let k=m.league.full;if(!grouped[k]) grouped[k]=[];grouped[k].push(m);});
+ // SORT LEAGUES - Top country first!
+ let leagues=Object.keys(grouped).sort((a,b)=>getLeagueRank(a)-getLeagueRank(b));
  let html='';
- for(let league in grouped){
+ leagues.forEach(league=>{
   html+=`<div class="league">${league}</div>`;
   grouped[league].forEach(m=>{
    let st=getStatus(m);
@@ -93,33 +125,36 @@ function draw(){
    let score=m.goals.home!=null?`${m.goals.home}-${m.goals.away}`:':';
    html+=`<div class="match"><div class="time" style="color:${color}">${timeTxt}</div><div class="team" style="text-align:right">${m.teams.home.name}</div><div class="score">${score}</div><div class="team">${m.teams.away.name}</div></div>`;
   });
- }
+ });
  document.getElementById('app').innerHTML=html||'<div style="padding:20px;text-align:center;color:#777">No matches</div>';
 }
 function forceRefresh(){
  let btn=document.getElementById('refreshBtn');
  btn.textContent='...';
- btn.disabled=true;
- load(getDateStr(),true).finally(()=>{btn.textContent='Refresh';btn.disabled=false;});
+ load(getDateStr(),true).finally(()=>{btn.textContent='Refresh';});
 }
 async function load(dateOverride,force){
  if(dateOverride && dateOverride.includes('-')) actualDateStr=dateOverride;
  let dateStr=dateOverride||getDateStr();
  if(!actualDateStr) actualDateStr=dateStr;
- if(!force && curFilter!=='live'){
+
+ // 0.1 SEC INSTANT - Show cache immediately for speed!
+ if(!force){
   let cached=localStorage.getItem('ls_'+dateStr);
   if(cached){try{all=JSON.parse(cached);if(all.length) draw();}catch(e){}}
  }
+
  try{
   let res=await fetch(`/api/football?date=${dateStr}`);
   let data=await res.json();
-  all=data.response||data.data||[];
-  if(all.length && curFilter!=='live'){
+  let fresh=data.response||data.data||[];
+  if(fresh.length){
+   all=fresh;
    localStorage.setItem('ls_'+dateStr,JSON.stringify(all));
+   draw(); // Update to correct minutes after fetch
   }
-  draw();
  }catch(e){
-  document.getElementById('app').innerHTML='Error: '+e.message;
+  if(!all.length) document.getElementById('app').innerHTML='Error: '+e.message;
  }
 }
 load();
