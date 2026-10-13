@@ -1,17 +1,54 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LiveScore</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#0a0a0a;color:white;font-family:Arial,sans-serif}
-header{background:#111;padding:16px;text-align:center;font-size:22px;font-weight:bold;border-bottom:2px solid #ffcc00;position:sticky;top:0;z-index:100}
-#searchBox{width:96%;margin:12px auto;display:block;padding:15px;border-radius:12px;border:none;background:#1e1e1e;color:white;font-size:16px;outline:none}
-#searchBox::placeholder{color:#888}
-.league{background:#1a1a1a;padding:10px 15px;color:#ffcc00;font-weight:bold;font-size:14px;text-transform:uppercase;border-left:4px solid #ffcc00;margin-top:12px}
-.match{display:flex;align-items:center;justify-content:space-between;padding:14px 12px;border-bottom:1px solid #222;background:#121212}
-.match:active{background:#222}
-.time{color:#aaa;font-size:13px;min-width:50px;font-weight:bold}
-.teams{flex:1;margin
+body{background:#0a0a0a;color:#fff;font-family:Arial;margin:0}
+header{background:#111;padding:16px;text-align:center;font-size:22px;font-weight:bold;border-bottom:2px solid #ffcc00}
+#s{width:94%;margin:12px auto;display:block;padding:14px;border-radius:10px;border:0;background:#1e1e1e;color:#fff;font-size:16px}
+.lg{background:#1a1a1a;padding:8px 12px;color:#ffcc00;font-weight:bold;font-size:13px;margin-top:10px;border-left:3px solid #ffcc00}
+.m{display:flex;justify-content:space-between;align-items:center;padding:12px;border-bottom:1px solid #222;background:#121212}
+.t{color:#aaa;width:55px;font-size:13px}
+.teams{flex:1;margin:0 8px;font-size:14px}
+.sc{color:#00ff88;font-weight:bold}
+#app{padding-bottom:40px}
+</style>
+</head>
+<body>
+<header>⚽ LiveScore</header>
+<input id="s" placeholder="🔍 Tap and search team or league...">
+<div id="app">Loading today's games...</div>
+<script>
+let all=[];
+async function load(){
+  const d=new Date().toISOString().split('T')[0];
+  try{
+    const r=await fetch('/api/football?date='+d);
+    const j=await r.json();
+    all=j.response||[];
+    render(all);
+  }catch(e){
+    document.getElementById('app').innerHTML='Error: '+e;
+  }
+}
+function render(list){
+  const a=document.getElementById('app');
+  if(!list.length){a.innerHTML='<p style="padding:20px;text-align:center">No games</p>';return}
+  let h='',last='';
+  list.forEach(m=>{
+    const lg=m.league.name+' • '+(m.league.country||'');
+    if(lg!==last){h+=`<div class="lg">${lg}</div>`;last=lg}
+    const tm=new Date(m.fixture.date).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    h+=`<div class="m"><span class="t">${tm}</span><span class="teams">${m.teams.home.name} vs ${m.teams.away.name}</span><span class="sc">${(m.goals.home??'-')+':'+(m.goals.away??'-')}</span></div>`;
+  });
+  a.innerHTML=h;
+}
+document.getElementById('s').addEventListener('input',e=>{
+  const q=e.target.value.toLowerCase();
+  render(all.filter(x=>(x.teams.home.name+' '+x.teams.away.name+' '+x.league.name).toLowerCase().includes(q)));
+});
+load();
+</script>
+</body>
+</html>
