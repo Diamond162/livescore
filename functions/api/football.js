@@ -1,76 +1,44 @@
 export async function onRequest(context) {
   const url = new URL(context.request.url);
   const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0];
-
-  // Your live-football-api.com key
-  const API_KEY = context.env.FOOTBALL_API_KEY || context.env.API_FOOTBALL_KEY || context.env.LIVE_FOOTBALL_API_KEY || context.env.API_KEY;
-
-  if (!API_KEY) {
-    return new Response(JSON.stringify({response: [], error: "No API key in env"}), {
-      headers: { "Content-Type": "application/json" }
-    });
-  }
+  const KEY = context.env.FOOTBALL_API_KEY;
 
   try {
-    // YOUR API endpoint
-    const apiUrl = `https://live-football-api.com/api/v1/matches?api_key=${API_KEY}&date=${date}&lang=en`;
+    const apiRes = await fetch(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&date=${date}&lang=en`);
+    const data = await apiRes.json();
+    const raw = data.matches || data.data?.matches || data.data || data.result || [];
 
-    const res = await fetch(apiUrl);
-    const json = await res.json();
-
-    // live-football-api returns { status, matches: [...] } or { data: { matches } }
-    let rawMatches = json.matches || json.data?.matches || json.data || [];
-
-    // Map to your frontend format
-    const fixed = rawMatches.map(m => {
-      // Handle time - live-football-api uses kickoff or time
-      let kickoff = m.kickoff || m.time || m.date || `${date}T${m.time_str || '15:00:00'}+00:00`;
-      if (typeof kickoff === 'number') {
-        kickoff = new Date(kickoff * 1000).toISOString();
-      }
-      // If date is YYYY-MM-DD and time is HH:MM, combine
-      if (m.date && m.time &&!kickoff.includes('T')) {
-        kickoff = `${m.date}T${m.time}:00+00:00`;
+    const fixed = raw.map(m => {
+      let kickoff = m.kickoff || m.date || m.time || `${date}T15:00:00Z`;
+      if (typeof kickoff === 'number') kickoff = new Date(kickoff * 1000).toISOString();
+      if (typeof m.time === 'string' && m.time.length <= 5 && m.time.includes(':')) {
+        kickoff = `${date}T${m.time}:00+00:00`;
       }
 
-      // Status
+      // FIX: status can be object
+      let statusRaw = m.status;
+      if (typeof statusRaw === 'object') statusRaw = statusRaw.name || statusRaw.type || '';
+      let s = String(statusRaw || '').toUpperCase();
+
       let short = "NS";
-      const s = (m.status || "").toUpperCase();
-      if (s.includes("LIVE") || s === "IN PLAY" || s.includes("1H") || s.includes("2H")) short = "LIVE";
-      else if (s === "FT" || s === "FINISHED" || s.includes("FINISH")) short = "FT";
-      else short = "NS";
+      if (s.includes("LIVE") || s.includes("INPLAY") || s === "1H" || s === "2H" || s.includes("HALF")) short = "LIVE";
+      else if (s.includes("FT") || s.includes("FINISH") || s.includes("ENDED") || s.includes("FT")) short = "FT";
 
       return {
-        fixture: {
-          id: m.id,
-          date: kickoff,
-          status: { short: short, long: m.status }
-        },
-        league: {
-          name: m.league?.name || m.competition?.name || m.league_name || "League",
-          country: m.league?.country || m.country || "World"
-        },
-        teams: {
-          home: { name: m.home?.name || m.home_name || "Home" },
-          away: { name: m.away?.name || m.away_name || "Away" }
-        },
-        goals: {
-          home: m.score?.home?? m.home_score?? null,
-          away: m.score?.away?? m.away_score?? null
-        }
+        fixture: { id: m.id, date: kickoff, status: { short, long: String(statusRaw) } },
+        league: { name: m.league?.name || m.competition?.name || "League", country: m.league?.country || "" },
+        teams: { home: { name: m.home?.name || m.home_name || "Home" }, away: { name: m.away?.name || m.away_name || "Away" } },
+        goals: { home: m.score?.home?? m.home_score?? null, away: m.score?.away?? m.away_score?? null }
       };
     });
 
-    return new Response(JSON.stringify({ response: fixed, credits: json.credits_used }), {
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*"
-      }
+    return new Response(JSON.stringify({ response: fixed }), {
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache" }
     });
 
   } catch (e) {
-    return new Response(JSON.stringify({ response: [], error: e.message }), {
-      headers: { "Content-Type": "application/json" }
+    return new Response(JSON.stringify({ response: [], error: e.message + " + e.stack }), {
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
     });
   }
 }
