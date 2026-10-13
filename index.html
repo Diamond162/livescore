@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LiveScore</title>
+<title>LiveScore - Europe Time</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#000;color:#fff;font-family:Arial,sans-serif}
@@ -19,10 +19,10 @@ header{background:#900;padding:12px;text-align:center;font-size:22px;font-weight
 </style>
 </head>
 <body>
-<header>LiveScore</header>
+<header>LiveScore - Europe Time</header>
 <div style="padding:8px">
 <div id="dateBar">
-<button onclick="setDate('today')" id="d-today" class="active">Today</button>
+<button onclick="setDate('today')" id="d-today" class="active">Today (EU)</button>
 <button onclick="setDate('yesterday')" id="d-yesterday">Yesterday</button>
 <button onclick="setDate('tomorrow')" id="d-tomorrow">Tomorrow</button>
 <input type="date" id="pickDate" onchange="pick(this.value)">
@@ -38,21 +38,20 @@ header{background:#900;padding:12px;text-align:center;font-size:22px;font-weight
 </div>
 <script>
 let all=[],curFilter='all',curDate='today',actualDateStr='';
+window.lastFetch=Date.now();
 
-// TOP LEAGUES ORDER - Big countries on top!
 const LEAGUE_ORDER = {
  'UEFA Champions League':1,
  'UEFA Europa League':2,
  'England: Premier League':3,
  'England: Championship':4,
+ 'England: Non League Premier':20,
  'Spain: La Liga':5,
  'Italy: Serie A':6,
  'Germany: Bundesliga':7,
  'France: Ligue 1':8,
- 'England: National':9,
  'AFC Champions League':50
 };
-
 function getLeagueRank(name){
  if(LEAGUE_ORDER[name]!==undefined) return LEAGUE_ORDER[name];
  if(name.includes('Champions League')) return 1;
@@ -69,7 +68,6 @@ function getLeagueRank(name){
  if(name.includes('Europe')) return 15;
  return 100;
 }
-
 function setFilter(f){
  curFilter=f;
  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
@@ -111,15 +109,19 @@ function draw(){
  });
  let grouped={};
  list.forEach(m=>{let k=m.league.full;if(!grouped[k]) grouped[k]=[];grouped[k].push(m);});
- // SORT LEAGUES - Top country first!
  let leagues=Object.keys(grouped).sort((a,b)=>getLeagueRank(a)-getLeagueRank(b));
  let html='';
  leagues.forEach(league=>{
   html+=`<div class="league">${league}</div>`;
   grouped[league].forEach(m=>{
    let st=getStatus(m);
-   let t=new Date(m.fixture.date).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+   let t=new Date(m.fixture.date).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});
    let elapsed=m.fixture.status.elapsed;
+   if(st==='LIVE' && elapsed && window.lastFetch){
+    let add=Math.floor((Date.now()-window.lastFetch)/60000);
+    elapsed = elapsed + add;
+    if(elapsed>90 && elapsed<105) elapsed=elapsed;
+   }
    let timeTxt=st==='LIVE' && elapsed? elapsed+"'" : (st==='FT'?'FT':st==='HT'?'HT':st==='LIVE'?'LIVE':t);
    let color=st==='LIVE'?'#00ff00':st==='FT'?'#999':'#aaa';
    let score=m.goals.home!=null?`${m.goals.home}-${m.goals.away}`:':';
@@ -137,27 +139,27 @@ async function load(dateOverride,force){
  if(dateOverride && dateOverride.includes('-')) actualDateStr=dateOverride;
  let dateStr=dateOverride||getDateStr();
  if(!actualDateStr) actualDateStr=dateStr;
-
- // 0.1 SEC INSTANT - Show cache immediately for speed!
  if(!force){
   let cached=localStorage.getItem('ls_'+dateStr);
   if(cached){try{all=JSON.parse(cached);if(all.length) draw();}catch(e){}}
  }
-
  try{
   let res=await fetch(`/api/football?date=${dateStr}`);
   let data=await res.json();
   let fresh=data.response||data.data||[];
   if(fresh.length){
    all=fresh;
+   window.lastFetch=Date.now();
    localStorage.setItem('ls_'+dateStr,JSON.stringify(all));
-   draw(); // Update to correct minutes after fetch
+   draw();
   }
  }catch(e){
   if(!all.length) document.getElementById('app').innerHTML='Error: '+e.message;
  }
 }
 load();
+// Auto update minutes every 30 seconds
+setInterval(()=>{ if(curFilter==='live' || curFilter==='all') draw(); }, 30000);
 </script>
 </body>
 </html>
