@@ -19,14 +19,11 @@ body{background:#0f1115;color:#fff;font-family:Arial}
 .refresh{margin-left:auto;background:#222;border:1px solid #333;color:#00ff88;padding:6px 12px;border-radius:6px}
 .league-head{background:#1a1d27;padding:10px 12px;margin-top:14px;font-size:13px;font-weight:bold;color:#fff;display:flex;justify-content:space-between;border-left:3px solid #00ff88}
 .match{background:#1e222e;border-bottom:1px solid #111;padding:10px 12px;display:flex;align-items:center;gap:10px}
-.time{width:45px;font-size:12px;color:#aaa;text-align:center;line-height:1.2}
-.time b{color:#fff;font-size:13px;display:block}
+.time{width:50px;font-size:13px;color:#00ff88;text-align:center;font-weight:bold}
 .teams{flex:1;line-height:1.3}
 .team{font-size:14px}
 .vs{font-size:10px;color:#555;margin:2px 0}
 .score{width:50px;text-align:right;font-weight:900;font-size:15px}
-.score.ft{color:#fff}
-.score.live{color:#ff3b30}
 </style>
 </head>
 <body>
@@ -52,9 +49,8 @@ function buildDateTabs(){
 }
 function pickDate(d){selectedDate=d;buildDateTabs();load();}
 function setFilter(f){currentFilter=f;document.querySelectorAll('.f-tab').forEach(e=>e.classList.toggle('active',e.dataset.f===f));render();}
-
 async function load(){
- document.getElementById('games').innerHTML='<p style="text-align:center;padding:30px">Loading '+selectedDate+'...</p>';
+ document.getElementById('games').innerHTML='<p style="text-align:center;padding:30px">Loading...</p>';
  try{
   const res=await fetch(`/api/football?date=${selectedDate}`);
   const data=await res.json();
@@ -62,41 +58,39 @@ async function load(){
   render();
  }catch(e){document.getElementById('games').innerHTML='Error '+e.message}
 }
-
 function getTime(iso){
+ if(!iso) return '--:--';
  try{
-  const d=new Date(iso);
-  return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false});
+  if(iso.includes('T')){
+    let t=iso.split('T')[1].substring(0,5);
+    let [h,m]=t.split(':').map(Number);
+    h=(h+1)%24;
+    return (h<10?'0'+h:h)+':'+(m<10?'0'+m:m);
+  }
+  return iso.substring(11,16);
  }catch{return '--:--'}
 }
-
 function render(){
  let list=[...allMatches];
  if(currentFilter==='live') list=list.filter(m=>m.fixture.status.short==='LIVE');
  if(currentFilter==='ft') list=list.filter(m=>m.fixture.status.short==='FT');
-
- // Arrange: Top leagues first
  const topLeagues=['England','Spain','Italy','Germany','France','Brazil','UEFA','Premier League','La Liga','Champions'];
  list.sort((a,b)=>{
   const aTop=topLeagues.some(t=> (a.league.name+a.league.country).includes(t))?0:1;
   const bTop=topLeagues.some(t=> (b.league.name+b.league.country).includes(t))?0:1;
   if(aTop!==bTop) return aTop-bTop;
-  // Live first
   if(a.fixture.status.short==='LIVE' && b.fixture.status.short!=='LIVE') return -1;
   if(b.fixture.status.short==='LIVE' && a.fixture.status.short!=='LIVE') return 1;
   return new Date(a.fixture.date)-new Date(b.fixture.date);
  });
-
  const box=document.getElementById('games');
- if(!list.length){box.innerHTML=`<p style="text-align:center;padding:30px">No ${currentFilter} games</p>`;return;}
-
+ if(!list.length){box.innerHTML='<p style="text-align:center;padding:30px">No games</p>';return;}
  const groups={};
  list.forEach(m=>{
   const key=`${m.league.country} | ${m.league.name}`;
   if(!groups[key]) groups[key]=[];
   groups[key].push(m);
  });
-
  let html='';
  for(const key in groups){
   const [country,league]=key.split(' | ');
@@ -105,23 +99,11 @@ function render(){
    const time=getTime(m.fixture.date);
    const short=m.fixture.status.short;
    const gh=m.goals.home; const ga=m.goals.away;
-   let scoreText='-';
-   let cls='';
-   if(short==='LIVE'){ scoreText=(gh??0)+' - '+(ga??0); cls='live'; }
-   else if(short==='FT'){ scoreText=(gh??0)+' - '+(ga??0); cls='ft'; }
-   else { scoreText='v'; cls=''; } // NS -> show v not score
-
-   // Remove NS text completely
-   html+=`
-   <div class="match">
-    <div class="time"><b>${short==='LIVE'? short : time}</b>${short==='FT'?'FT':''}</div>
-    <div class="teams">
-     <div class="team">${m.teams.home.name}</div>
-     <div class="vs">vs</div>
-     <div class="team">${m.teams.away.name}</div>
-    </div>
-    <div class="score ${cls}">${scoreText}</div>
-   </div>`;
+   let scoreText='v';
+   if(short==='LIVE') scoreText=(gh??0)+' - '+(ga??0);
+   else if(short==='FT') scoreText=(gh??0)+' - '+(ga??0);
+   const timeLabel=short==='LIVE'?'LIVE':short==='FT'?'FT':time;
+   html+=`<div class="match"><div class="time">${timeLabel}</div><div class="teams"><div class="team">${m.teams.home.name}</div><div class="vs">vs</div><div class="team">${m.teams.away.name}</div></div><div class="score">${scoreText}</div></div>`;
   });
  }
  box.innerHTML=html;
