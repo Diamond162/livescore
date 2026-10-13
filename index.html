@@ -3,59 +3,151 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LiveScore - Live Matches</title>
+<title>Daniel LiveScore</title>
 <style>
-body{margin:0;background:#111;color:#fff;font-family:Arial}
-.header{background:#000;padding:12px;text-align:center;font-weight:bold;font-size:20px}
-.match{background:#222;margin:8px;padding:12px;border-radius:8px;display:flex;justify-content:space-between;align-items:center}
-.league{color:#888;font-size:12px;margin-bottom:4px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0f1115;color:#fff;font-family:Arial, sans-serif}
+.header{background:#000;padding:14px;text-align:center;font-weight:900;font-size:22px;letter-spacing:1px;position:sticky;top:0;z-index:10}
+.header span{color:#00ff88}
+.dates{display:flex;gap:8px;padding:10px;overflow-x:auto;background:#151821;position:sticky;top:50px;z-index:9}
+.dates::-webkit-scrollbar{display:none}
+.date-tab{padding:8px 16px;border-radius:20px;background:#222;color:#aaa;white-space:nowrap;cursor:pointer;font-size:13px;border:1px solid #333}
+.date-tab.active{background:#00ff88;color:#000;font-weight:bold;border-color:#00ff88}
+.filters{display:flex;gap:8px;padding:10px;background:#0f1115;position:sticky;top:98px;z-index:8}
+.f-tab{padding:6px 14px;border-radius:6px;background:#1e222e;color:#888;cursor:pointer;font-size:13px;border:1px solid #2a2f42}
+.f-tab.active{background:#fff;color:#000;font-weight:bold}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:0 10px 6px}
+.refresh{background:#222;border:1px solid #333;color:#00ff88;padding:6px 12px;border-radius:6px;cursor:pointer}
+.league-head{background:#1a1d27;padding:10px 12px;margin-top:12px;font-size:13px;font-weight:bold;color:#ccc;display:flex;align-items:center;gap:6px;border-left:3px solid #00ff88}
+.country{color:#888;font-weight:normal}
+.match{background:#1e222e;margin:0;border-bottom:1px solid #111;padding:12px;display:flex;justify-content:space-between;align-items:center}
+.match:last-child{border-radius:0 0 8px 8px}
+.teams{line-height:1.4}
 .team{font-size:14px}
-.score{font-weight:bold;color:#0f0;font-size:16px}
-.live{color:red;font-weight:bold;animation:blink 1s infinite}
-@keyframes blink{50%{opacity:0.5}}
+.vs{font-size:11px;color:#666}
+.right{text-align:right;min-width:60px}
+.status{font-size:11px;font-weight:bold}
+.status.LIVE{color:#ff3b30;animation:blink 1s infinite}
+.status.FT{color:#888}
+.status.NS{color:#00ff88}
+.score{font-weight:900;font-size:15px;margin-top:2px}
+@keyframes blink{50%{opacity:.4}}
+#games{padding-bottom:80px}
 </style>
 </head>
 <body>
-<div class="header">⚽ LiveScore - Live Matches</div>
-<div id="games">Loading matches...</div>
+<div class="header">⚽ <span>DANIEL</span> LiveScore</div>
+
+<div class="dates" id="dateTabs"></div>
+
+<div class="filters">
+<div class="topbar" style="width:100%">
+<div style="display:flex;gap:8px">
+<div class="f-tab active" data-f="all" onclick="setFilter('all')">All Games</div>
+<div class="f-tab" data-f="live" onclick="setFilter('live')">Live</div>
+<div class="f-tab" data-f="ft" onclick="setFilter('ft')">Finished</div>
+</div>
+<button class="refresh" onclick="load()">↻ Refresh</button>
+</div>
+</div>
+
+<div id="games">Loading...</div>
+
 <script>
+let selectedDate = new Date().toISOString().split('T')[0];
+let currentFilter = 'all';
+let allMatches = [];
+
+function fmt(d){return d.toISOString().split('T')[0]}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+
+function buildDateTabs(){
+ const today=new Date();
+ const tabs=[
+  {label:'Yesterday', date: fmt(addDays(today,-1))},
+  {label:'Today', date: fmt(today)},
+  {label:'Tomorrow', date: fmt(addDays(today,1))},
+ ];
+ const cont=document.getElementById('dateTabs');
+ cont.innerHTML = tabs.map(t=>`<div class="date-tab ${t.date===selectedDate?'active':''}" onclick="pickDate('${t.date}')">${t.label}<br><small>${t.date.slice(5)}</small></div>`).join('') +
+ `<div class="date-tab" onclick="document.getElementById('datePicker').showPicker()"><input type="date" id="datePicker" style="position:absolute;opacity:0;width:0" onchange="pickDate(this.value)">📅 More Date</div>`;
+}
+
+function pickDate(d){
+ if(!d) return;
+ selectedDate=d;
+ buildDateTabs();
+ load();
+}
+function setFilter(f){
+ currentFilter=f;
+ document.querySelectorAll('.f-tab').forEach(e=>e.classList.toggle('active', e.dataset.f===f));
+ render();
+}
+
 async function load(){
- const d=new Date().toISOString().split('T')[0];
+ document.getElementById('games').innerHTML='<p style="text-align:center;padding:30px">Loading '+selectedDate+'...</p>';
  try{
-  const res=await fetch(`/api/football?date=${d}`);
+  const res=await fetch(`/api/football?date=${selectedDate}`);
   const data=await res.json();
-  const list=data.response||[];
-  const box=document.getElementById('games');
-  if(!list.length){
-    box.innerHTML='<p style="text-align:center;margin-top:30px">No matches today</p>';
-    return;
-  }
-  box.innerHTML=list.map(m=>{
-    const status = m.fixture.status.short;
-    const isLive = status==='LIVE';
-    const home = m.teams.home.name;
-    const away = m.teams.away.name;
-    const league = m.league.name + ' - ' + m.league.country;
-    const scoreHome = m.goals.home?? '-';
-    const scoreAway = m.goals.away?? '-';
-    return `
-   <div class="match">
-    <div>
-     <div class="league">${league}</div>
-     <div class="team">${home} vs ${away}</div>
-    </div>
-    <div style="text-align:right">
-     <div class="${isLive?'live':'score'}">${status}</div>
-     <div class="score">${scoreHome} - ${scoreAway}</div>
-    </div>
-   </div>`;
-  }).join('');
+  allMatches=data.response||[];
+  render();
  }catch(e){
-   document.getElementById('games').innerHTML='Error: '+e.message;
+  document.getElementById('games').innerHTML='Error: '+e.message;
  }
 }
+
+function render(){
+ const box=document.getElementById('games');
+ let list=[...allMatches];
+
+ if(currentFilter==='live') list=list.filter(m=>m.fixture.status.short==='LIVE');
+ if(currentFilter==='ft') list=list.filter(m=>m.fixture.status.short==='FT');
+
+ if(!list.length){
+  box.innerHTML=`<p style="text-align:center;padding:30px">No ${currentFilter} games for ${selectedDate}</p>`;
+  return;
+ }
+
+ // Group by Country + League
+ const groups={};
+ list.forEach(m=>{
+  const key=`${m.league.country} | ${m.league.name}`;
+  if(!groups[key]) groups[key]=[];
+  groups[key].push(m);
+ });
+
+ let html='';
+ for(const key in groups){
+  const [country, league]=key.split(' | ');
+  html+=`<div class="league-head">🌍 ${country} <span class="country">- ${league}</span> <small style="margin-left:auto">${groups[key].length} games</small></div>`;
+  groups[key].forEach(m=>{
+   const s=m.fixture.status.short;
+   const home=m.teams.home.name;
+   const away=m.teams.away.name;
+   const gh=m.goals.home;
+   const ga=m.goals.away;
+   const showScore=(gh!==null && ga!==null)? `${gh} - ${ga}` : '- : -';
+   html+=`
+   <div class="match">
+    <div class="teams">
+     <div class="team">${home}</div>
+     <div class="vs">vs</div>
+     <div class="team">${away}</div>
+    </div>
+    <div class="right">
+     <div class="status ${s}">${s}</div>
+     <div class="score">${showScore}</div>
+    </div>
+   </div>`;
+  });
+ }
+ box.innerHTML=html;
+}
+
+buildDateTabs();
 load();
-setInterval(load,30000);
+setInterval(load,60000);
 </script>
 </body>
 </html>
