@@ -1,54 +1,85 @@
 export async function onRequest(context) {
   const { request } = context;
   const url = new URL(request.url);
-  const dateParam = url.searchParams.get('date') || new Date().toISOString().split('T')[0]; // 2026-10-13
-  const fotmobDate = dateParam.replaceAll('-', ''); // 20261013 for FotMob
+  const dateParam = url.searchParams.get('date') || new Date().toISOString().split('T')[0];
+  const fotmobDate = dateParam.replaceAll('-', '');
+  const force = url.searchParams.get('v');
 
-  const cacheKey = new Request(`https://livescore-cache/${dateParam}`, request);
+  // CACHE KEY change with v to kill old 0 cache
+  const cacheKey = new Request(`https://livescore-cache-v2/${dateParam}/${force||'1'}`, request);
   const cache = caches.default;
 
   let response = await cache.match(cacheKey);
-  if (response) {
-    const h = new Headers(response.headers);
-    h.set('X-Cache', 'HIT');
-    h.set('Access-Control-Allow-Origin', '*');
-    return new Response(response.body, { headers: h });
+  if (response &&!force) {
+    return new Response(response.body, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'X-Cache': 'HIT'
+      }
+    });
   }
 
   try {
-    // CORRECT FOTMOB URL
-    const fotmobUrl = `https://www.fotmob.com/api/matches?date=${fotmobDate}`;
+    const fotmobUrl = `https://www.fotmob.com/api/matches?date=${fotmobDate}&ccode3=ENG`;
 
     const fotRes = await fetch(fotmobUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0',
-        'Accept': '*/*',
-        'Referer': 'https://www.fotmob.com/'
-      }
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json',
+        'Referer': 'https://www.fotmob.com/',
+        'x-mas': 'eyJib2R5Ijp7InVybCI6Ii9hcGkvbWF0Y2hlcz9kYXRlPTIwMjYxMDEzIn0sInNpZ25hdHVyZSI6Ik5PIn0='
+      },
+      cf: { cacheTtl: 60 }
     });
 
-    const data = await fotRes.json();
+    const text = await fotRes.text();
+    let data;
+    try { data = JSON.parse(text); } catch { data = {}; }
+
     let matches = [];
 
-    if (data?.leagues) {
-      data.leagues.forEach(league => {
-        (league.matches || []).forEach(m => {
+    // NEW FOTMOB FORMAT - they put matches inside leagues array
+    if (data && data.leagues) {
+      for (const league of data.leagues) {
+        for (const m of (league.matches || [])) {
           matches.push({
-            league: { name: league.name, country: league.ccode || 'INT', flag: league.ccode },
+            league: {
+              name: league.name || 'League',
+              country: league.ccode || 'INT',
+              flag: league.ccode || 'INT'
+            },
             teams: {
-              home: { name: m.home?.name, logo: m.home?.id },
-              away: { name: m.away?.name, logo: m.away?.id }
+              home: { name: m.home?.name || m.home?.longName || 'Home', logo: m.home?.id },
+              away: { name: m.away?.name || m.away?.longName || 'Away', logo: m.away?.id }
             },
             fixture: {
-              date: m.timeUTC || m.status?.utcTime || new Date().toISOString(),
+              date: m.status?.utcTime || m.time || new Date().toISOString(),
               status: {
-                short: m.status?.live? 'LIVE' : m.status?.finished? 'FT' : 'NS',
-                elapsed: m.status?.reason?.short || m.status?.liveTime?.short || null
+                short: m.status?.finished? 'FT' : m.status?.started? (m.status?.live? 'LIVE' : 'HT') : 'NS',
+                elapsed: m.status?.reason?.short || m.status?.liveTime?.short || ''
               }
             },
             goals: { home: m.home?.score?? null, away: m.away?.score?? null }
           });
-        });
+        }
+      }
+    }
+
+    // If still 0, return raw keys so we can debug
+    if (matches.length === 0) {
+      const debug = {
+        response: [],
+        _debug: {
+          fotmobDate,
+          hasLeagues:!!data?.leagues,
+          leaguesCount: data?.leagues?.length || 0,
+          rawKeys: data? Object.keys(data).slice(0,10) : [],
+          firstLeagueSample: data?.leagues?.[0]? Object.keys(data.leagues[0]) : []
+        }
+      };
+      return new Response(JSON.stringify(debug), {
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'X-Cache': 'DEBUG' }
       });
     }
 
@@ -56,7 +87,7 @@ export async function onRequest(context) {
     response = new Response(body, {
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=60, s-maxage=60',
+        'Cache-Control': 'public, max-age=30',
         'Access-Control-Allow-Origin': '*',
         'X-Cache': 'MISS'
       }
