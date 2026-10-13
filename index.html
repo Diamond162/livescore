@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FotMob - Europe Time</title>
+<title>FotMob - Top Leagues Up</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}body{background:#121212;color:#fff;font-family:Roboto,Arial,sans-serif}
 .top{background:#000;padding:14px 14px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;border-bottom:1px solid #222}
@@ -29,35 +29,40 @@
 </style>
 </head>
 <body>
-<div class="top"><div><b id="dBig">Loading...</b><small id="dSmall" style="font-size:11px;color:#888;display:block">FotMob API • Europe/Berlin</small></div><div class="logo">fot<span>mob</span></div></div>
-<div class="nav" id="nav"><a data-d="yesterday">Yesterday</a><a data-d="today">Today</a><a data-d="tomorrow" class="active">Tomorrow</a><a data-d="more">More days »</a></div>
+<div class="top"><div><b id="dBig">Oct 13, 2026</b><small id="dSmall" style="font-size:11px;color:#888;display:block">FotMob API • Europe/Berlin • Top Leagues Up</small></div><div class="logo">fot<span>mob</span></div></div>
+<div class="nav" id="nav"><a data-d="yesterday">Yesterday</a><a data-d="today" class="active">Today</a><a data-d="tomorrow">Tomorrow</a><a data-d="more">More days »</a></div>
 <div class="filter" id="fil"><a data-f="all" class="active">All Games</a><a data-f="live">LIVE</a><a data-f="finished">Finished</a></div>
 <div class="count" id="count">Loading...</div>
 <div id="list"></div>
 <script>
-const COUNTRY_FULL={
-INT:"International",AFG:"Afghanistan",ALB:"Albania",ALG:"Algeria",AND:"Andorra",ANG:"Angola",ARG:"Argentina",ARM:"Armenia",AUS:"Australia",AUT:"Austria",AZE:"Azerbaijan",BAH:"Bahamas",BHR:"Bahrain",BAN:"Bangladesh",BRB:"Barbados",BLR:"Belarus",BEL:"Belgium",BLZ:"Belize",BEN:"Benin",BHU:"Bhutan",BOL:"Bolivia",BIH:"Bosnia & Herzegovina",BOT:"Botswana",BRA:"Brazil",BRU:"Brunei",BUL:"Bulgaria",BFA:"Burkina Faso",BDI:"Burundi",CAM:"Cambodia",CMR:"Cameroon",CAN:"Canada",CPV:"Cape Verde",CTA:"Central Africa",CHA:"Chad",CHI:"Chile",CHN:"China",COL:"Colombia",COM:"Comoros",CGO:"Congo",CRC:"Costa Rica",CRO:"Croatia",CUB:"Cuba",CYP:"Cyprus",CZE:"Czech Republic",DEN:"Denmark",DJI:"Djibouti",DMA:"Dominica",DOM:"Dominican Republic",ECU:"Ecuador",EGY:"Egypt",SLV:"El Salvador",ENG:"England",EQG:"Equatorial Guinea",ERI:"Eritrea",EST:"Estonia",SWZ:"Eswatini",ETH:"Ethiopia",FRO:"Faroe Islands",FIJ:"Fiji",FIN:"Finland",FRA:"France",GAB:"Gabon",GAM:"Gambia",GEO:"Georgia",GER:"Germany",GHA:"Ghana",GIB:"Gibraltar",GRE:"Greece",GRL:"Greenland",GRN:"Grenada",GUM:"Guam",GUA:"Guatemala",GUI:"Guinea",GNB:"Guinea-Bissau",GUY:"Guyana",HAI:"Haiti",HON:"Honduras",HKG:"Hong Kong",HUN:"Hungary",ISL:"Iceland",IND:"India",IDN:"Indonesia",IRN:"Iran",IRQ:"Iraq",IRL:"Ireland",ISR:"Israel",ITA:"Italy",CIV:"Ivory Coast",JAM:"Jamaica",JPN:"Japan",JOR:"Jordan",KAZ:"Kazakhstan",KEN:"Kenya",KIR:"Kiribati",PRK:"North Korea",KOR:"South Korea",KOS:"Kosovo",KUW:"Kuwait",KGZ:"Kyrgyzstan",LAO:"Laos",LVA:"Latvia",LIB:"Lebanon",LES:"Lesotho",LBR:"Liberia",LBY:"Libya",LIE:"Liechtenstein",LTU:"Lithuania",LUX:"Luxembourg",MAC:"Macau",MAD:"Madagascar",MWI:"Malawi",MAS:"Malaysia",MDV:"Maldives",MLI:"Mali",MLT:"Malta",MTN:"Mauritania",MRI:"Mauritius",MEX:"Mexico",MDA:"Moldova",MON:"Monaco",MNG:"Mongolia",MNE:"Montenegro",MAR:"Morocco",MOZ:"Mozambique",MYA:"Myanmar",NAM:"Namibia",NEP:"Nepal",NED:"Netherlands",NCL:"New Caledonia",NZL:"New Zealand",NCA:"Nicaragua",NIG:"Niger",NGA:"Nigeria",MKD:"North Macedonia",NIR:"Northern Ireland",NOR:"Norway",OMA:"Oman",PAK:"Pakistan",PLE:"Palestine",PAN:"Panama",PNG:"Papua New Guinea",PAR:"Paraguay",PER:"Peru",PHI:"Philippines",POL:"Poland",POR:"Portugal",QAT:"Qatar",ROU:"Romania",RUS:"Russia",RWA:"Rwanda",SKN:"St Kitts",LCA:"St Lucia",VIN:"St Vincent",SAM:"Samoa",SMR:"San Marino",STP:"Sao Tome",KSA:"Saudi Arabia",SAU:"Saudi Arabia",SCO:"Scotland",SEN:"Senegal",SRB:"Serbia",SEY:"Seychelles",SLE:"Sierra Leone",SIN:"Singapore",SVK:"Slovakia",SVN:"Slovenia",SOL:"Solomon Islands",SOM:"Somalia",RSA:"South Africa",SSD:"South Sudan",ESP:"Spain",SRI:"Sri Lanka",SUD:"Sudan",SUR:"Suriname",SWE:"Sweden",SUI:"Switzerland",SYR:"Syria",TPE:"Chinese Taipei",TAJ:"Tajikistan",TAN:"Tanzania",THA:"Thailand",TOG:"Togo",TGA:"Tonga",TTO:"Trinidad & Tobago",TUN:"Tunisia",TUR:"Turkey",TKM:"Turkmenistan",UGA:"Uganda",UKR:"Ukraine",UAE:"United Arab Emirates",URU:"Uruguay",UZB:"Uzbekistan",VAN:"Vanuatu",VEN:"Venezuela",VIE:"Vietnam",WAL:"Wales",YEM:"Yemen",ZAM:"Zambia",ZIM:"Zimbabwe"
-};
+const COUNTRY_FULL={INT:"International",GER:"Germany",ENG:"England",ESP:"Spain",ITA:"Italy",FRA:"France",POR:"Portugal",NED:"Netherlands",BEL:"Belgium",TUR:"Turkey",BRA:"Brazil",ARG:"Argentina",PAR:"Paraguay",PER:"Peru",BOL:"Bolivia",CHI:"Chile",COL:"Colombia",ECU:"Ecuador",VEN:"Venezuela",URU:"Uruguay",MEX:"Mexico",USA:"USA",CAN:"Canada",PAN:"Panama",CRC:"Costa Rica",HON:"Honduras",AUS:"Australia",JPN:"Japan",KOR:"South Korea",SCO:"Scotland",AUT:"Austria",SUI:"Switzerland",SWE:"Sweden",NOR:"Norway",DEN:"Denmark",POL:"Poland",UKR:"Ukraine",CZE:"Czech Republic",CRO:"Croatia",SRB:"Serbia",GRE:"Greece",ROU:"Romania",RUS:"Russia",SAU:"Saudi Arabia",KSA:"Saudi Arabia",QAT:"Qatar",EGY:"Egypt",NGA:"Nigeria",MAR:"Morocco",ALG:"Algeria"};
 function getCountryName(code){
  if(!code) return "International";
  let c=code.toUpperCase().trim();
- if(c.length>4) return code; // already full like ARGENTINA, BRAZIL
+ if(c.length>4) return code;
  if(COUNTRY_FULL[c]) return COUNTRY_FULL[c];
- // if 2-letter code, use Intl
- try{
-  if(c.length===2 || c.length===3){
-   let dn=new Intl.DisplayNames(['en'],{type:'region'});
-   // try convert 3-letter to 2-letter via lookup table quick
-   let two=c;
-   if(c.length===3){
-    const threeToTwo={GER:"DE",ENG:"GB",ESP:"ES",ITA:"IT",FRA:"FR",POR:"PT",NED:"NL",BEL:"BE",TUR:"TR",JPN:"JP",KOR:"KR",USA:"US",BRA:"BR",ARG:"AR",PAR:"PY",PER:"PE",BOL:"BO",CHI:"CL",COL:"CO",ECU:"EC",VEN:"VE",URU:"UY",MEX:"MX",CAN:"CA",AUS:"AU",SUI:"CH",AUT:"AT",SWE:"SE",NOR:"NO",DEN:"DK",POL:"PL",UKR:"UA",CZE:"CZ",GRE:"GR",CRO:"HR",SRB:"RS",ROU:"RO",HUN:"HU",SCO:"GB-SCT"};
-    if(threeToTwo[c]) two=threeToTwo[c];
-   }
-   let name=dn.of(two);
-   if(name && name!==two) return name;
-  }
- }catch(e){}
- return code;
+ return c;
+}
+// TOP LEAGUES PRIORITY - lower number = higher up
+function getPriority(leagueName, country){
+ let n=(leagueName||'').toLowerCase();
+ let cc=(country||'').toLowerCase();
+ if(n.includes('champions league')) return 1;
+ if(n.includes('europa league')) return 2;
+ if(n.includes('conference league')) return 3;
+ if(n.includes('premier league') && (cc.includes('eng')||cc.includes('england'))) return 4;
+ if(n.includes('la liga') || n.includes('laliga')) return 5;
+ if(n.includes('bundesliga')) return 6;
+ if(n.includes('serie a')) return 7;
+ if(n.includes('ligue 1')) return 8;
+ if(n.includes('eredivisie')) return 9;
+ if(n.includes('primeira liga') || (n.includes('liga portugal'))) return 10;
+ if(n.includes('süper lig') || n.includes('super lig')) return 11;
+ if(n.includes('championship')) return 12;
+ if(n.includes('serie b') && cc.includes('brazil')) return 90;
+ if(n.includes('primera nacional')) return 91;
+ if(n.includes('lpf apertura')) return 92;
+ return 50;
 }
 let all=[],cur='today',fil='all';
 function iso(d){return d.toISOString().slice(0,10)}
@@ -65,7 +70,7 @@ function getDate(){if(cur==='today')return iso(new Date());if(cur==='yesterday')
 async function load(){
  let date=getDate();
  document.getElementById('dBig').textContent=new Date(date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
- document.getElementById('dSmall').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' • Europe/Berlin • '+date;
+ document.getElementById('dSmall').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' • Europe/Berlin • '+date+' • Top Leagues Up';
  document.getElementById('count').textContent='Loading '+date+'...';
  try{let r=await fetch('/api/football?date='+date+'&t='+Date.now());let j=await r.json();all=j.response||[]}catch(e){all=[]}
  render();
@@ -83,14 +88,18 @@ function render(){
   let code=(m.league?.country||'INT').toUpperCase();
   let countryFull=getCountryName(code);
   let key=countryFull+': '+m.league.name;
-  if(!groups[key]) groups[key]=[];
-  groups[key].push(m);
+  if(!groups[key]){
+   groups[key]={matches:[],priority:getPriority(m.league.name, code),leagueName:m.league.name};
+  }
+  groups[key].matches.push(m);
  });
- document.getElementById('count').textContent=filtered.length+' games • '+getDate()+' • Europe Time';
+ // ARRANGE GROUPS - Top leagues first
+ let sortedGroups=Object.entries(groups).sort((a,b)=>a[1].priority-b[1].priority);
+ document.getElementById('count').textContent=filtered.length+' games • '+getDate()+' • Top Leagues First • Europe Time';
  let html='';
- for(let k in groups){
+ sortedGroups.forEach(([k,g])=>{
   html+='<div class="league"><div class="head"><b>'+k.toUpperCase()+'</b><a style="color:#2ec17c">Standings</a></div>';
-  groups[k].forEach(m=>{
+  g.matches.forEach(m=>{
    let d=new Date(m.fixture?.date||new Date());
    let t=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Europe/Berlin'});
    let short=(m.fixture?.status?.short||'NS').toUpperCase();
@@ -102,7 +111,7 @@ function render(){
    html+='<div class="row"><div class="time">'+timeHtml+'</div><div class="name">'+m.teams.home.name+' - '+m.teams.away.name+'</div><div class="score '+cls+'">'+score+'</div></div>';
   });
   html+='</div>';
- }
+ });
  if(!html) html='<div style="padding:60px;text-align:center;color:#666">No matches</div>';
  document.getElementById('list').innerHTML=html;
 }
