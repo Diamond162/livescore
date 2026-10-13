@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FotMob</title>
+<title>FotMob - Europe Time</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}body{background:#121212;color:#fff;font-family:Roboto,Arial,sans-serif}
 .top{background:#000;padding:14px 14px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;border-bottom:1px solid #222}
@@ -17,26 +17,49 @@
 .count{padding:8px 12px;color:#666;font-size:12px}
 .league{margin-top:4px;background:#222}
 .head{padding:10px 12px;display:flex;justify-content:space-between;align-items:center;background:#2a2a2a;border-bottom:1px solid #333}
-.head b{font-size:13px;text-transform:uppercase;letter-spacing:.3px}
+.head b{font-size:13px;text-transform:uppercase}
 .head a{color:#2ec17c;font-size:12px}
 .row{display:flex;align-items:center;padding:12px 12px;background:#1a1a1a;border-bottom:1px solid #252525;gap:10px}
-.time{width:50px;color:#999;font-size:13px;font-weight:700;flex-shrink:0}
+.time{width:70px;color:#999;font-size:12px;font-weight:700;flex-shrink:0;line-height:1.2}
 .name{flex:1;font-size:14px;line-height:1.3;word-break:break-word;white-space:normal}
-.score{width:30px;text-align:right;font-weight:900;font-size:14px;flex-shrink:0}
+.score{width:40px;text-align:right;font-weight:900;font-size:14px;flex-shrink:0}
 .score.ns{color:#555}.score.live{color:#ff3b30}.score.ft{color:#fff}
-.dot{width:6px;height:6px;background:#ff3b30;border-radius:50%;display:inline-block;margin-right:5px;animation:blink 1s infinite}
+.dot{width:6px;height:6px;background:#ff3b30;border-radius:50%;display:inline-block;margin-right:4px;animation:blink 1s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 </style>
 </head>
 <body>
-<div class="top"><div><b id="dBig">Oct 14, 2026</b><small id="dSmall" style="font-size:11px;color:#888;display:block">FotMob API • Europe/Berlin</small></div><div class="logo">fot<span>mob</span></div></div>
+<div class="top"><div><b id="dBig">Loading...</b><small id="dSmall" style="font-size:11px;color:#888;display:block">FotMob API • Europe/Berlin</small></div><div class="logo">fot<span>mob</span></div></div>
 <div class="nav" id="nav"><a data-d="yesterday">Yesterday</a><a data-d="today">Today</a><a data-d="tomorrow" class="active">Tomorrow</a><a data-d="more">More days »</a></div>
 <div class="filter" id="fil"><a data-f="all" class="active">All Games</a><a data-f="live">LIVE</a><a data-f="finished">Finished</a></div>
 <div class="count" id="count">Loading...</div>
 <div id="list"></div>
 <script>
-const COUNTRY_NAMES={INT:"International",GER:"Germany",ENG:"England",ESP:"Spain",ITA:"Italy",FRA:"France",POR:"Portugal",NED:"Netherlands",BEL:"Belgium",TUR:"Turkey",JPN:"Japan",KOR:"South Korea",USA:"USA",BRA:"Brazil",ARG:"Argentina",SCO:"Scotland",AUT:"Austria",SUI:"Switzerland",SWE:"Sweden",NOR:"Norway",DEN:"Denmark",CRO:"Croatia",SRB:"Serbia",GRE:"Greece",POL:"Poland",UKR:"Ukraine",ROU:"Romania",CZE:"Czech Republic",JPN:"Japan"};
-let all=[],cur='tomorrow',fil='all';
+const COUNTRY_FULL={
+INT:"International",AFG:"Afghanistan",ALB:"Albania",ALG:"Algeria",AND:"Andorra",ANG:"Angola",ARG:"Argentina",ARM:"Armenia",AUS:"Australia",AUT:"Austria",AZE:"Azerbaijan",BAH:"Bahamas",BHR:"Bahrain",BAN:"Bangladesh",BRB:"Barbados",BLR:"Belarus",BEL:"Belgium",BLZ:"Belize",BEN:"Benin",BHU:"Bhutan",BOL:"Bolivia",BIH:"Bosnia & Herzegovina",BOT:"Botswana",BRA:"Brazil",BRU:"Brunei",BUL:"Bulgaria",BFA:"Burkina Faso",BDI:"Burundi",CAM:"Cambodia",CMR:"Cameroon",CAN:"Canada",CPV:"Cape Verde",CTA:"Central Africa",CHA:"Chad",CHI:"Chile",CHN:"China",COL:"Colombia",COM:"Comoros",CGO:"Congo",CRC:"Costa Rica",CRO:"Croatia",CUB:"Cuba",CYP:"Cyprus",CZE:"Czech Republic",DEN:"Denmark",DJI:"Djibouti",DMA:"Dominica",DOM:"Dominican Republic",ECU:"Ecuador",EGY:"Egypt",SLV:"El Salvador",ENG:"England",EQG:"Equatorial Guinea",ERI:"Eritrea",EST:"Estonia",SWZ:"Eswatini",ETH:"Ethiopia",FRO:"Faroe Islands",FIJ:"Fiji",FIN:"Finland",FRA:"France",GAB:"Gabon",GAM:"Gambia",GEO:"Georgia",GER:"Germany",GHA:"Ghana",GIB:"Gibraltar",GRE:"Greece",GRL:"Greenland",GRN:"Grenada",GUM:"Guam",GUA:"Guatemala",GUI:"Guinea",GNB:"Guinea-Bissau",GUY:"Guyana",HAI:"Haiti",HON:"Honduras",HKG:"Hong Kong",HUN:"Hungary",ISL:"Iceland",IND:"India",IDN:"Indonesia",IRN:"Iran",IRQ:"Iraq",IRL:"Ireland",ISR:"Israel",ITA:"Italy",CIV:"Ivory Coast",JAM:"Jamaica",JPN:"Japan",JOR:"Jordan",KAZ:"Kazakhstan",KEN:"Kenya",KIR:"Kiribati",PRK:"North Korea",KOR:"South Korea",KOS:"Kosovo",KUW:"Kuwait",KGZ:"Kyrgyzstan",LAO:"Laos",LVA:"Latvia",LIB:"Lebanon",LES:"Lesotho",LBR:"Liberia",LBY:"Libya",LIE:"Liechtenstein",LTU:"Lithuania",LUX:"Luxembourg",MAC:"Macau",MAD:"Madagascar",MWI:"Malawi",MAS:"Malaysia",MDV:"Maldives",MLI:"Mali",MLT:"Malta",MTN:"Mauritania",MRI:"Mauritius",MEX:"Mexico",MDA:"Moldova",MON:"Monaco",MNG:"Mongolia",MNE:"Montenegro",MAR:"Morocco",MOZ:"Mozambique",MYA:"Myanmar",NAM:"Namibia",NEP:"Nepal",NED:"Netherlands",NCL:"New Caledonia",NZL:"New Zealand",NCA:"Nicaragua",NIG:"Niger",NGA:"Nigeria",MKD:"North Macedonia",NIR:"Northern Ireland",NOR:"Norway",OMA:"Oman",PAK:"Pakistan",PLE:"Palestine",PAN:"Panama",PNG:"Papua New Guinea",PAR:"Paraguay",PER:"Peru",PHI:"Philippines",POL:"Poland",POR:"Portugal",QAT:"Qatar",ROU:"Romania",RUS:"Russia",RWA:"Rwanda",SKN:"St Kitts",LCA:"St Lucia",VIN:"St Vincent",SAM:"Samoa",SMR:"San Marino",STP:"Sao Tome",KSA:"Saudi Arabia",SAU:"Saudi Arabia",SCO:"Scotland",SEN:"Senegal",SRB:"Serbia",SEY:"Seychelles",SLE:"Sierra Leone",SIN:"Singapore",SVK:"Slovakia",SVN:"Slovenia",SOL:"Solomon Islands",SOM:"Somalia",RSA:"South Africa",SSD:"South Sudan",ESP:"Spain",SRI:"Sri Lanka",SUD:"Sudan",SUR:"Suriname",SWE:"Sweden",SUI:"Switzerland",SYR:"Syria",TPE:"Chinese Taipei",TAJ:"Tajikistan",TAN:"Tanzania",THA:"Thailand",TOG:"Togo",TGA:"Tonga",TTO:"Trinidad & Tobago",TUN:"Tunisia",TUR:"Turkey",TKM:"Turkmenistan",UGA:"Uganda",UKR:"Ukraine",UAE:"United Arab Emirates",URU:"Uruguay",UZB:"Uzbekistan",VAN:"Vanuatu",VEN:"Venezuela",VIE:"Vietnam",WAL:"Wales",YEM:"Yemen",ZAM:"Zambia",ZIM:"Zimbabwe"
+};
+function getCountryName(code){
+ if(!code) return "International";
+ let c=code.toUpperCase().trim();
+ if(c.length>4) return code; // already full like ARGENTINA, BRAZIL
+ if(COUNTRY_FULL[c]) return COUNTRY_FULL[c];
+ // if 2-letter code, use Intl
+ try{
+  if(c.length===2 || c.length===3){
+   let dn=new Intl.DisplayNames(['en'],{type:'region'});
+   // try convert 3-letter to 2-letter via lookup table quick
+   let two=c;
+   if(c.length===3){
+    const threeToTwo={GER:"DE",ENG:"GB",ESP:"ES",ITA:"IT",FRA:"FR",POR:"PT",NED:"NL",BEL:"BE",TUR:"TR",JPN:"JP",KOR:"KR",USA:"US",BRA:"BR",ARG:"AR",PAR:"PY",PER:"PE",BOL:"BO",CHI:"CL",COL:"CO",ECU:"EC",VEN:"VE",URU:"UY",MEX:"MX",CAN:"CA",AUS:"AU",SUI:"CH",AUT:"AT",SWE:"SE",NOR:"NO",DEN:"DK",POL:"PL",UKR:"UA",CZE:"CZ",GRE:"GR",CRO:"HR",SRB:"RS",ROU:"RO",HUN:"HU",SCO:"GB-SCT"};
+    if(threeToTwo[c]) two=threeToTwo[c];
+   }
+   let name=dn.of(two);
+   if(name && name!==two) return name;
+  }
+ }catch(e){}
+ return code;
+}
+let all=[],cur='today',fil='all';
 function iso(d){return d.toISOString().slice(0,10)}
 function getDate(){if(cur==='today')return iso(new Date());if(cur==='yesterday'){let d=new Date();d.setDate(d.getDate()-1);return iso(d)}if(cur==='tomorrow'){let d=new Date();d.setDate(d.getDate()+1);return iso(d)}return cur}
 async function load(){
@@ -54,13 +77,11 @@ function render(){
   if(fil==='finished'&&s!=='FT')return false;
   return true;
  });
- // ARRANGED BY TIME
  filtered.sort((a,b)=>new Date(a.fixture.date)-new Date(b.fixture.date));
  let groups={};
  filtered.forEach(m=>{
   let code=(m.league?.country||'INT').toUpperCase();
-  let countryFull=COUNTRY_NAMES[code]||code;
-  if(code==='INT' && m.league.name.toLowerCase().includes('champions')) countryFull='International';
+  let countryFull=getCountryName(code);
   let key=countryFull+': '+m.league.name;
   if(!groups[key]) groups[key]=[];
   groups[key].push(m);
