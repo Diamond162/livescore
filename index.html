@@ -1,40 +1,47 @@
-export async function onRequest(context) {
-  const url = new URL(context.request.url);
-  const dateParam = url.searchParams.get('date') || new Date().toISOString().split('T')[0];
-  const API_KEY = context.env.FOOTBALL_API_KEY || context.env.LIVE_FOOTBALL_API_KEY || context.env.API_KEY || "";
-  if (!API_KEY) {
-    return new Response(JSON.stringify({ response: [], error: "No API_KEY env found" }), {
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-    });
-  }
-  try {
-    const apiUrl = `https://live-football-api.com/api/v1/matches?api_key=${API_KEY}&date=${dateParam}&lang=en`;
-    const res = await fetch(apiUrl);
-    const json = await res.json();
-    if (json.message && json.status!== 'success') {
-      return new Response(JSON.stringify({ response: [], error: json.message, raw: json }), {
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-      });
-    }
-    const rawMatches = json.matches || json.data?.matches || [];
-    let matches = rawMatches.map(m => ({
-      league: { name: m.league?.name || 'Football', country: m.league?.country_code || 'INT', flag: m.league?.country_code || 'INT' },
-      teams: {
-        home: { name: m.home?.name || m.home_team?.name || 'Home' },
-        away: { name: m.away?.name || m.away_team?.name || 'Away' }
-      },
-      fixture: {
-        date: m.kickoff || m.date || new Date().toISOString(),
-        status: { short: (m.status||'').toLowerCase().includes('live')?'LIVE':(m.status||'').toLowerCase().includes('finish')?'FT':'NS', elapsed: m.minute?m.minute+"'":m.status||'' }
-      },
-      goals: { home: m.score?.home??m.home?.score??null, away: m.score?.away??m.away?.score??null }
-    }));
-    return new Response(JSON.stringify({ response: matches }), {
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=30' }
-    });
-  } catch (e) {
-    return new Response(JSON.stringify({ response: [], error: e.message }), {
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-    });
-  }
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LiveScore</title>
+<style>
+body{margin:0;background:#111;color:#fff;font-family:Arial}
+.header{background:#000;padding:12px;text-align:center;font-weight:bold;font-size:20px}
+.match{background:#222;margin:8px;padding:12px;border-radius:8px;display:flex;justify-content:space-between;align-items:center}
+.league{color:#888;font-size:12px;margin-bottom:4px}
+.team{font-size:14px}
+.score{font-weight:bold;color:#0f0}
+.live{color:red;font-weight:bold}
+</style>
+</head>
+<body>
+<div class="header">⚽ LiveScore - Live Matches</div>
+<div id="games">Loading matches...</div>
+<script>
+async function load(){
+ const d=new Date().toISOString().split('T')[0];
+ try{
+  const res=await fetch(`/api/football?date=${d}`);
+  const data=await res.json();
+  const list=data.response||[];
+  const box=document.getElementById('games');
+  if(!list.length){box.innerHTML='<p style="text-align:center;margin-top:30px">No matches today. API: '+(data.error||'empty')+'</p>';return;}
+  box.innerHTML=list.map(m=>`
+   <div class="match">
+    <div>
+     <div class="league">${m.league.name} - ${m.league.country}</div>
+     <div class="team">${m.teams.home.name} vs ${m.teams.away.name}</div>
+    </div>
+    <div style="text-align:right">
+     <div class="${m.fixture.status.short==='LIVE'?'live':'score'}">${m.fixture.status.short} ${m.fixture.status.elapsed||''}</div>
+     <div class="score">${m.goals.home??'-'} - ${m.goals.away??'-'}</div>
+    </div>
+   </div>
+  `).join('');
+ }catch(e){document.getElementById('games').innerHTML='Error: '+e.message}
 }
+load();
+setInterval(load,30000);
+</script>
+</body>
+</html>
