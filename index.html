@@ -28,10 +28,10 @@ header{background:#900;padding:12px;text-align:center;font-size:22px;font-weight
 <input type="date" id="pickDate" onchange="pick(this.value)">
 </div>
 <div id="filters">
-<button onclick="setFilter('all')" id="f-all" class="active">All</button>
-<button onclick="setFilter('live')" id="f-live">Live</button>
-<button onclick="setFilter('scheduled')" id="f-scheduled">Scheduled</button>
-<button onclick="load(actualDateStr,true)">Refresh</button>
+<button onclick="setFilter('all')" id="f-all" class="fbtn active">All</button>
+<button onclick="setFilter('live')" id="f-live" class="fbtn">Live</button>
+<button onclick="setFilter('scheduled')" id="f-scheduled" class="fbtn">Scheduled</button>
+<button onclick="forceRefresh()" id="refreshBtn" style="background:#222;border-color:#FF6600;color:#FF6600">Refresh</button>
 </div>
 <input id="search" placeholder="Search team, league..." oninput="draw()">
 <div id="app">Loading...</div>
@@ -41,7 +41,7 @@ let all=[],curFilter='all',curDate='today',actualDateStr='';
 
 function setFilter(f){
  curFilter=f;
- document.querySelectorAll('#filters button').forEach(b=>b.classList.remove('active'));
+ document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
  document.getElementById('f-'+f)?.classList.add('active');
  draw();
  if(f==='live') load(actualDateStr,true);
@@ -96,23 +96,24 @@ function draw(){
  }
  document.getElementById('app').innerHTML=html||'<div style="padding:20px;text-align:center;color:#777">No matches</div>';
 }
+function forceRefresh(){
+ let btn=document.getElementById('refreshBtn');
+ btn.textContent='...';
+ btn.disabled=true;
+ load(getDateStr(),true).finally(()=>{btn.textContent='Refresh';btn.disabled=false;});
+}
 async function load(dateOverride,force){
  if(dateOverride && dateOverride.includes('-')) actualDateStr=dateOverride;
  let dateStr=dateOverride||getDateStr();
  if(!actualDateStr) actualDateStr=dateStr;
-
- // INSTANT 0.1s - only for All/Scheduled, NOT for Live
  if(!force && curFilter!=='live'){
-  let cacheKey='ls_'+dateStr;
-  let cached=localStorage.getItem(cacheKey);
+  let cached=localStorage.getItem('ls_'+dateStr);
   if(cached){try{all=JSON.parse(cached);if(all.length) draw();}catch(e){}}
  }
-
  try{
   let res=await fetch(`/api/football?date=${dateStr}`);
   let data=await res.json();
   all=data.response||data.data||[];
-  // Save cache only if not Live
   if(all.length && curFilter!=='live'){
    localStorage.setItem('ls_'+dateStr,JSON.stringify(all));
   }
