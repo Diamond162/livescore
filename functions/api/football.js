@@ -1,58 +1,73 @@
-export async function onRequest(context){
-  const url=new URL(context.request.url);
-  const dateInput=url.searchParams.get('date')||new Date().toISOString().slice(0,10);
-  // FotMob needs YYYYMMDD
-  const yyyymmdd=dateInput.replace(/-/g,'');
-  try{
-    const res=await fetch(`https://www.fotmob.com/api/data/matches?date=${yyyymmdd}`,{
-      headers:{
-        'User-Agent':'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
-        'Accept':'application/json',
-        'Referer':'https://www.fotmob.com/'
+export async function onRequest(context) {
+  const { request } = context;
+  const url = new URL(request.url);
+  const date = url.searchParams.get('date') || new Date().toISOString().slice(0,10);
+
+  // 1. Try Cloudflare Cache first - this is the protection
+  const cacheKey = new Request(`https://livescore-cache/${date}`, request);
+  const cache = caches.default;
+  let response = await cache.match(cacheKey);
+
+  if (response) {
+    // Return from cache - FotMob no go even know
+    const newHeaders = new Headers(response.headers);
+    newHeaders.set('X-Cache', 'HIT');
+    newHeaders.set('Access-Control-Allow-Origin', '*');
+    return new Response(response.body, { headers: newHeaders });
+  }
+
+  // 2. If not in cache, hit FotMob with safe headers
+  try {
+    const fotmobUrl = `https://www.fotmob.com/api/matches?date=${date}&ccode3=ENG`;
+    
+    const fotmobRes = await fetch(fotmobUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://www.fotmob.com/',
+        'Origin': 'https://www.fotmob.com'
       }
     });
-    const data=await res.json();
-    // data.leagues = [{name, ccode, matches:[{id,time,home,away,status}] }]
-    let flat=[];
-    if(data.leagues){
-      data.leagues.forEach(lg=>{
-        (lg.matches||[]).forEach(m=>{
-          flat.push({
-            fixture:{
-              id:m.id,
-              date:m.status?.utcTime||new Date().toISOString(),
-              status:{
-                short:m.status?.finished?'FT':(m.status?.started?'LIVE':'NS'),
-                elapsed:m.status?.liveTime?.short||null
-              }
-            },
-            league:{
-              id:lg.primaryId,
-              name:lg.name,
-              country:lg.ccode||'INT',
-              flag:lg.ccode
-            },
-            teams:{
-              home:{id:m.home?.id,name:m.home?.name||m.home?.longName,logo:`https://images.fotmob.com/image_resources/logo/teamlogo/${m.home?.id}.png`},
-              away:{id:m.away?.id,name:m.away?.name||m.away?.longName,logo:`https://images.fotmob.com/image_resources/logo/teamlogo/${m.away?.id}.png`}
-            },
-            goals:{
-              home:m.home?.score!=null?m.home.score:null,
-              away:m.away?.score!=null?m.away.score:null
-            },
-            score:{fulltime:{home:m.home?.score,away:m.away?.score}},
-            status:m.status
+
+    let data = await fotmobRes.json();
+    
+    // Convert to your format if needed
+    let matches = [];
+    if (data.leagues) {
+      data.leagues.forEach(league => {
+        league.matches.forEach(m => {
+          matches.push({
+            league: { name: league.name, country: league.ccode || 'INT' },
+            teams: { home: { name: m.home.name }, away: { name: m.away.name } },
+            fixture: { date: m.time, status: { short: m.status?.live ? 'LIVE' : m.status?.finished ? 'FT' : 'NS', elapsed: m.status?.elapsed } },
+            goals: { home: m.home.score, away: m.away.score }
           });
         });
       });
     }
-    // If FotMob returns empty, keep flat empty -> index will show fallback screenshot style
-    return new Response(JSON.stringify({response:flat, date:dateInput, source:'fotmob'}),{
-      headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*","Cache-Control":"no-cache"}
+
+    const jsonResponse = JSON.stringify({ response: matches });
+
+    // 3. SAVE TO CACHE for 60 seconds - Very important
+    response = new Response(jsonResponse, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=60, s-maxage=60',
+        'Access-Control-Allow-Origin': '*',
+        'X-Cache': 'MISS'
+      }
     });
-  }catch(e){
-    return new Response(JSON.stringify({response:[], error:e.message}),{
-      headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*"}
+
+    // Store in Cloudflare edge cache
+    context.waitUntil(cache.put(cacheKey, response.clone()));
+
+    return response;
+
+  } catch (e) {
+    // If FotMob fail, return cached stale or empty
+    return new Response(JSON.stringify({ response: [] }), {
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
   }
 }
