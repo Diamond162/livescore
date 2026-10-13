@@ -1,30 +1,17 @@
-export async function onRequest(context) {
-  const url = new URL(context.request.url);
-  const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0];
-  const KEY = context.env.FOOTBALL_API_KEY;
-  try {
-    const r = await fetch(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&date=${date}&lang=en`);
-    const d = await r.json();
-    const raw = d.matches || d.data?.matches || d.data || d.result || [];
-    const fixed = raw.map(m => {
-      let kickoff = m.kickoff || m.date || m.time || `${date}T15:00:00Z`;
-      if (typeof kickoff === 'number') kickoff = new Date(kickoff * 1000).toISOString();
-      if (typeof m.time === 'string' && m.time.length <= 5 && m.time.includes(':')) kickoff = `${date}T${m.time}:00+00:00`;
-      let st = m.status;
-      if (typeof st === 'object') st = st.name || st.type || '';
-      let s = String(st).toUpperCase();
-      let short = "NS";
-      if (s.includes("LIVE") || s.includes("INPLAY") || s==="1H" || s==="2H") short="LIVE";
-      else if (s.includes("FT") || s.includes("FINISH") || s.includes("ENDED")) short="FT";
-      return {
-        fixture: { id: m.id, date: kickoff, status: { short, long: String(st) } },
-        league: { name: m.league?.name || m.competition?.name || "League", country: m.league?.country || "" },
-        teams: { home: { name: m.home?.name || m.home_name || "Home" }, away: { name: m.away?.name || m.away_name || "Away" } },
-        goals: { home: m.score?.home?? m.home_score?? null, away: m.score?.away?? m.away_score?? null }
-      };
-    });
-    return new Response(JSON.stringify({ response: fixed }), { headers: { "Content-Type":"application/json", "Access-Control-Allow-Origin":"*" } });
-  } catch(e) {
-    return new Response(JSON.stringify({ response:[], error: e.message }), { headers: { "Content-Type":"application/json" } });
-  }
-}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiveScore</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0a;color:white;font-family:Arial,sans-serif}
+header{background:#111;padding:16px;text-align:center;font-size:22px;font-weight:bold;border-bottom:2px solid #ffcc00;position:sticky;top:0;z-index:100}
+#searchBox{width:96%;margin:12px auto;display:block;padding:15px;border-radius:12px;border:none;background:#1e1e1e;color:white;font-size:16px;outline:none}
+#searchBox::placeholder{color:#888}
+.league{background:#1a1a1a;padding:10px 15px;color:#ffcc00;font-weight:bold;font-size:14px;text-transform:uppercase;border-left:4px solid #ffcc00;margin-top:12px}
+.match{display:flex;align-items:center;justify-content:space-between;padding:14px 12px;border-bottom:1px solid #222;background:#121212}
+.match:active{background:#222}
+.time{color:#aaa;font-size:13px;min-width:50px;font-weight:bold}
+.teams{flex:1;margin
