@@ -2,45 +2,47 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FotMob</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}body{background:#121212;color:#fff;font-family:Roboto,Arial,sans-serif}
-.top{background:#000;padding:14px 14px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+.top{background:#000;padding:14px 14px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;border-bottom:1px solid #222}
 .logo{font-weight:900;font-size:22px}.logo span{color:#2ec17c}
-.nav{background:#1e1e1e;display:flex;gap:8px;padding:10px 12px;overflow-x:auto}
-.nav a{padding:7px 14px;border-radius:8px;background:#2a2a2a;color:#8a8a8a;font-weight:700;font-size:14px;text-decoration:none;white-space:nowrap}
+.nav{background:#1e1e1e;display:flex;gap:8px;padding:10px 12px;overflow-x:auto;border-bottom:1px solid #2a2a2a;position:sticky;top:53px;z-index:9}
+.nav a{padding:7px 14px;border-radius:8px;background:#2a2a2a;color:#888;font-weight:700;font-size:14px;text-decoration:none;white-space:nowrap;cursor:pointer}
 .nav a.active{background:#fff;color:#000}
-.filter{background:#1e1e1e;display:flex;gap:8px;padding:8px 12px}
-.filter a{padding:5px 14px;border-radius:20px;background:#2a2a2a;color:#8a8a8a;font-weight:700;font-size:13px;text-decoration:none}
+.filter{background:#1e1e1e;display:flex;gap:8px;padding:8px 12px;border-bottom:2px solid #000;position:sticky;top:96px;z-index:8}
+.filter a{padding:5px 14px;border-radius:20px;background:#2a2a2a;color:#888;font-weight:700;font-size:13px;text-decoration:none;cursor:pointer}
 .filter a.active{background:#3a3a3a;color:#fff}
 .count{padding:8px 12px;color:#666;font-size:12px}
 .league{margin-top:4px;background:#222}
-.leagueHead{padding:10px 12px;display:flex;justify-content:space-between;background:#2a2a2a}
-.leagueHead b{font-size:13px;text-transform:uppercase}
-.row{display:flex;padding:13px 12px;background:#1a1a1a;border-bottom:1px solid #252525}
-.time{width:60px;color:#999;font-size:13px;font-weight:600}
-.name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
-.score{width:45px;text-align:right;font-weight:900}
+.head{padding:10px 12px;display:flex;justify-content:space-between;align-items:center;background:#2a2a2a;border-bottom:1px solid #333}
+.head b{font-size:13px;text-transform:uppercase;letter-spacing:.3px}
+.head a{color:#2ec17c;font-size:12px}
+.row{display:flex;align-items:center;padding:12px 12px;background:#1a1a1a;border-bottom:1px solid #252525;gap:10px}
+.time{width:50px;color:#999;font-size:13px;font-weight:700;flex-shrink:0}
+.name{flex:1;font-size:14px;line-height:1.3;word-break:break-word;white-space:normal}
+.score{width:30px;text-align:right;font-weight:900;font-size:14px;flex-shrink:0}
 .score.ns{color:#555}.score.live{color:#ff3b30}.score.ft{color:#fff}
 .dot{width:6px;height:6px;background:#ff3b30;border-radius:50%;display:inline-block;margin-right:5px;animation:blink 1s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 </style>
 </head>
 <body>
-<div class="top"><div><b id="dateBig">Oct 13, 2026</b><small id="dateSmall">FotMob API • Europe Time (CET)</small></div><div class="logo">fot<span>mob</span></div></div>
+<div class="top"><div><b id="dBig">Oct 14, 2026</b><small id="dSmall" style="font-size:11px;color:#888;display:block">FotMob API • Europe/Berlin</small></div><div class="logo">fot<span>mob</span></div></div>
 <div class="nav" id="nav"><a data-d="yesterday">Yesterday</a><a data-d="today">Today</a><a data-d="tomorrow" class="active">Tomorrow</a><a data-d="more">More days »</a></div>
 <div class="filter" id="fil"><a data-f="all" class="active">All Games</a><a data-f="live">LIVE</a><a data-f="finished">Finished</a></div>
 <div class="count" id="count">Loading...</div>
 <div id="list"></div>
 <script>
+const COUNTRY_NAMES={INT:"International",GER:"Germany",ENG:"England",ESP:"Spain",ITA:"Italy",FRA:"France",POR:"Portugal",NED:"Netherlands",BEL:"Belgium",TUR:"Turkey",JPN:"Japan",KOR:"South Korea",USA:"USA",BRA:"Brazil",ARG:"Argentina",SCO:"Scotland",AUT:"Austria",SUI:"Switzerland",SWE:"Sweden",NOR:"Norway",DEN:"Denmark",CRO:"Croatia",SRB:"Serbia",GRE:"Greece",POL:"Poland",UKR:"Ukraine",ROU:"Romania",CZE:"Czech Republic",JPN:"Japan"};
 let all=[],cur='tomorrow',fil='all';
 function iso(d){return d.toISOString().slice(0,10)}
 function getDate(){if(cur==='today')return iso(new Date());if(cur==='yesterday'){let d=new Date();d.setDate(d.getDate()-1);return iso(d)}if(cur==='tomorrow'){let d=new Date();d.setDate(d.getDate()+1);return iso(d)}return cur}
 async function load(){
  let date=getDate();
- document.getElementById('dateBig').textContent=new Date(date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
- document.getElementById('dateSmall').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' • Europe/Berlin • '+date;
+ document.getElementById('dBig').textContent=new Date(date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+ document.getElementById('dSmall').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' • Europe/Berlin • '+date;
  document.getElementById('count').textContent='Loading '+date+'...';
  try{let r=await fetch('/api/football?date='+date+'&t='+Date.now());let j=await r.json();all=j.response||[]}catch(e){all=[]}
  render();
@@ -52,32 +54,35 @@ function render(){
   if(fil==='finished'&&s!=='FT')return false;
   return true;
  });
+ // ARRANGED BY TIME
+ filtered.sort((a,b)=>new Date(a.fixture.date)-new Date(b.fixture.date));
  let groups={};
  filtered.forEach(m=>{
-  let k=(m.league?.country||'INT')+': '+m.league.name.toUpperCase();
-  if(k.includes('CHAMPIONS'))k='INT: CHAMPIONS LEAGUE';
-  if(!groups[k])groups[k]=[];
-  groups[k].push(m);
+  let code=(m.league?.country||'INT').toUpperCase();
+  let countryFull=COUNTRY_NAMES[code]||code;
+  if(code==='INT' && m.league.name.toLowerCase().includes('champions')) countryFull='International';
+  let key=countryFull+': '+m.league.name;
+  if(!groups[key]) groups[key]=[];
+  groups[key].push(m);
  });
  document.getElementById('count').textContent=filtered.length+' games • '+getDate()+' • Europe Time';
  let html='';
  for(let k in groups){
-  html+='<div class="league"><div class="leagueHead"><b>'+k+'</b><a style="color:#2ec17c">Standings</a></div>';
+  html+='<div class="league"><div class="head"><b>'+k.toUpperCase()+'</b><a style="color:#2ec17c">Standings</a></div>';
   groups[k].forEach(m=>{
    let d=new Date(m.fixture?.date||new Date());
-   // EUROPE TIME - CET/CEST (Berlin)
    let t=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Europe/Berlin'});
    let short=(m.fixture?.status?.short||'NS').toUpperCase();
-   let score='',cls='';
+   let score='',cls='',timeHtml=t;
    if(short==='NS'){cls='ns';score='-';}
-   else if(['LIVE','1H','2H','HT'].includes(short)){cls='live';score=(m.goals?.home??0)+'-'+(m.goals?.away??0);t='<span class="dot"></span>'+(m.fixture?.status?.elapsed||'')+"' "+t;}
-   else if(short==='FT'){cls='ft';score=(m.goals?.home??0)+'-'+(m.goals?.away??0);t='FT';}
+   else if(['LIVE','1H','2H','HT'].includes(short)){cls='live';score=(m.goals?.home??0)+'-'+(m.goals?.away??0);timeHtml='<span class="dot"></span>'+(m.fixture?.status?.elapsed||'LIVE')+"' "+t;}
+   else if(short==='FT'){cls='ft';score=(m.goals?.home??0)+'-'+(m.goals?.away??0);timeHtml='FT';}
    else{cls='ns';score='-';}
-   html+='<div class="row"><div class="time">'+t+'</div><div class="name">'+m.teams.home.name+' - '+m.teams.away.name+'</div><div class="score '+cls+'">'+score+'</div></div>';
+   html+='<div class="row"><div class="time">'+timeHtml+'</div><div class="name">'+m.teams.home.name+' - '+m.teams.away.name+'</div><div class="score '+cls+'">'+score+'</div></div>';
   });
   html+='</div>';
  }
- if(!html) html='<div style="padding:50px;text-align:center;color:#666">No matches</div>';
+ if(!html) html='<div style="padding:60px;text-align:center;color:#666">No matches</div>';
  document.getElementById('list').innerHTML=html;
 }
 document.getElementById('nav').onclick=e=>{let a=e.target.closest('a');if(!a)return;if(a.dataset.d==='more'){let d=prompt('YYYY-MM-DD');if(!d)return;cur=d}else{cur=a.dataset.d;document.querySelectorAll('#nav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');}load();};
