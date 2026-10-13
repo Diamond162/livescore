@@ -3,122 +3,112 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FotMob - Top Leagues Up</title>
+<title>FotMob - Top Leagues Live</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}body{background:#121212;color:#fff;font-family:Roboto,Arial,sans-serif}
-.top{background:#000;padding:14px 14px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;border-bottom:1px solid #222}
-.logo{font-weight:900;font-size:22px}.logo span{color:#2ec17c}
-.nav{background:#1e1e1e;display:flex;gap:8px;padding:10px 12px;overflow-x:auto;border-bottom:1px solid #2a2a2a;position:sticky;top:53px;z-index:9}
-.nav a{padding:7px 14px;border-radius:8px;background:#2a2a2a;color:#888;font-weight:700;font-size:14px;text-decoration:none;white-space:nowrap;cursor:pointer}
-.nav a.active{background:#fff;color:#000}
-.filter{background:#1e1e1e;display:flex;gap:8px;padding:8px 12px;border-bottom:2px solid #000;position:sticky;top:96px;z-index:8}
-.filter a{padding:5px 14px;border-radius:20px;background:#2a2a2a;color:#888;font-weight:700;font-size:13px;text-decoration:none;cursor:pointer}
-.filter a.active{background:#3a3a3a;color:#fff}
-.count{padding:8px 12px;color:#666;font-size:12px}
-.league{margin-top:4px;background:#222}
-.head{padding:10px 12px;display:flex;justify-content:space-between;align-items:center;background:#2a2a2a;border-bottom:1px solid #333}
-.head b{font-size:13px;text-transform:uppercase}
-.head a{color:#2ec17c;font-size:12px}
-.row{display:flex;align-items:center;padding:12px 12px;background:#1a1a1a;border-bottom:1px solid #252525;gap:10px}
-.time{width:70px;color:#999;font-size:12px;font-weight:700;flex-shrink:0;line-height:1.2}
-.name{flex:1;font-size:14px;line-height:1.3;word-break:break-word;white-space:normal}
-.score{width:40px;text-align:right;font-weight:900;font-size:14px;flex-shrink:0}
-.score.ns{color:#555}.score.live{color:#ff3b30}.score.ft{color:#fff}
-.dot{width:6px;height:6px;background:#ff3b30;border-radius:50%;display:inline-block;margin-right:4px;animation:blink 1s infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+body{margin:0;background:#121212;color:#fff;font-family:Roboto,Arial,sans-serif}
+.top-bar{background:#000;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+.logo{font-weight:900;font-size:20px}
+.date-nav{display:flex;gap:6px;overflow-x:auto;padding:10px;background:#1a1a1a}
+.date-nav div{padding:6px 12px;background:#2a2a2a;border-radius:16px;white-space:nowrap;cursor:pointer;font-size:14px}
+.date-nav div.active{background:#fff;color:#000;font-weight:700}
+.league{margin-top:8px;background:#222a2a;border-bottom:1px solid #2a3232;padding:8px}
+.league-name{font-size:12px;text-transform:uppercase;opacity:0.8}
+.match{display:flex;justify-content:space-between;align-items:center;background:#2a2a2a;padding:10px;border-bottom:1px solid #252525}
+.time{font-size:11px;opacity:0.7;min-width:50px}
+.teams{flex:1}
+.score{font-weight:700;min-width:50px;text-align:right}
+.live{color:#ff3b3b;font-weight:900;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 </style>
 </head>
 <body>
-<div class="top"><div><b id="dBig">Oct 13, 2026</b><small id="dSmall" style="font-size:11px;color:#888;display:block">FotMob API • Europe/Berlin • Top Leagues Up</small></div><div class="logo">fot<span>mob</span></div></div>
-<div class="nav" id="nav"><a data-d="yesterday">Yesterday</a><a data-d="today" class="active">Today</a><a data-d="tomorrow">Tomorrow</a><a data-d="more">More days »</a></div>
-<div class="filter" id="fil"><a data-f="all" class="active">All Games</a><a data-f="live">LIVE</a><a data-f="finished">Finished</a></div>
-<div class="count" id="count">Loading...</div>
-<div id="list"></div>
+<div class="top-bar"><div class="logo">FotMob</div><div id="todayDate"></div></div>
+<div class="date-nav" id="dateNav"></div>
+<div id="matches">Loading...</div>
+
 <script>
-const COUNTRY_FULL={INT:"International",GER:"Germany",ENG:"England",ESP:"Spain",ITA:"Italy",FRA:"France",POR:"Portugal",NED:"Netherlands",BEL:"Belgium",TUR:"Turkey",BRA:"Brazil",ARG:"Argentina",PAR:"Paraguay",PER:"Peru",BOL:"Bolivia",CHI:"Chile",COL:"Colombia",ECU:"Ecuador",VEN:"Venezuela",URU:"Uruguay",MEX:"Mexico",USA:"USA",CAN:"Canada",PAN:"Panama",CRC:"Costa Rica",HON:"Honduras",AUS:"Australia",JPN:"Japan",KOR:"South Korea",SCO:"Scotland",AUT:"Austria",SUI:"Switzerland",SWE:"Sweden",NOR:"Norway",DEN:"Denmark",POL:"Poland",UKR:"Ukraine",CZE:"Czech Republic",CRO:"Croatia",SRB:"Serbia",GRE:"Greece",ROU:"Romania",RUS:"Russia",SAU:"Saudi Arabia",KSA:"Saudi Arabia",QAT:"Qatar",EGY:"Egypt",NGA:"Nigeria",MAR:"Morocco",ALG:"Algeria"};
-function getCountryName(code){
- if(!code) return "International";
- let c=code.toUpperCase().trim();
- if(c.length>4) return code;
- if(COUNTRY_FULL[c]) return COUNTRY_FULL[c];
- return c;
+const COUNTRY_FULL = {"INT":"International","GER":"Germany","ENG":"England","ESP":"Spain","ITA":"Italy","FRA":"France","POR":"Portugal","NED":"Netherlands","BEL":"Belgium","TUR":"Turkey","BRA":"Brazil","ARG":"Argentina","USA":"USA","SCO":"Scotland","AUT":"Austria","SUI":"Switzerland","DEN":"Denmark","NOR":"Norway","SWE":"Sweden","POL":"Poland","UKR":"Ukraine","CZE":"Czech","CRO":"Croatia","SRB":"Serbia","GRE":"Greece","JPN":"Japan","KOR":"South Korea","AUS":"Australia","SAU":"Saudi Arabia","EGY":"Egypt","MAR":"Morocco","NGA":"Nigeria"};
+function getCountryName(c){ if(!c) return 'International'; c=c.toUpperCase(); return COUNTRY_FULL[c]||c; }
+
+function getPriority(leagueName,country){
+  const n = leagueName.toLowerCase(); const cc = (country||'').toLowerCase();
+  if(n.includes('champions league')) return 1;
+  if(n.includes('europa league')) return 2;
+  if(n.includes('premier league') && (cc.includes('eng')||n.includes('eng'))) return 4;
+  if(n.includes('la liga') || n.includes('laliga')) return 5;
+  if(n.includes('bundesliga')) return 6;
+  if(n.includes('ligue 1')) return 8;
+  if(n.includes('serie a') && cc.includes('ita')) return 7;
+  if(n.includes('eredivisie')) return 9;
+  if(n.includes('super lig')||n.includes('superlig')) return 10;
+  if(n.includes('championship')) return 12;
+  if(n.includes('serie a') && n.includes('brazil')) return 90;
+  if(n.includes('pro') && n.includes('saudi')) return 80;
+  return 50;
 }
-// TOP LEAGUES PRIORITY - lower number = higher up
-function getPriority(leagueName, country){
- let n=(leagueName||'').toLowerCase();
- let cc=(country||'').toLowerCase();
- if(n.includes('champions league')) return 1;
- if(n.includes('europa league')) return 2;
- if(n.includes('conference league')) return 3;
- if(n.includes('premier league') && (cc.includes('eng')||cc.includes('england'))) return 4;
- if(n.includes('la liga') || n.includes('laliga')) return 5;
- if(n.includes('bundesliga')) return 6;
- if(n.includes('serie a')) return 7;
- if(n.includes('ligue 1')) return 8;
- if(n.includes('eredivisie')) return 9;
- if(n.includes('primeira liga') || (n.includes('liga portugal'))) return 10;
- if(n.includes('süper lig') || n.includes('super lig')) return 11;
- if(n.includes('championship')) return 12;
- if(n.includes('serie b') && cc.includes('brazil')) return 90;
- if(n.includes('primera nacional')) return 91;
- if(n.includes('lpf apertura')) return 92;
- return 50;
+
+function allDates(){
+  let cur = new Date(); cur.setHours(0,0,0,0);
+  let dates=[]; for(let i=-3;i<=4;i++){ let d=new Date(cur); d.setDate(cur.getDate()+i); dates.push(d); } return dates;
 }
-let all=[],cur='today',fil='all';
-function iso(d){return d.toISOString().slice(0,10)}
-function getDate(){if(cur==='today')return iso(new Date());if(cur==='yesterday'){let d=new Date();d.setDate(d.getDate()-1);return iso(d)}if(cur==='tomorrow'){let d=new Date();d.setDate(d.getDate()+1);return iso(d)}return cur}
-async function load(){
- let date=getDate();
- document.getElementById('dBig').textContent=new Date(date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
- document.getElementById('dSmall').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' • Europe/Berlin • '+date+' • Top Leagues Up';
- document.getElementById('count').textContent='Loading '+date+'...';
- try{let r=await fetch('/api/football?date='+date+'&t='+Date.now());let j=await r.json();all=j.response||[]}catch(e){all=[]}
- render();
+function formatDate(d){ return d.toISOString().slice(0,10); }
+function getLabel(d){
+  let cur=new Date(); cur.setHours(0,0,0,0);
+  let diff=Math.round((d-cur)/86400000);
+  if(diff===0) return 'Today'; if(diff===-1) return 'Yesterday'; if(diff===1) return 'Tomorrow';
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
 }
-function render(){
- let filtered=all.filter(m=>{
-  let s=(m.fixture?.status?.short||'NS').toUpperCase();
-  if(fil==='live'&&!['LIVE','1H','2H','HT'].includes(s))return false;
-  if(fil==='finished'&&s!=='FT')return false;
-  return true;
- });
- filtered.sort((a,b)=>new Date(a.fixture.date)-new Date(b.fixture.date));
- let groups={};
- filtered.forEach(m=>{
-  let code=(m.league?.country||'INT').toUpperCase();
-  let countryFull=getCountryName(code);
-  let key=countryFull+': '+m.league.name;
-  if(!groups[key]){
-   groups[key]={matches:[],priority:getPriority(m.league.name, code),leagueName:m.league.name};
-  }
-  groups[key].matches.push(m);
- });
- // ARRANGE GROUPS - Top leagues first
- let sortedGroups=Object.entries(groups).sort((a,b)=>a[1].priority-b[1].priority);
- document.getElementById('count').textContent=filtered.length+' games • '+getDate()+' • Top Leagues First • Europe Time';
- let html='';
- sortedGroups.forEach(([k,g])=>{
-  html+='<div class="league"><div class="head"><b>'+k.toUpperCase()+'</b><a style="color:#2ec17c">Standings</a></div>';
-  g.matches.forEach(m=>{
-   let d=new Date(m.fixture?.date||new Date());
-   let t=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Europe/Berlin'});
-   let short=(m.fixture?.status?.short||'NS').toUpperCase();
-   let score='',cls='',timeHtml=t;
-   if(short==='NS'){cls='ns';score='-';}
-   else if(['LIVE','1H','2H','HT'].includes(short)){cls='live';score=(m.goals?.home??0)+'-'+(m.goals?.away??0);timeHtml='<span class="dot"></span>'+(m.fixture?.status?.elapsed||'LIVE')+"' "+t;}
-   else if(short==='FT'){cls='ft';score=(m.goals?.home??0)+'-'+(m.goals?.away??0);timeHtml='FT';}
-   else{cls='ns';score='-';}
-   html+='<div class="row"><div class="time">'+timeHtml+'</div><div class="name">'+m.teams.home.name+' - '+m.teams.away.name+'</div><div class="score '+cls+'">'+score+'</div></div>';
+
+let currentDate = formatDate(new Date());
+document.getElementById('todayDate').textContent=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+
+function renderDates(){
+  const nav=document.getElementById('dateNav');
+  nav.innerHTML='';
+  allDates().forEach(d=>{
+    let fd=formatDate(d);
+    let div=document.createElement('div');
+    div.textContent=getLabel(d);
+    if(fd===currentDate) div.classList.add('active');
+    div.onclick=()=>{ currentDate=fd; renderDates(); loadMatches(); };
+    nav.appendChild(div);
   });
-  html+='</div>';
- });
- if(!html) html='<div style="padding:60px;text-align:center;color:#666">No matches</div>';
- document.getElementById('list').innerHTML=html;
 }
-document.getElementById('nav').onclick=e=>{let a=e.target.closest('a');if(!a)return;if(a.dataset.d==='more'){let d=prompt('YYYY-MM-DD');if(!d)return;cur=d}else{cur=a.dataset.d;document.querySelectorAll('#nav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');}load();};
-document.getElementById('fil').onclick=e=>{let a=e.target.closest('a');if(!a)return;fil=a.dataset.f;document.querySelectorAll('#fil a').forEach(x=>x.classList.remove('active'));a.classList.add('active');render();};
-load();
-setInterval(load,60000);
+
+async function loadMatches(){
+  const box=document.getElementById('matches');
+  box.innerHTML='Loading...';
+  try{
+    let r=await fetch('/api/football?date='+currentDate+'&t='+Date.now());
+    let j=await r.json();
+    let data=j.response||[];
+    if(!data.length){ box.innerHTML='<div style="padding:20px;text-align:center">No matches for '+currentDate+'</div>'; return; }
+
+    // group by league
+    let leagues={};
+    data.forEach(m=>{
+      let key=m.league.name+'|'+m.league.country;
+      if(!leagues[key]) leagues[key]={...m.league, matches:[], priority:getPriority(m.league.name,m.league.country)};
+      leagues[key].matches.push(m);
+    });
+    let sorted=Object.values(leagues).sort((a,b)=>a.priority-b.priority);
+
+    let html='';
+    sorted.forEach(l=>{
+      html+=`<div class="league"><div class="league-name">${getCountryName(l.country)} - ${l.name}</div></div>`;
+      l.matches.forEach(m=>{
+        let status=m.fixture.status.short;
+        let isLive=status==='LIVE';
+        let timeText=isLive?`<span class="live">${m.fixture.status.elapsed||'LIVE'}</span>`: (status==='FT'? 'FT' : new Date(m.fixture.date).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));
+        let score=(m.goals.home!=null)? `${m.goals.home} - ${m.goals.away}` : 'vs';
+        html+=`<div class="match"><div class="time">${timeText}</div><div class="teams"><div>${m.teams.home.name}</div><div>${m.teams.away.name}</div></div><div class="score">${score}</div></div>`;
+      });
+    });
+    box.innerHTML=html;
+  }catch(e){ box.innerHTML='Error: '+e.message; }
+}
+
+renderDates(); loadMatches();
 </script>
 </body>
 </html>
