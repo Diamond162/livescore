@@ -7,20 +7,20 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#000;color:#fff;font-family:Arial,Roboto,sans-serif;font-size:14px}
-header{background:#000;padding:12px;text-align:center;font-size:20px;font-weight:800;border-bottom:3px solid #00d26a;position:sticky;top:0;z-index:20}
-.top-tabs{display:flex;gap:8px;padding:10px;background:#0e0e0e;overflow-x:auto;position:sticky;top:48px;z-index:19;border-bottom:1px solid #222}
-.top-tabs button{padding:9px 16px;border-radius:20px;border:1px solid #333;background:#1e1e1e;color:#aaa;font-weight:700;white-space:nowrap}
+header{background:#000;padding:12px;text-align:center;font-size:20px;font-weight:800;border-bottom:2px solid #00d26a;position:sticky;top:0;z-index:20}
+.top-tabs{display:flex;gap:8px;padding:10px;background:#0e0e0e;overflow-x:auto;position:sticky;top:48px;z-index:15;border-bottom:1px solid #151515}
+.top-tabs button{padding:8px 16px;border-radius:20px;border:1px solid #333;background:#1e1e1e;color:#aaa;font-weight:700;white-space:nowrap}
 .top-tabs button.active{background:#00d26a;color:#000;border-color:#00d26a}
-.top-tabs input{background:#1e1e1e;color:#fff;border:1px solid #333;border-radius:20px;padding:8px 12px}
-.filters{display:flex;gap:6px;padding:8px;background:#000;border-bottom:1px solid #1a1a1a;overflow-x:auto}
-.filters button{padding:7px 12px;border-radius:6px;border:0;background:#1e1e1e;color:#ccc;font-size:12px;font-weight:700}
+.top-tabs input{background:#111;color:#fff;border:1px solid #333;border-radius:20px;padding:8px 12px}
+.filters{display:flex;gap:6px;padding:8px;background:#050505;border-bottom:1px solid #1a1a1a;overflow-x:auto}
+.filters button{padding:7px 12px;border-radius:6px;border:1px solid #222;background:#1a1a1a;color:#ccc;font-size:12px;font-weight:700}
 .filters button.active{background:#fff;color:#000}
-#search{width:96%;margin:8px auto;display:block;padding:11px 12px;border-radius:8px;border:1px solid #222;background:#141414;color:#fff}
-.league-header{background:#151515;color:#fff;padding:8px 8px;font-weight:700;font-size:11px;text-transform:uppercase;display:flex;justify-content:space-between;border-top:1px solid #222}
+#search{width:90%;margin:8px auto;display:block;padding:11px 12px;border-radius:8px;border:1px solid #222;background:#141414;color:#fff}
+.league-header{background:#151515;color:#fff;padding:8px 10px;font-weight:700;font-size:11px;text-transform:uppercase;display:flex;justify-content:space-between}
 .league-header span:last-child{color:#00d26a;font-size:10px;text-transform:none}
 .match-row{display:flex;align-items:center;padding:10px 8px;background:#000;border-bottom:1px solid #151515}
-.m-time{width:50px;color:#aaa;font-size:13px;font-weight:600}
-.m-time.live{color:#ff3b3b}
+.m-time{width:55px;color:#aaa;font-size:12px;font-weight:600}
+.m-time.live{color:#00ff64;font-weight:800}
 .m-teams{flex:1;padding:0 8px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .m-score{width:40px;text-align:center;color:#00d26a;font-weight:800}
 .m-score.ft{color:#777}
@@ -60,15 +60,23 @@ function getTime(fix){
     if(fix.timestamp) dt=new Date(fix.timestamp*1000);
     else if(fix.date) dt=new Date(fix.date);
     if(!dt || isNaN(dt)) return {time:'--:--', status:fix.status.short||'NS', isLive:false};
-    // EUROPE TIME - Like FlashScore (Berlin)
+
     const time=dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Europe/Berlin'});
     const isLive=['1H','2H','HT','LIVE','ET','P','BT'].includes(fix.status.short);
-    return {time,isLive,status:fix.status.short};
+
+    // FIX: Show live minute 34' 67' etc from backend
+    if(fix.status.elapsed){
+      return {time: fix.status.elapsed + "'", status:fix.status.short, isLive:true};
+    }
+    if(isLive){
+      return {time: fix.status.short, status:fix.status.short, isLive:true};
+    }
+    return {time, isLive:false, status:fix.status.short};
   }catch{return {time:'--:--',status:'NS',isLive:false};}
 }
 async function load(d){
   curDate=d;
-  document.getElementById('app').innerHTML='<div style="padding:30px;text-align:center;color:#777">Loading '+d+'...</div>';
+  document.getElementById('app').innerHTML='<div style="padding:30px;text-align:center;color:#777">Loading...</div>';
   try{
     const r=await fetch('/api/football?date='+d);
     const j=await r.json();
@@ -78,57 +86,4 @@ async function load(d){
 }
 function draw(){
   let list=[...ALL];
-  const q=document.getElementById('search').value.toLowerCase();
-  if(curFilter==='live') list=list.filter(m=>['1H','2H','HT','LIVE','ET','P','BT'].includes(m.fixture.status.short));
-  else if(curFilter==='finished') list=list.filter(m=>['FT','AET','PEN'].includes(m.fixture.status.short));
-  else if(curFilter==='scheduled') list=list.filter(m=>['NS','TBD'].includes(m.fixture.status.short));
-  if(q) list=list.filter(m=>(m.teams.home.name+' '+m.teams.away.name+' '+m.league.name+' '+m.league.country).toLowerCase().includes(q));
-  list.sort((a,b)=>{
-    const aI=TOP.findIndex(x=>a.league.name.includes(x));
-    const bI=TOP.findIndex(x=>b.league.name.includes(x));
-    const aa=aI==-1?999:aI, bb=bI==-1?999:bI;
-    if(aa!==bb) return aa-bb;
-    if(a.league.name!==b.league.name) return a.league.name.localeCompare(b.league.name);
-    return (a.fixture.timestamp||0)-(b.fixture.timestamp||0);
-  });
-  let html='', last='';
-  list.forEach(m=>{
-    const leagueName=(m.league.country?m.league.country.toUpperCase()+': ':'')+m.league.name;
-    if(leagueName!==last){
-      html+=`<div class="league-header"><span>${leagueName}</span><span>Standings</span></div>`;
-      last=leagueName;
-    }
-    const {time,isLive,status}=getTime(m.fixture);
-    let score='-';
-    if(m.goals.home!=null && m.goals.away!=null) score=`${m.goals.home} - ${m.goals.away}`;
-    else if(status==='NS'||status==='TBD') score='-';
-    else score=status;
-    const timeHtml=isLive?`<span style="color:#ff3b3b">${time}</span>`:time;
-    html+=`<div class="match-row">
-      <div class="m-time ${isLive?'live':''}">${timeHtml}</div>
-      <div class="m-teams">${m.teams.home.name} - ${m.teams.away.name}</div>
-      <div class="m-score ${status==='FT'?'ft':''}">${score}</div>
-    </div>`;
-  });
-  document.getElementById('app').innerHTML=html||'<div style="padding:30px;text-align:center">No games found</div>';
-}
-document.getElementById('topTabs').addEventListener('click',e=>{
-  if(e.target.tagName!=='BUTTON') return;
-  document.querySelectorAll('.top-tabs button').forEach(b=>b.classList.remove('active'));
-  e.target.classList.add('active');
-  load(dateFor(e.target.dataset.d));
-});
-document.getElementById('pickDate').addEventListener('change',e=>{if(e.target.value) load(e.target.value);});
-document.getElementById('filters').addEventListener('click',e=>{
-  if(e.target.tagName!=='BUTTON'||e.target.id==='btnRefresh') return;
-  document.querySelectorAll('.filters button').forEach(b=>b.classList.remove('active'));
-  e.target.classList.add('active');
-  curFilter=e.target.dataset.f;
-  draw();
-});
-document.getElementById('btnRefresh').addEventListener('click',()=>load(curDate));
-document.getElementById('search').addEventListener('input',draw);
-load(dateFor('today'));
-</script>
-</body>
-</html>
+  const q=document.get
