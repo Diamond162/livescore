@@ -44,7 +44,8 @@ export async function onRequest(context) {
       return {
         fixture: { id: m.id, date: iso, timestamp: ts, status: { short, long: disp, elapsed } },
         league: { name: leagueName, country, full: country? `${country}: ${leagueName}`: leagueName },
-        teams: { home: { name: m.home?.name || "Home" }, away: { name: m.away?.name || "Away" } },
+        homeName = full_name || long_name || complete_name || name
+awayName = full_name || long_name || complete_name || name
         goals: { home: m.home?.score!=null?parseInt(m.home.score):null, away: m.away?.score!=null?parseInt(m.away.score):null },
         _isLive: short==="LIVE"
       };
