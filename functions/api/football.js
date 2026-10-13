@@ -9,12 +9,12 @@ export async function onRequest(context) {
     const raw = d.matches || d.data?.matches || d.data || d.result || [];
 
     const fixed = raw.map(m => {
-      let timeStr = m.kickoff || m.time || m.start_time || m.date || "";
+      // --- 1. TIME: API is UTC -> keep as Z for Europe/Berlin conversion ---
+      let timeStr = m.kickoff || m.time || m.start_time || m.date || m.startTime || "";
       let kickoffISO = "";
       let timestamp = 0;
 
       if (typeof timeStr === "string" && timeStr.length <= 5 && timeStr.includes(":")) {
-        // API gives UTC like "16:45", we store as UTC Z so frontend can convert to Europe
         kickoffISO = `${date}T${timeStr}:00Z`;
         timestamp = Math.floor(new Date(kickoffISO).getTime() / 1000);
       } else if (typeof timeStr === "string" && timeStr.includes("T")) {
@@ -27,24 +27,58 @@ export async function onRequest(context) {
         kickoffISO = m.date;
         timestamp = Math.floor(new Date(m.date).getTime() / 1000);
       }
-
       if (!timestamp || isNaN(timestamp)) {
         kickoffISO = `${date}T12:00:00Z`;
         timestamp = Math.floor(new Date(kickoffISO).getTime() / 1000);
       }
 
-      let st = m.status;
-      if (typeof st === "object" && st!== null) st = st.name || st.type || st.short || "NS";
-      let s = String(st || "").toUpperCase();
+      // --- 2. STATUS: Robust ---
+      let st = m.status || m.state || m.match_status || "NS";
+      if (typeof st === "object") st = st.name || st.type || st.short || st.status || "NS";
+      let s = String(st).toUpperCase();
       let short = "NS";
-      if (s.includes("LIVE") || s.includes("1H") || s.includes("2H") || s.includes("HT")) short = "LIVE";
-      else if (s.includes("FT") || s.includes("FINISH") || s.includes("ENDED") || s.includes("FINAL")) short = "FT";
+      if (s.includes("LIVE") || s.includes("1H") || s.includes("2H") || s.includes("HT") || s.includes("INPLAY") || s === "IN_PLAY") short = "LIVE";
+      else if (s.includes("FT") || s.includes("FINISH") || s.includes("ENDED") || s.includes("FULL") || s === "FINISHED" || s === "FT") short = "FT";
+
+      // --- 3. SCORE: Check EVERY possible field name ---
+      let homeG = null, awayG = null;
+      // direct numbers
+      if (m.homeScore!= null) homeG = m.homeScore;
+      else if (m.home_score!= null) homeG = m.home_score;
+      else if (m.homeGoals!= null) homeG = m.homeGoals;
+      else if (m.goals?.home!= null) homeG = m.goals.home;
+      else if (m.score?.home!= null) homeG = m.score.home;
+      else if (m.scores?.home!= null) homeG = m.scores.home;
+      else if (m.result?.home!= null) homeG = m.result.home;
+
+      if (m.awayScore!= null) awayG = m.awayScore;
+      else if (m.away_score!= null) awayG = m.away_score;
+      else if (m.awayGoals!= null) awayG = m.awayGoals;
+      else if (m.goals?.away!= null) awayG = m.goals.away;
+      else if (m.score?.away!= null) awayG = m.score.away;
+      else if (m.scores?.away!= null) awayG = m.scores.away;
+      else if (m.result?.away!= null) awayG = m.result.away;
+
+      // parse string like "2-1" or "2:1"
+      if ((homeG == null) && typeof m.score === "string" && m.score.includes("-")) {
+        const parts = m.score.split("-");
+        homeG = parseInt(parts[0]); awayG = parseInt(parts[1]);
+      }
+      if ((homeG == null) && typeof m.result === "string" && m.result.includes("-")) {
+        const parts = m.result.split("-");
+        homeG = parseInt(parts[0]); awayG = parseInt(parts[1]);
+      }
+
+      // --- Force FT to have score if API gives FT but no score, mark as FT still ---
+      if (short === "FT" && (homeG == null || isNaN(homeG))) {
+        // keep as null, frontend will show 0-0 fallback? better keep null to debug
+      }
 
       return {
-        fixture: { id: m.id || Math.random(), date: kickoffISO, timestamp: timestamp, status: { short: short, long: String(st) } },
-        league: { name: m.league?.name || m.competition?.name || m.league_name || "Other", country: m.competition?.country || m.country || "" },
-        teams: { home: { name: m.home_team || m.home?.name || m.teams?.home || m.home || "Home" }, away: { name: m.away_team || m.away?.name || m.teams?.away || m.away || "Away" } },
-        goals: { home: m.home_score?? m.score?.home?? null, away: m.away_score?? m.score?.away?? null }
+        fixture: { id: m.id || m.match_id || Math.random(), date: kickoffISO, timestamp: timestamp, status: { short: short, long: String(st) } },
+        league: { name: m.league?.name || m.competition?.name || m.league_name || m.competition || "Other", country: m.league?.country || m.country || "" },
+        teams: { home: { name: m.home_team || m.home?.name || m.homeTeam?.name || m.teams?.home || m.home || "Home" }, away: { name: m.away_team || m.away?.name || m.awayTeam?.name || m.teams?.away || m.away || "Away" } },
+        goals: { home: homeG, away: awayG }
       };
     });
 
