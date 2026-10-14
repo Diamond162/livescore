@@ -7,38 +7,36 @@ export async function onRequest(context) {
   if(dateParam==='yesterday'){let d=new Date();d.setDate(d.getDate()-1);targetDate=toYYYYMMDD(d);}
   else if(dateParam==='tomorrow'){let d=new Date();d.setDate(d.getDate()+1);targetDate=toYYYYMMDD(d);}
   else if(/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) targetDate=dateParam;
-  else if(dateParam==='today') targetDate=todayStr;
-  else targetDate=todayStr;
 
   const API_KEY = context.env.API_FOOTBALL_KEY || context.env.FOOTBALL_API_KEY || '';
 
-  async function fetchAPI(u){
-    const r = await fetch(u,{headers:{'x-apisports-key':API_KEY}});
-    const j = await r.json();
-    return j;
-  }
-
-  let finalResponse = [];
-  let debug = {keySet:!!API_KEY, targetDate};
-
   if(!API_KEY){
-    return new Response(JSON.stringify({response:[], error:"API_KEY not set in Cloudflare env"}),{headers:{"Content-Type":"application/json"}});
+    return new Response(JSON.stringify({response:[], error:"NO KEY - Add API_FOOTBALL_KEY in Cloudflare Pages > Settings > Env variables"}),{headers:{"Content-Type":"application/json"}});
   }
 
-  // 1. Try date
-  let j1 = await fetchAPI(`https://v3.football.api-sports.io/fixtures?date=${targetDate}`);
-  debug.dateCount = (j1.response||[]).length;
-  debug.api_errors = j1.errors;
-  finalResponse = j1.response||[];
-
-  // 2. If empty, try LIVE
-  if(finalResponse.length===0){
-    let jLive = await fetchAPI(`https://v3.football.api-sports.io/fixtures?live=all`);
-    debug.liveCount = (jLive.response||[]).length;
-    finalResponse = jLive.response||[];
+  async function callAPI(apiUrl){
+    const res = await fetch(apiUrl,{headers:{'x-apisports-key':API_KEY}});
+    const json = await res.json();
+    return json;
   }
 
-  const norm = finalResponse.map(f=>{
+  // TRY DATE FIRST
+  let data = await callAPI(`https://v3.football.api-sports.io/fixtures?date=${targetDate}`);
+  let list = data.response||[];
+
+  // IF TODAY EMPTY (like your screenshot 2026-10-14) → GET LIVE GAMES
+  if(list.length===0){
+    let liveData = await callAPI(`https://v3.football.api-sports.io/fixtures?live=all`);
+    list = liveData.response||[];
+    // If live also empty, try current real date 2026-05-13
+    if(list.length===0){
+      let realToday = new Date().toISOString().split('T')[0];
+      let realData = await callAPI(`https://v3.football.api-sports.io/fixtures?date=${realToday}`);
+      list = realData.response||[];
+    }
+  }
+
+  const norm = list.map(f=>{
     const fix=f.fixture||{}; const sts=fix.status||{};
     return {
       fixture:{id:fix.id,date:fix.date,status:{short:sts.short||'NS',long:sts.long||'Not Started',elapsed:sts.elapsed??null}},
@@ -48,7 +46,7 @@ export async function onRequest(context) {
     };
   });
 
-  return new Response(JSON.stringify({response:norm, debug:debug}),{
-    headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*","Cache-Control":"public, max-age=15"}
+  return new Response(JSON.stringify({response:norm, results:norm.length, date:targetDate, usedLive:norm.length>0 && data.response?.length===0}),{
+    headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*","Cache-Control":"no-cache"}
   });
 }
