@@ -1,61 +1,49 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LiveScore - Black & Green • Europe Time</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LiveScore - BLACK & GREEN • Europe Time</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:#0a0a0a;color:#eee;font-family:Arial,Helvetica,sans-serif}
-header{background:#000;color:#00ff88;padding:14px;text-align:center;font-weight:bold;font-size:19px;border-bottom:2px solid #00ff88;position:sticky;top:0;z-index:20}
-#topBar{background:#111;padding:8px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
-#topBar button{padding:8px 16px;background:#1e1e1e;color:#fff;border:1px solid #333;border-radius:20px;cursor:pointer}
-#topBar button.active{background:#00ff88;color:#000;font-weight:bold}
-#filters{background:#0e0e0e;padding:8px;display:flex;gap:6px;overflow-x:auto;border-bottom:1px solid #222}
-#filters button{padding:7px 12px;background:#1c1c1c;border:1px solid #333;color:#ccc;border-radius:4px;white-space:nowrap;cursor:pointer}
-#filters button.active{background:#00ff88;color:#000;border-color:#00ff88;font-weight:bold}
-.searchBox{padding:8px;background:#121212}
-.searchBox input{width:100%;padding:10px 12px;background:#1e1e1e;border:1px solid #333;color:#fff;border-radius:6px;outline:none}
-.league-header{background:#000;color:#ffcc00;padding:9px 10px;font-weight:bold;font-size:12px;text-transform:uppercase;border-left:4px solid #00ff88;display:flex;justify-content:space-between;margin-top:6px;position:sticky;top:52px}
-.match-row{background:#151515;padding:10px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #222;cursor:pointer}
-.match-row:hover{background:#1e1e1e}
-.match-row.liveRow{background:#1d1010}
-.time{width:52px;font-size:13px;color:#888;font-weight:500}
-.time.live{color:#ff3b3b;font-weight:bold}
-.teams{flex:1}
-.team{font-size:14px;line-height:18px}
-.team.winner{font-weight:bold;color:#fff}
-.score{width:62px;text-align:center;font-weight:bold;font-size:14px}
-.score.finished{color:#00ff88}
-.score.live{color:#ff3b3b}
-.score.scheduled{color:#5aa8ff}
-#detail{position:fixed;bottom:0;left:0;right:0;background:#111;border-top:3px solid #00ff88;padding:18px;display:none;z-index:99}
-#detail.show{display:block}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0a;color:#fff;font-family:system-ui,sans-serif;padding-bottom:80px}
+.header{background:#111;border-bottom:3px solid #00ff88;padding:16px;text-align:center;position:sticky;top:0;z-index:10}
+.header h1{color:#00ff88;font-size:22px}
+.tabs{display:flex;gap:10px;justify-content:center;padding:14px;flex-wrap:wrap}
+.tab{background:#222;border:1px solid #333;padding:10px 20px;border-radius:30px;cursor:pointer;color:#aaa}
+.tab.active{background:#00ff88;color:#000;font-weight:bold}
+.filters{display:flex;gap:8px;overflow-x:auto;padding:0 12px 10px}
+.f{background:#222;border:1px solid #333;padding:8px 14px;border-radius:20px;cursor:pointer;white-space:nowrap}
+.f.active{background:#00ff88;color:#000}
+.search{margin:12px;padding:0 12px}
+.search input{width:100%;padding:12px 16px;border-radius:10px;border:1px solid #333;background:#1a1a1a;color:#fff;outline:none}
+.match{background:#151515;border:1px solid #222;margin:8px 12px;border-radius:12px;padding:12px}
+.league{font-size:11px;color:#00ff88;margin-bottom:6px;text-transform:uppercase}
+.teams{display:flex;justify-content:space-between;align-items:center}
+.team{display:flex;align-items:center;gap:8px;flex:1}
+.team img{width:24px;height:24px;object-fit:contain}
+.score{font-weight:bold;font-size:18px;min-width:50px;text-align:center}
+.status{font-size:11px;text-align:center;margin-top:6px;color:#888}
+.status.live{color:#ff4444;font-weight:bold}
+.status.ft{color:#aaa}
 </style>
 </head>
 <body>
-<header>⚽ LiveScore — BLACK & GREEN • Europe Time</header>
-<div id="topBar">
-<button onclick="setDate('yesterday')" id="btnY">Yesterday</button>
-<button onclick="setDate('today')" id="btnT" class="active">Today</button>
-<button onclick="setDate('tomorrow')" id="btnTo">Tomorrow</button>
-<input type="date" id="pickDate" onchange="pick(this.value)" style="background:#222;color:#fff;border:1px solid #444;padding:6px;border-radius:4px">
-</div>
-<div id="filters">
-<button onclick="setFilter('All')" id="All" class="active">All</button>
-<button onclick="setFilter('Live')" id="Live">🔴 Live</button>
-<button onclick="setFilter('Scheduled')" id="Scheduled">Scheduled</button>
-<button onclick="setFilter('Finished')" id="Finished">Finished</button>
-<button onclick="fetchData()">↻ Refresh</button>
-</div>
-<div class="searchBox"><input id="search" placeholder="Search team, country or league..." oninput="render()"></div>
-<div id="app" style="padding-bottom:50px">Loading...</div>
-<div id="detail"></div>
+<div class="header"><h1>⚽ LiveScore — BLACK & GREEN • Europe Time</h1></div>
 
-<script>
-let allFixtures=[]; let currentDate=new Date().toISOString().split('T')[0]; let currentFilter='All';
-const TOP_LEAGUES=["champions league","premier league","la liga","serie a","bundesliga","ligue 1","europa league","conference league","england","spain","italy","germany","france","europe"];
-function getPriority(name){let n=name.toLowerCase(); for(let i=0;i<TOP_LEAGUES.length;i++){ if(n.includes(TOP_LEAGUES[i])) return i; } return 999;}
-function setFilter(f){currentFilter=f; document.querySelectorAll('#filters button').forEach(b=>b.classList.remove('active')); document.getElementById(f)?.classList.add('active'); render();}
-function setDate(d){
-  document.querySelectorAll('#topBar button').forEach(b=>b.classList.remove('
+<div class="tabs">
+  <div class="tab" data-date="yesterday">Yesterday</div>
+  <div class="tab active" data-date="today">Today</div>
+  <div class="tab" data-date="tomorrow">Tomorrow</div>
+</div>
+
+<div class="filters">
+  <div class="f active" data-filter="all">All</div>
+  <div class="f" data-filter="live">🔴 Live</div>
+  <div class="f" data-filter="scheduled">Scheduled</div>
+  <div class="f" data-filter="finished">Finished</div>
+</div>
+
+<div class="search"><input id="q" placeholder="Search team, country or league..."></div>
+
+<div id="list"><p style="padding:20px;text-align:center;color
