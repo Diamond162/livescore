@@ -3,47 +3,113 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LiveScore - BLACK & GREEN • Europe Time</title>
+<title>LiveScore BLACK & GREEN Europe Time</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0a0a0a;color:#fff;font-family:system-ui,sans-serif;padding-bottom:80px}
-.header{background:#111;border-bottom:3px solid #00ff88;padding:16px;text-align:center;position:sticky;top:0;z-index:10}
-.header h1{color:#00ff88;font-size:22px}
-.tabs{display:flex;gap:10px;justify-content:center;padding:14px;flex-wrap:wrap}
-.tab{background:#222;border:1px solid #333;padding:10px 20px;border-radius:30px;cursor:pointer;color:#aaa}
-.tab.active{background:#00ff88;color:#000;font-weight:bold}
-.filters{display:flex;gap:8px;overflow-x:auto;padding:0 12px 10px}
-.f{background:#222;border:1px solid #333;padding:8px 14px;border-radius:20px;cursor:pointer;white-space:nowrap}
+body{background:#070707;color:#fff;font-family:system-ui;min-height:100vh}
+.header{background:#0f0f0f;border-bottom:3px solid #00ff88;padding:16px;text-align:center;position:sticky;top:0;z-index:10}
+.header h1{color:#00ff88;font-size:20px}
+.tabs{display:flex;gap:8px;justify-content:center;padding:14px}
+.tab{background:#222;border:1px solid #333;padding:10px 22px;border-radius:30px;cursor:pointer;color:#999}
+.tab.active{background:#00ff88;color:#000;font-weight:800}
+.filters{display:flex;gap:8px;overflow-x:auto;padding:0 12px 12px}
+.f{background:#1e1e1e;border:1px solid #333;padding:8px 14px;border-radius:20px;cursor:pointer;white-space:nowrap;font-size:14px}
 .f.active{background:#00ff88;color:#000}
-.search{margin:12px;padding:0 12px}
-.search input{width:100%;padding:12px 16px;border-radius:10px;border:1px solid #333;background:#1a1a1a;color:#fff;outline:none}
-.match{background:#151515;border:1px solid #222;margin:8px 12px;border-radius:12px;padding:12px}
-.league{font-size:11px;color:#00ff88;margin-bottom:6px;text-transform:uppercase}
+.search{padding:0 12px 10px}
+.search input{width:100%;padding:13px 16px;border-radius:12px;border:1px solid #333;background:#141414;color:#fff}
+.match{background:#151515;border:1px solid #232323;margin:8px 12px;border-radius:14px;padding:12px}
+.league{font-size:11px;color:#00ff88;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
 .teams{display:flex;justify-content:space-between;align-items:center}
-.team{display:flex;align-items:center;gap:8px;flex:1}
-.team img{width:24px;height:24px;object-fit:contain}
-.score{font-weight:bold;font-size:18px;min-width:50px;text-align:center}
-.status{font-size:11px;text-align:center;margin-top:6px;color:#888}
-.status.live{color:#ff4444;font-weight:bold}
-.status.ft{color:#aaa}
+.team{display:flex;align-items:center;gap:8px;flex:1;font-size:14px}
+.team img{width:22px;height:22px}
+.score{font-weight:800;font-size:18px;min-width:70px;text-align:center}
+.status{font-size:11px;text-align:center;margin-top:6px;color:#777}
+.status.live{color:#ff3b3b;font-weight:800}
+.info{padding:30px;text-align:center;color:#888}
 </style>
 </head>
 <body>
 <div class="header"><h1>⚽ LiveScore — BLACK & GREEN • Europe Time</h1></div>
-
 <div class="tabs">
-  <div class="tab" data-date="yesterday">Yesterday</div>
-  <div class="tab active" data-date="today">Today</div>
-  <div class="tab" data-date="tomorrow">Tomorrow</div>
+  <div class="tab" data-d="yesterday">Yesterday</div>
+  <div class="tab active" data-d="today">Today</div>
+  <div class="tab" data-d="tomorrow">Tomorrow</div>
 </div>
-
 <div class="filters">
-  <div class="f active" data-filter="all">All</div>
-  <div class="f" data-filter="live">🔴 Live</div>
-  <div class="f" data-filter="scheduled">Scheduled</div>
-  <div class="f" data-filter="finished">Finished</div>
+  <div class="f active" data-f="all">All</div>
+  <div class="f" data-f="live">🔴 Live</div>
+  <div class="f" data-f="scheduled">Scheduled</div>
+  <div class="f" data-f="finished">Finished</div>
 </div>
-
 <div class="search"><input id="q" placeholder="Search team, country or league..."></div>
+<div id="list"><div class="info">Loading...</div></div>
 
-<div id="list"><p style="padding:20px;text-align:center;color
+<script>
+let ALL=[];
+let curF='all';
+
+async function load(dateStr){
+  document.getElementById('list').innerHTML='<div class="info">Loading '+dateStr+'...</div>';
+  try{
+    const r=await fetch('/api/matches?date='+dateStr);
+    const j=await r.json();
+    ALL=j.response||[];
+    console.log('Date used:',j.date_used,' Found:',j.found,' Credits:',j.credits);
+    if(ALL.length===0){
+      document.getElementById('list').innerHTML=`<div class="info">No matches for ${j.date_used}<br><small>Credits left: ${j.credits}</small></div>`;
+      return;
+    }
+    render();
+  }catch(e){
+    document.getElementById('list').innerHTML='<div class="info" style="color:#f66">Error: '+e.message+'</div>';
+  }
+}
+
+function render(){
+  let list=ALL;
+  const q=document.getElementById('q').value.toLowerCase();
+  if(q) list=list.filter(m=> (m.teams.home.name+' '+m.teams.away.name+' '+m.league.name+' '+m.league.country).toLowerCase().includes(q));
+  if(curF!=='all'){
+    list=list.filter(m=>{
+      const s=m.fixture.status.short;
+      if(curF==='live') return s==='LIVE';
+      if(curF==='finished') return s==='FT';
+      if(curF==='scheduled') return s==='NS';
+      return true;
+    });
+  }
+  if(list.length===0){ document.getElementById('list').innerHTML='<div class="info">No matches for filter</div>'; return; }
+
+  document.getElementById('list').innerHTML=list.map(m=>{
+    const h=m.goals.home; const a=m.goals.away;
+    const sc=(h!=null && a!=null)? `${h} - ${a}` : 'vs';
+    const isLive=m.fixture.status.short==='LIVE';
+    const euroTime=new Date(m.fixture.date).toLocaleTimeString('en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit'});
+    return `<div class="match">
+      <div class="league">${m.league.country} • ${m.league.name} • ${euroTime} CET</div>
+      <div class="teams">
+        <div class="team"><img src="${m.teams.home.logo}" onerror="this.style.display='none'"><span>${m.teams.home.name}</span></div>
+        <div class="score">${sc}</div>
+        <div class="team" style="justify-content:flex-end"><span>${m.teams.away.name}</span><img src="${m.teams.away.logo}" onerror="this.style.display='none'"></div>
+      </div>
+      <div class="status ${isLive?'live':''}">${m.fixture.status.long} ${isLive?'• LIVE':''}</div>
+    </div>`;
+  }).join('');
+}
+
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',e=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  e.target.classList.add('active');
+  load(e.target.dataset.d);
+}));
+document.querySelectorAll('.f').forEach(f=>f.addEventListener('click',e=>{
+  document.querySelectorAll('.f').forEach(x=>x.classList.remove('active'));
+  e.target.classList.add('active');
+  curF=e.target.dataset.f;
+  render();
+}));
+document.getElementById('q').addEventListener('input',render);
+load('today');
+</script>
+</body>
+</html>
