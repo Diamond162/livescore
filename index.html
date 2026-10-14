@@ -3,113 +3,149 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LiveScore - Europe Time</title>
+<title>LiveScore - Black & Green</title>
 <style>
-*{box-sizing:border-box}
-body{margin:0;background:#0f0f0f;color:#fff;font-family:Arial,sans-serif}
-header{padding:12px;background:#9a1111;text-align:center;font-weight:bold;font-size:20px;position:sticky;top:0;z-index:10}
-#topBar{padding:8px;display:flex;gap:8px;justify-content:center;background:#111;flex-wrap:wrap}
-#topBar button{padding:6px 12px;border:none;border-radius:4px;background:#222;color:#fff}
-#topBar button.activeToday{background:#ff6600}
-#filters{padding:8px;display:flex;gap:8px;flex-wrap:wrap;background:#1a1a1a;position:sticky;top:46px;z-index:9}
-#filters button{padding:6px 14px;border:1px solid #333;background:#222;color:#fff;border-radius:20px}
-#filters button.active{border-color:#ff6600;background:#ff6600}
-.match{padding:12px 10px;border-bottom:1px solid #222}
-.league{font-size:11px;color:#ffcc00;margin-bottom:6px;text-transform:uppercase}
-.league.top{color:#ff6600;font-weight:bold}
-.teams{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:15px}
-.teams.home{flex:1;text-align:right}
-.teams.away{flex:1;text-align:left}
-.center{flex:0 0 110px;text-align:center;font-weight:bold}
-.live{color:#ff4444}
-.finished{color:#aaa}
-.scheduled{color:#4da3ff}
-.liveDot{width:6px;height:6px;background:red;border-radius:50%;display:inline-block;animation:blink 1s infinite}
-@keyframes blink{0%{opacity:1}50%{opacity:0}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0e0e0e;color:#eee;font-family:Arial,Helvetica,sans-serif;font-size:14px}
+header{background:#000;color:#00ff88;padding:14px;text-align:center;font-weight:bold;font-size:18px;border-bottom:2px solid #00ff88;position:sticky;top:0;z-index:20}
+#topBar{background:#121212;padding:8px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;border-bottom:1px solid #222}
+#topBar button{padding:7px 14px;background:#1a1a1a;color:#fff;border:1px solid #333;border-radius:20px}
+#topBar button.active{background:#00ff88;color:#000;font-weight:bold}
+#filters{background:#0e0e0e;padding:8px;display:flex;gap:6px;overflow:auto;border-bottom:1px solid #1a1a1a}
+#filters button{padding:6px 12px;background:#1e1e1e;border:1px solid #2a2a2a;color:#ccc;border-radius:4px;white-space:nowrap}
+#filters button.active{background:#00ff88;color:#000;border-color:#00ff88}
+.searchBox{padding:8px;background:#121212}
+.searchBox input{width:100%;padding:10px;background:#1e1e1e;border:1px solid #333;color:#fff;border-radius:6px}
+.league-header{background:#000;color:#fff;padding:8px 10px;font-weight:bold;font-size:12px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #222;border-left:3px solid #00ff88;margin-top:4px}
+.league-header span{color:#00ff88;font-weight:normal;text-transform:none;cursor:pointer}
+.match-row{background:#151515;padding:8px 10px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1f1f1f;cursor:pointer}
+.match-row:hover{background:#1f1f1f}
+.match-row.liveRow{background:#1a1212}
+.time{width:46px;font-size:13px;color:#888;flex-shrink:0}
+.time.live{color:#ff3b3b;font-weight:bold}
+.teams{flex:1;display:flex;flex-direction:column;gap:2px}
+.team{display:flex;justify-content:space-between}
+.team.winner{font-weight:bold;color:#fff}
+.score{width:50px;text-align:center;font-weight:bold;flex-shrink:0}
+.score.finished{color:#00ff88}
+.score.live{color:#ff3b3b}
+.score.scheduled{color:#888}
+#app{padding-bottom:60px}
+#detail{position:fixed;bottom:0;left:0;right:0;background:#111;border-top:2px solid #00ff88;padding:16px;display:none;z-index:30;max-height:70vh;overflow:auto}
+#detail.show{display:block}
 </style>
 </head>
 <body>
-<header>LiveScore - Europe Time (Top Leagues First)</header>
+<header>⚽ LiveScore — BLACK & GREEN • Europe Time</header>
 <div id="topBar">
 <button onclick="setDate('yesterday')" id="btnY">Yesterday</button>
-<button onclick="setDate('today')" id="btnT" class="activeToday">Today</button>
+<button onclick="setDate('today')" id="btnT" class="active">Today</button>
 <button onclick="setDate('tomorrow')" id="btnTo">Tomorrow</button>
-<input type="date" id="pickDate" onchange="pick(this.value)">
+<input type="date" id="pickDate" onchange="pick(this.value)" style="background:#1e1e1e;color:#fff;border:1px solid #333;padding:6px;border-radius:4px">
 </div>
 <div id="filters">
 <button onclick="setFilter('All')" id="All" class="active">All</button>
-<button onclick="setFilter('Live')" id="Live">Live</button>
+<button onclick="setFilter('Live')" id="Live">🔴 Live</button>
 <button onclick="setFilter('Scheduled')" id="Scheduled">Scheduled</button>
 <button onclick="setFilter('Finished')" id="Finished">Finished</button>
-<button onclick="fetchData()">Refresh</button>
+<button onclick="fetchData()">↻ Refresh</button>
 </div>
-<div style="padding:8px"><input id="search" type="text" placeholder="Search team..." style="width:100%;padding:10px;background:#222;border:1px solid #333;color:#fff;border-radius:6px" oninput="render()"></div>
-<div id="app">Loading matches...</div>
+<div class="searchBox"><input id="search" placeholder="Search team or league..." oninput="render()"></div>
+<div id="app">Loading...</div>
+<div id="detail" onclick="this.classList.remove('show')"></div>
+
 <script>
 let allFixtures=[]; let currentDate=new Date().toISOString().split('T')[0]; let currentFilter='All';
-const TOP_LEAGUES=["Premier League","England","La Liga","Spain","Serie A","Italy","Bundesliga","Germany","Ligue 1","France","Champions League","Europa League","Conference League","Premier","LaLiga","Copa del Rey","FA Cup","Eredivisie","Primeira Liga","Super Lig","Championship","World Cup"];
-
-function getLeaguePriority(name){
-  name=(name||"").toLowerCase();
-  for(let i=0;i<TOP_LEAGUES.length;i++){ if(name.includes(TOP_LEAGUES[i].toLowerCase())) return i; }
+const TOP=["England: Premier League","Spain: La Liga","Italy: Serie A","Germany: Bundesliga","France: Ligue 1","Europe: Champions League","Europe: Europa League","Europe: Conference League","Spain: Copa del Rey","England: FA Cup"];
+function getPriority(country, league){
+  let key=`${country}: ${league}`.toLowerCase(); let name=league.toLowerCase();
+  for(let i=0;i<TOP.length;i++) if(key.includes(TOP[i].toLowerCase().split(':')[1].trim())||name.includes(TOP[i].toLowerCase())) return i;
   return 999;
 }
-function setFilter(f){currentFilter=f; document.querySelectorAll('#filters button').forEach(b=>b.classList.remove('active')); let el=document.getElementById(f); if(el)el.classList.add('active'); render();}
+function setFilter(f){currentFilter=f; document.querySelectorAll('#filters button').forEach(b=>b.classList.remove('active')); document.getElementById(f).classList.add('active'); render();}
 function setDate(d){
-  document.getElementById('btnY').classList.remove('activeToday'); document.getElementById('btnT').classList.remove('activeToday'); document.getElementById('btnTo').classList.remove('activeToday');
-  if(d==='yesterday'){let t=new Date();t.setDate(t.getDate()-1);currentDate=t.toISOString().split('T')[0]; document.getElementById('btnY').classList.add('activeToday');}
-  else if(d==='tomorrow'){let t=new Date();t.setDate(t.getDate()+1);currentDate=t.toISOString().split('T')[0]; document.getElementById('btnTo').classList.add('activeToday');}
-  else {currentDate=new Date().toISOString().split('T')[0]; document.getElementById('btnT').classList.add('activeToday');}
+  document.querySelectorAll('#topBar button').forEach(b=>b.classList.remove('active'));
+  if(d==='yesterday'){let t=new Date();t.setDate(t.getDate()-1);currentDate=t.toISOString().split('T')[0]; document.getElementById('btnY').classList.add('active');}
+  else if(d==='tomorrow'){let t=new Date();t.setDate(t.getDate()+1);currentDate=t.toISOString().split('T')[0]; document.getElementById('btnTo').classList.add('active');}
+  else {currentDate=new Date().toISOString().split('T')[0]; document.getElementById('btnT').classList.add('active');}
   fetchData();
 }
 function pick(v){if(v){currentDate=v; fetchData();}}
-function getStatusText(f){
-  let s=(f.fixture.status.short||'NS');
-  if(['1H','HT','2H','ET','P','LIVE','HT'].includes(s)){
-    return {text:`${f.goals.home??0}-${f.goals.away??0} ${f.fixture.status.elapsed||''}'`, cls:'live', live:true};
-  }
-  if(s==='FT'){ return {text:`${f.goals.home??0}-${f.goals.away??0} FT`, cls:'finished', live:false}; }
-  let d=new Date(f.fixture.date);
-  let time=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});
-  return {text: time, cls:'scheduled', live:false};
+function getDisplay(f){
+  let s=f.fixture.status.short||'NS';
+  if(['1H','HT','2H','ET','P','LIVE'].includes(s)) return {time:(f.fixture.status.elapsed||'')+"' ",score:`${f.goals.home??0} - ${f.goals.away??0}`,cls:'live',row:'liveRow'};
+  if(s==='FT') return {time:'FT',score:`${f.goals.home??0} - ${f.goals.away??0}`,cls:'finished',row:''};
+  let d=new Date(f.fixture.date); let time=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'}); return {time:time,score:'-',cls:'scheduled',row:''};
 }
 function render(){
   let q=(document.getElementById('search').value||'').toLowerCase();
   let filtered=allFixtures.filter(x=>{
     let st=x.fixture.status.short;
-    if(currentFilter==='Live' &&!['1H','HT','2H','ET','P','LIVE'].includes(st)) return false;
-    if(currentFilter==='Scheduled' && st!=='NS') return false;
-    if(currentFilter==='Finished' && st!=='FT') return false;
-    if(q &&!(x.teams.home.name.toLowerCase().includes(q) || x.teams.away.name.toLowerCase().includes(q) || x.league.name.toLowerCase().includes(q))) return false;
+    if(currentFilter==='Live'&&!['1H','HT','2H','ET','P','LIVE'].includes(st)) return false;
+    if(currentFilter==='Scheduled'&&st!=='NS') return false;
+    if(currentFilter==='Finished'&&st!=='FT') return false;
+    if(q&&!(x.teams.home.name.toLowerCase().includes(q)||x.teams.away.name.toLowerCase().includes(q)||x.league.name.toLowerCase().includes(q)||(x.league.country||'').toLowerCase().includes(q))) return false;
     return true;
   });
-  // SORT: Top leagues first, then Live first
-  filtered.sort((a,b)=>{
-    let pa=getLeaguePriority(a.league.name); let pb=getLeaguePriority(b.league.name);
-    if(pa!==pb) return pa-pb;
-    let sa=a.fixture.status.short, sb=b.fixture.status.short;
-    let liveA=['1H','HT','2H','LIVE'].includes(sa)?0:1; let liveB=['1H','HT','2H','LIVE'].includes(sb)?0:1;
-    if(liveA!==liveB) return liveA-liveB;
-    return new Date(a.fixture.date)-new Date(b.fixture.date);
-  });
-
-  let html='';
+  // Group by Country: League
+  let groups={};
   filtered.forEach(m=>{
-    let s=getStatusText(m);
-    let isTop=getLeaguePriority(m.league.name)<20;
-    let liveDot=s.live?'<span class="liveDot"></span> ':'';
-    html+=`<div class="match"><div class="league ${isTop?'top':''}">${isTop?'⭐ ':''}${m.league.name} - ${m.league.country||''}</div><div class="teams"><span class="home">${m.teams.home.name}</span><span class="center ${s.cls}">${liveDot}${s.text}</span><span class="away">${m.teams.away.name}</span></div></div>`;
+    let country=(m.league.country||'World').toUpperCase();
+    let league=m.league.name;
+    let key=`${country}: ${league}`;
+    if(!groups[key]) groups[key]=[];
+    groups[key].push(m);
   });
-  document.getElementById('app').innerHTML=html||'<div style="padding:30px;text-align:center;color:#888">No matches for this filter</div>';
+  // Sort groups by priority
+  let sortedKeys=Object.keys(groups).sort((a,b)=>{
+    let [ca,la]=a.split(':'); let [cb,lb]=b.split(':');
+    let pa=getPriority(ca,la); let pb=getPriority(cb,lb);
+    if(pa!==pb) return pa-pb;
+    return a.localeCompare(b);
+  });
+  let html='';
+  sortedKeys.forEach(key=>{
+    let matches=groups[key];
+    // sort matches inside group by time/status
+    matches.sort((a,b)=> new Date(a.fixture.date)-new Date(b.fixture.date));
+    let [country, leagueName]=key.split(':');
+    html+=`<div class="league-header"><div>${key}</div><span onclick="alert('Standings for ${leagueName} coming soon!')">Standings</span></div>`;
+    matches.forEach(m=>{
+      let d=getDisplay(m);
+      let homeWin=m.goals.home>m.goals.away; let awayWin=m.goals.away>m.goals.home;
+      html+=`<div class="match-row ${d.row}" onclick="openDetail(${m.fixture.id})">
+        <div class="time ${d.cls}">${d.time}</div>
+        <div class="teams">
+          <div class="team ${homeWin&&d.cls==='finished'?'winner':''}"><span>${m.teams.home.name}</span></div>
+          <div class="team ${awayWin&&d.cls==='finished'?'winner':''}"><span>${m.teams.away.name}</span></div>
+        </div>
+        <div class="score ${d.cls}">${d.score}</div>
+      </div>`;
+    });
+  });
+  document.getElementById('app').innerHTML=html||`<div style="padding:30px;text-align:center;color:#666">No matches</div>`;
+}
+function openDetail(id){
+  let m=allFixtures.find(x=>x.fixture.id===id);
+  if(!m) return;
+  let d=getDisplay(m);
+  document.getElementById('detail').innerHTML=`
+    <div style="display:flex;justify-content:space-between"><h3 style="color:#00ff88">${m.league.country}: ${m.league.name}</h3><span onclick="document.getElementById('detail').classList.remove('show')" style="cursor:pointer">✕</span></div>
+    <div style="margin:12px 0;text-align:center;font-size:18px">${m.teams.home.name} vs ${m.teams.away.name}</div>
+    <div style="text-align:center;font-size:24px;color:${d.cls==='live'?'#ff3b3b':d.cls==='finished'?'#00ff88':'#888'}">${d.score} <small style="font-size:14px">${d.time}</small></div>
+    <div style="margin-top:12px;color:#888">Date: ${new Date(m.fixture.date).toLocaleString('en-GB',{timeZone:'Europe/Berlin'})} (Europe/Berlin)</div>
+    <div style="margin-top:8px">Status: ${m.fixture.status.long}</div>
+  `;
+  document.getElementById('detail').classList.add('show');
 }
 async function fetchData(){
-  document.getElementById('app').innerHTML='<div style="padding:20px;text-align:center">Loading matches...</div>';
+  document.getElementById('app').innerHTML='<div style="padding:20px;text-align:center">Loading...</div>';
   try{
     const res=await fetch(`/api/matches?date=${currentDate}`);
     const data=await res.json();
     allFixtures=data.response||[];
     render();
-  }catch(e){document.getElementById('app').innerHTML='Failed: '+e.message;}
+  }catch(e){document.getElementById('app').innerHTML='Error: '+e.message;}
 }
 fetchData();
 </script>
