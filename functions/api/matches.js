@@ -1,103 +1,98 @@
 export async function onRequest(context) {
-  const KEY = context.env.LIVE_FOOTBALL_API_KEY || context.env.FOOTBALL_API_KEY || context.env.FOOTBALL_API_KEY2 || context.env.API_FOOTBALL_KEY;
+  const KEY = context.env.LIVE_FOOTBALL_API_KEY || context.env.FOOTBALL_API_KEY || context.env.API_FOOTBALL_KEY;
   if (!KEY) return new Response(JSON.stringify({ response: [], error: "Set LIVE_FOOTBALL_API_KEY" }), { headers: { "content-type": "application/json" } });
 
-  const reqUrl = new URL(context.request.url);
-  const filter = (reqUrl.searchParams.get('date') || reqUrl.searchParams.get('filter') || 'all').toLowerCase();
+  const urlObj = new URL(context.request.url);
+  const filter = (urlObj.searchParams.get('date') || 'all').toLowerCase();
 
   const today = new Date();
-  const fmt = (d) => d.toISOString().split('T')[0];
-  const dates = {
-    yesterday: new Date(today.getTime() - 86400000),
-    today: today,
-    tomorrow: new Date(today.getTime() + 86400000),
-  };
+  const fmt = d => d.toISOString().split('T')[0];
+  const datesToFetch = [];
 
-  // Build URLs to fetch - we fetch ALL
-  let urls = [];
-  if (filter === 'all' || filter === 'today' || filter === 'allgames') {
-    urls.push(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&date=${fmt(dates.today)}`);
-    urls.push(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&date=${fmt(dates.yesterday)}`);
-    urls.push(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&date=${fmt(dates.tomorrow)}`);
-    urls.push(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&status=live`);
-    urls.push(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&status=finished`);
-    urls.push(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&status=scheduled`);
-  } else if (filter === 'live') {
-    urls.push(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&status=live`);
-  } else if (filter === 'finished' || filter === 'ft') {
-    urls.push(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&status=finished`);
-  } else if (filter === 'scheduled') {
-    urls.push(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&status=scheduled`);
+  if (filter === 'all') {
+    let d1 = new Date(today); d1.setDate(d1.getDate()-1);
+    let d2 = new Date(today);
+    let d3 = new Date(today); d3.setDate(d3.getDate()+1);
+    datesToFetch.push(fmt(d1), fmt(d2), fmt(d3));
+  } else if (filter === 'yesterday') {
+    let d = new Date(today); d.setDate(d.getDate()-1); datesToFetch.push(fmt(d));
+  } else if (filter === 'tomorrow') {
+    let d = new Date(today); d.setDate(d.getDate()+1); datesToFetch.push(fmt(d));
+  } else if (filter === 'today') {
+    datesToFetch.push(fmt(today));
+  } else if (filter.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    datesToFetch.push(filter);
   } else {
-    // specific date like 2026-10-14
-    urls.push(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&date=${filter}`);
+    // for live/finished etc, we fetch 3 days and filter later
+    let d1 = new Date(today); d1.setDate(d1.getDate()-1);
+    let d2 = new Date(today);
+    let d3 = new Date(today); d3.setDate(d3.getDate()+1);
+    datesToFetch.push(fmt(d1), fmt(d2), fmt(d3));
   }
 
   try {
-    const results = await Promise.all(urls.map(u => fetch(u).then(r => r.json()).catch(() => ({matches: []}))));
-    let allMatches = [];
-    results.forEach(data => {
-      const ms = data.matches || data.response || data.data || [];
-      allMatches = allMatches.concat(ms);
+    const fetches = datesToFetch.map(date =>
+      fetch(`https://live-football-api.com/api/v1/matches?date=${date}`, {
+        headers: {
+          'x-api-key': KEY,
+          'X-API-Key': KEY,
+          'apikey': KEY,
+          'Authorization': KEY
+        }
+      }).then(r => r.json()).then(j => ({ date, data: j })).catch(e => ({ date, data: { matches: [] }, err: e.message }))
+    );
+
+    const results = await Promise.all(fetches);
+    let all = [];
+    let debug = [];
+    results.forEach(r => {
+      const matches = r.data.matches || r.data.data?.matches || r.data.response || r.data.data || [];
+      debug.push({ date: r.date, count: matches.length, keys: Object.keys(r.data).slice(0,5) });
+      all = all.concat(matches);
     });
 
-    // Deduplicate by id
+    // Deduplicate
     const map = new Map();
-    allMatches.forEach(m => { if (m.id &&!map.has(String(m.id))) map.set(String(m.id), m); });
-    allMatches = Array.from(map.values());
+    all.forEach(m => { const id = String(m.id || m.match_id || Math.random()); if(!map.has(id)) map.set(id, m); });
+    all = Array.from(map.values());
 
-    // Convert to format your frontend expects (api-football style)
-    const formatted = allMatches.map(m => {
-      const statusRaw = (m.status || '').toLowerCase();
-      let short = 'NS';
-      let elapsed = null;
-      if (statusRaw === 'live') { short = 'LIVE'; elapsed = m.minute || m.time || null; }
-      else if (statusRaw === 'finished') short = 'FT';
-      else if (statusRaw === 'scheduled') short = 'NS';
+    // Filter if user asked live/finished/scheduled
+    if (filter === 'live') all = all.filter(m => (m.status||'').toLowerCase() === 'live');
+    if (filter === 'finished' || filter === 'ft') all = all.filter(m => (m.status||'').toLowerCase() === 'finished');
+    if (filter === 'scheduled') all = all.filter(m => (m.status||'').toLowerCase() === 'scheduled');
 
-      // If minute exists like "67"
-      if (m.minute) elapsed = m.minute;
+    // Convert to your frontend format
+    const formatted = all.map(m => ({
+      fixture: {
+        id: m.id,
+        date: m.kickoff || m.date || new Date().toISOString(),
+        status: {
+          short: (m.status||'').toLowerCase()==='live'? 'LIVE' : (m.status||'').toLowerCase()==='finished'? 'FT' : 'NS',
+          elapsed: m.minute || null,
+          long: m.status
+        },
+        minute: m.minute || null
+      },
+      league: { name: m.league?.name || 'League', country: m.league?.country || '', logo: m.league?.logo || '' },
+      teams: {
+        home: { name: m.home?.name || 'Home', logo: m.home?.logo || '' },
+        away: { name: m.away?.name || 'Away', logo: m.away?.logo || '' }
+      },
+      goals: { home: m.score?.home?? null, away: m.score?.away?? null },
+      score: m.score,
+      status: m.status,
+      minute: m.minute,
+      _raw: m
+    }));
 
-      return {
-        fixture: {
-          id: m.id,
-          date: m.kickoff || m.date || new Date().toISOString(),
-          status: { short: short, elapsed: elapsed, long: m.status },
-          minute: m.minute || null
-        },
-        league: {
-          id: m.league?.id || 0,
-          name: m.league?.name || 'Unknown',
-          country: m.league?.country || '',
-          logo: m.league?.logo || ''
-        },
-        teams: {
-          home: { id: m.home?.id, name: m.home?.name || m.home_team_name, logo: m.home?.logo || m.home_team_logo },
-          away: { id: m.away?.id, name: m.away?.name || m.away_team_name, logo: m.away?.logo || m.away_team_logo }
-        },
-        goals: {
-          home: m.score?.home?? m.homeScore?? m.goals?.home?? null,
-          away: m.score?.away?? m.awayScore?? m.goals?.away?? null
-        },
-        score: m.score || { home: m.homeScore, away: m.awayScore },
-        status: m.status,
-        minute: m.minute,
-        _raw: m
-      };
-    });
-
-    // Sort: live first, then scheduled, then finished
-    formatted.sort((a,b) => {
-      if (a.fixture.status.short === 'LIVE' && b.fixture.status.short!== 'LIVE') return -1;
-      if (b.fixture.status.short === 'LIVE' && a.fixture.status.short!== 'LIVE') return 1;
-      return new Date(a.fixture.date) - new Date(b.fixture.date);
-    });
+    formatted.sort((a,b) => (a.fixture.status.short==='LIVE'?-1:1));
 
     return new Response(JSON.stringify({
       response: formatted,
       results: formatted.length,
       date: filter,
-      rawCount: formatted.length
+      rawCount: formatted.length,
+      debug: debug
     }), { headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" } });
 
   } catch (e) {
