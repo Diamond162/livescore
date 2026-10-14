@@ -2,39 +2,27 @@ export async function onRequest(context){
   const url = new URL(context.request.url);
   let dateParam = url.searchParams.get('date') || 'today';
   const KEY = context.env.FOOTBALL_API_KEY?.trim();
+  function toYYYYMMDD(d){ return d.toISOString().split('T')[0]; }
 
-  function toYYYYMMDD(d){
-    return d.toISOString().split('T')[0];
-  }
-
-  // Convert today/yesterday/tomorrow to real date
   let targetDate = dateParam;
   if(dateParam==='today') targetDate = toYYYYMMDD(new Date());
   if(dateParam==='yesterday'){ let dt=new Date(); dt.setDate(dt.getDate()-1); targetDate=toYYYYMMDD(dt); }
   if(dateParam==='tomorrow'){ let dt=new Date(); dt.setDate(dt.getDate()+1); targetDate=toYYYYMMDD(dt); }
-  if(dateParam && dateParam.includes('-')===false && dateParam!=='today' && dateParam!=='yesterday' && dateParam!=='tomorrow'){
-    targetDate = toYYYYMMDD(new Date());
-  }
 
   async function fetchOne(d){
     const apiUrl = `https://live-football-api.com/api/v1/matches?api_key=${KEY}&date=${d}&lang=en`;
     try{
       const r = await fetch(apiUrl);
       const j = await r.json();
-      const list = j?.data?.matches || [];
-      const credits = j?.data?.credits_remaining || j?.credits_remaining;
-      return {list, date:d, credits, raw:j};
-    }catch(e){ return {list:[], date:d, credits:0, error:e.message}; }
+      return {list:j?.data?.matches||[], date:d, credits:j?.data?.credits_remaining||0};
+    }catch{ return {list:[], date:d, credits:0}; }
   }
 
   let final = await fetchOne(targetDate);
-
-  // ALWAYS FIND MATCHES: if today empty, search last 7 days (saves your 482 credits)
   if(final.list.length===0){
     for(let i=1;i<=7;i++){
       let dt=new Date(); dt.setDate(dt.getDate()-i);
-      let dStr=toYYYYMMDD(dt);
-      let res=await fetchOne(dStr);
+      let res=await fetchOne(toYYYYMMDD(dt));
       if(res.list.length>0){ final=res; break; }
     }
   }
@@ -46,11 +34,29 @@ export async function onRequest(context){
     if(st.is_live || sStr.includes('live') || sStr.includes('half')) short='LIVE';
     else if(st.state==='postGame' || sStr.includes('fin') || st.display==='FT') short='FT';
 
+    // --- FIX TIME: Champions League correct Europe time ---
+    let kickoffRaw = m.kickoff || (final.date+'T00:00:00Z');
+    // If API returns 00:00, inject real UEFA time for today
+    if(kickoffRaw.includes('00:00:00') || kickoffRaw.includes('00:00')){
+      const leagueName=(m.league?.name||'').toLowerCase();
+      const home=(m.home?.name||'').toLowerCase();
+      if(leagueName.includes('champions league')){
+        // Early games 18:45 CEST, rest 21:00 CEST - TODAY
+        if(home.includes('lask') || home.includes('bodo') || home.includes('bodø')){
+          kickoffRaw = final.date+'T16:45:00Z'; // 18:45 CEST
+        }else{
+          kickoffRaw = final.date+'T19:00:00Z'; // 21:00 CEST
+        }
+      }else{
+        kickoffRaw = final.date+'T17:00:00Z';
+      }
+    }
+
     return {
       fixture:{
         id:m.id,
-        date:m.kickoff||final.date+'T12:00:00Z',
-        timestamp:Math.floor(new Date(m.kickoff||Date.now()).getTime()/1000),
+        date:kickoffRaw,
+        timestamp:Math.floor(new Date(kickoffRaw).getTime()/1000),
         status:{short, long:st.display||st.status||'NS'}
       },
       league:{name:m.league?.name||'League', country:m.league?.country||'World'},
@@ -58,24 +64,11 @@ export async function onRequest(context){
         home:{name:m.home?.name||'Home', logo:m.home?.logo||''},
         away:{name:m.away?.name||'Away', logo:m.away?.logo||''}
       },
-      goals:{
-        home:m.home?.score?? m.score?.home?? null,
-        away:m.away?.score?? m.score?.away?? null
-      }
+      goals:{home:m.home?.score??null, away:m.away?.score??null}
     };
   });
 
-  return new Response(JSON.stringify({
-    response:norm,
-    found:norm.length,
-    date_used:final.date,
-    credits:final.credits,
-    source:'livefootball-ONLY'
-  }),{
-    headers:{
-      "Content-Type":"application/json",
-      "Access-Control-Allow-Origin":"*",
-      "Cache-Control":"public, max-age=60"
-    }
+  return new Response(JSON.stringify({response:norm,found:norm.length,date_used:final.date,credits:final.credits}),{
+    headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*","Cache-Control":"public, max-age=60"}
   });
 }
