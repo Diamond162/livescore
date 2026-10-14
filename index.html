@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LiveScore Correct Time</title>
+<title>LiveScore FINAL</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#080808;color:#fff;font-family:Arial}
 .header{background:#111;border-bottom:3px solid #00ff88;padding:12px;text-align:center;position:sticky;top:0;z-index:20}
 .header h1{color:#00ff88;font-size:16px}
-.days{display:flex;gap:6px;overflow-x:auto;padding:10px;background:#0a0a0a;position:sticky;top:48px;z-index:15;scrollbar-width:none}
+.days{display:flex;gap:6px;overflow-x:auto;padding:10px;background:#0a0a0a;position:sticky;top:48px;z-index:15}
 .days::-webkit-scrollbar{display:none}
-.day{min-width:64px;background:#1e1e1e;border:1px solid #333;border-radius:10px;padding:7px 5px;text-align:center;cursor:pointer;flex-shrink:0}
-.day.active{background:#00ff88;color:#000;font-weight:800;border-color:#00ff88}
+.day{min-width:68px;background:#1e1e1e;border:1px solid #333;border-radius:10px;padding:7px 5px;text-align:center;cursor:pointer;flex-shrink:0}
+.day.active{background:#00ff88;color:#000;font-weight:800}
 .day small{display:block;font-size:11px;opacity:.8}
 .day b{display:block;font-size:13px}
 .filters{display:flex;gap:6px;padding:8px 10px;overflow-x:auto}
@@ -23,9 +23,9 @@ body{background:#080808;color:#fff;font-family:Arial}
 .league{background:#1e1e1e;padding:7px 10px;font-weight:800;font-size:11px;text-transform:uppercase;display:flex;justify-content:space-between;border-left:4px solid #333;margin-top:1px}
 .league.top{background:#002b15;border-left:4px solid #00ff88;color:#00ff88}
 .league span{color:#00ff88;font-weight:400;text-transform:none;text-decoration:underline}
-.row{display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid #151515;font-size:13px;background:#0e0e0e}
+.row{display:flex;align-items:center;padding:9px 10px;border-bottom:1px solid #151515;font-size:13px;background:#0e0e0e}
 .row.live{background:#1a1010}
-.t{width:52px;color:#00ff88;font-weight:800;font-size:13px}
+.t{width:52px;color:#00ff88;font-weight:800}
 .t.live{color:#ff3b3b}
 .n{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .s{width:52px;text-align:center;font-weight:800}
@@ -53,16 +53,12 @@ const TIME_FIX={
 "betis - fc porto":"21:00","bodo/glimt - dortmund":"21:00",
 "manchester city - psg":"21:00","shakhtar donetsk - aek athens":"21:00",
 "slovan bratislava - stuttgart":"21:00",
-"es setif - kabylye":"19:00","es setif - kabylie":"19:00","temouchent - rouisset":"19:00",
+"es setif - kabylie":"19:00","temouchent - rouisset":"19:00",
 "mo constantine - azazga":"16:00","wa mostaganem - rc kouba":"16:00",
 "kashiwa reysol - port mti fc":"12:00","kashiwa - port":"12:00",
-"vissel kobe - jeonbuk":"12:00","vissel kobe - jeonbuk motors":"12:00",
-"melbourne victory - seoul":"09:45","mel victory - seoul":"09:45",
-"persib bandung - viettel":"12:00","persib - viettel":"12:00",
-"nasaf qarshi - al wahda":"15:45","nasaf - al wahda":"15:45",
-"al jazira - arkadag":"18:00","al jazira - arkadag (tkm)":"18:00",
-"al kuwait - al khalidiyah":"18:00","kuwait - khalidiya":"18:00",
-"al dubail - shahah":"19:00"
+"vissel kobe - jeonbuk":"12:00","melbourne victory - seoul":"09:45",
+"persib bandung - viettel":"12:00","nasaf qarshi - al wahda":"15:45",
+"al jazira - arkadag":"18:00","al kuwait - al khalidiyah":"18:00"
 };
 
 function priority(l){
@@ -75,30 +71,19 @@ function priority(l){
   if(s.includes('italy')) return 6;
   if(s.includes('france')) return 7;
   if(s.includes('europa')) return 8;
-  if(s.includes('afc champions league') &&!s.includes('two')) return 9;
+  if(s.includes('afc champions league')&&!s.includes('two')) return 9;
   if(s.includes('afc champions league two')) return 10;
   return 99;
 }
 
 function getTime(raw, home, away){
   const key=`${(home||'').toLowerCase()} - ${(away||'').toLowerCase()}`.trim();
-  // 1. Check fixed map from flashscore
-  for(let k in TIME_FIX){
-    if(key.includes(k) || k.includes(key.split(' - ')[0])){
-      if(key.includes(k.split(' - ')[0].split(' ')[0])) return TIME_FIX[k];
-    }
-  }
   if(TIME_FIX[key]) return TIME_FIX[key];
-  // partial match
-  const low=key.toLowerCase();
   for(let mk in TIME_FIX){
-    if(low.includes(mk.split(' - ')[0]) && low.includes(mk.split(' - ')[1])) return TIME_FIX[mk];
+    if(key.includes(mk.split(' - ')[0]) && key.includes(mk.split(' - ')[1])) return TIME_FIX[mk];
   }
-
   const rawStr=(raw||'').toString();
   const isMidnight=!rawStr || rawStr.includes('00:00');
-
-  // 2. Try real Europe conversion
   if(!isMidnight){
     try{
       let t=rawStr.replace(' ','T');
@@ -106,76 +91,54 @@ function getTime(raw, home, away){
       const d=new Date(t);
       if(!isNaN(d)){
         const e=d.toLocaleTimeString('en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit'});
-        if(e!=='00:00' && e!=='Invalid') return e;
+        if(e!=='00:00') return e;
       }
-      const m=rawStr.match(/(\d{2}):(\d{2})/);
-      if(m && m[0]!=='00:00') return m[1]+':'+m[2];
     }catch{}
+    const m=rawStr.match(/(\d{2}):(\d{2})/);
+    if(m && m[0]!=='00:00') return m[1]+':'+m[2];
   }
-
-  // 3. Fallback - NEVER 00:00 for Europe/Asia (only Argentina 00:00 is ok)
-  const leagueCheck=low;
-  if(low.includes('argentina') || low.includes('river plate')) return '00:00';
-  if(low.includes('champions league') || low.includes('europe')) return '21:00';
-  if(low.includes('algeria') && low.includes('ligue 1')) return '19:00';
-  if(low.includes('algeria') && low.includes('ligue 2')) return '16:00';
-  if(low.includes('armenia')) return '13:30';
-  if(low.includes('kashiwa')||low.includes('vissel')||low.includes('persib')) return '12:00';
-  if(low.includes('melbourne')) return '09:45';
-  if(low.includes('nasaf')) return '15:45';
-  return '18:00';
+  if(key.includes('argentina')) return '00:00';
+  if(key.includes('armenia')) return '13:30';
+  if(key.includes('kashiwa')||key.includes('vissel')||key.includes('persib')) return '12:00';
+  if(key.includes('melbourne')) return '09:45';
+  if(key.includes('nasaf')) return '15:45';
+  return '19:00';
 }
 
 function buildDays(){
   const cont=document.getElementById('days');
   let html='';
-  const days=[];
   for(let i=-3;i<=4;i++){
     const dt=new Date(); dt.setDate(dt.getDate()+i);
     const iso=dt.toISOString().split('T')[0];
-    let label='today';
-    if(i===-1) label='yesterday';
-    else if(i===1) label='tomorrow';
-    else if(i!==0) label=iso;
-    days.push({iso,label,dt});
+    let label=iso; if(i===0) label='today'; if(i===-1) label='yesterday'; if(i===1) label='tomorrow';
+    const active = label===curDate || (curDate==='today' && i===0)? 'active' : '';
+    const dayName=dt.toLocaleDateString('en',{weekday:'short'});
+    const dayNum=dt.getDate(); const mon=dt.toLocaleDateString('en',{month:'short'});
+    html+=`<div class="day ${active}" data-d="${label}"><small>${dayName}</small><b>${dayNum} ${mon}</b></div>`;
   }
-  days.forEach(d=>{
-    const isActive = (d.label===curDate) || (curDate==='today' && d.label==='today');
-    const dayName=d.dt.toLocaleDateString('en',{weekday:'short'});
-    const dayNum=d.dt.getDate();
-    const mon=d.dt.toLocaleDateString('en',{month:'short'});
-    html+=`<div class="day ${isActive?'active':''}" data-d="${d.label}"><small>${dayName}</small><b>${dayNum} ${mon}</b></div>`;
-  });
   cont.innerHTML=html;
   cont.querySelectorAll('.day').forEach(el=>el.addEventListener('click',e=>{
     cont.querySelectorAll('.day').forEach(x=>x.classList.remove('active'));
     e.currentTarget.classList.add('active');
-    curDate=e.currentTarget.dataset.d;
-    load(curDate);
+    curDate=e.currentTarget.dataset.d; load(curDate);
   }));
 }
 
 async function load(d){
-  curDate=d;
-  document.getElementById('list').innerHTML='<div class="info">Loading '+d+'...</div>';
+  curDate=d; document.getElementById('list').innerHTML='<div class="info">Loading '+d+'...</div>';
   try{
     const r=await fetch('/api/matches?date='+d);
-    const j=await r.json();
-    ALL=j.response||[];
-    if(ALL.length===0){
-      document.getElementById('list').innerHTML=`<div class="info">No matches for ${j.date_used}<br>Credits: ${j.credits}</div>`;
-      return;
-    }
+    const j=await r.json(); ALL=j.response||[];
+    if(ALL.length===0){document.getElementById('list').innerHTML=`<div class="info">No matches for ${j.date_used}</div>`;return;}
     render();
-  }catch(e){
-    document.getElementById('list').innerHTML='<div class="info">'+e.message+'</div>';
-  }
+  }catch(e){document.getElementById('list').innerHTML='<div class="info">'+e.message+'</div>';}
 }
 
 function render(){
   let list=[...ALL];
   const q=document.getElementById('q').value.toLowerCase();
-  if(q) list=list.filter(m=>(m.teams.home.name+' '+m.teams.away.name+' '+m.league.name+' '+m.league.country).toLowerCase().includes(q));
+  if(q) list=list.filter(m=>(m.teams.home.name+' '+m.teams.away.name+' '+m.league.name).toLowerCase().includes(q));
   if(curF!=='all'){
     list=list.filter(m=>{
       const s=m.fixture.status.short;
@@ -188,8 +151,7 @@ function render(){
   const groups={}; const order=[];
   list.forEach(m=>{
     const key=`${(m.league.country||'WORLD').toUpperCase()}: ${m.league.name.toUpperCase()}`;
-    if(!groups[key]){groups[key]=[];order.push(key);}
-    groups[key].push(m);
+    if(!groups[key]){groups[key]=[];order.push(key);} groups[key].push(m);
   });
   order.sort((a,b)=>priority({country:a,name:a})-priority({country:b,name:b}));
   let html='';
@@ -198,11 +160,21 @@ function render(){
     html+=`<div class="league ${top?'top':''}">${key} <span>Standings</span></div>`;
     groups[key].forEach(m=>{
       const isLive=m.fixture.status.short==='LIVE';
-      const euro=getTime(m.fixture.date,m.teams.home.name,m.teams.away.name);
+      const isFT=m.fixture.status.short==='FT';
+      let timeTxt='';
+      if(isLive){
+        const el=m.fixture.status.elapsed;
+        const sl=(m.fixture.status.long||'').toString();
+        const mm=sl.match(/(\d+)'/);
+        if(el) timeTxt=el+"'";
+        else if(mm) timeTxt=mm[0];
+        else if(sl.toLowerCase().includes('half')) timeTxt='HT';
+        else timeTxt='LIVE';
+      }else{
+        timeTxt=getTime(m.fixture.date,m.teams.home.name,m.teams.away.name);
+      }
       const h=m.goals.home,a=m.goals.away;
       let sc='-'; if(h!=null&&a!=null) sc=`${h}-${a}`;
-      let timeTxt=euro;
-      if(isLive && m.fixture.status.long && m.fixture.status.long.includes("'")) timeTxt=m.fixture.status.long;
       html+=`<div class="row ${isLive?'live':''}"><div class="t ${isLive?'live':''}">${timeTxt}</div><div class="n">${m.teams.home.name} - ${m.teams.away.name}</div><div class="s ${isLive?'live':''}">${sc}</div></div>`;
     });
   });
@@ -214,8 +186,7 @@ document.querySelectorAll('.f').forEach(f=>f.addEventListener('click',e=>{
   e.target.classList.add('active');curF=e.target.dataset.f;render();
 }));
 document.getElementById('q').addEventListener('input',render);
-buildDays();
-load('today');
+buildDays(); load('today');
 </script>
 </body>
 </html>
