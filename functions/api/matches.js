@@ -1,111 +1,73 @@
-export async function onRequest(context) {
-  const KEY = (context.env.LIVE_FOOTBALL_API_KEY || '').trim();
-  const reqUrl = new URL(context.request.url);
-  const dateParam = (reqUrl.searchParams.get('date') || '').trim();
-
-  if (!KEY) {
-    return new Response(JSON.stringify({ response: [], error: "Missing LIVE_FOOTBALL_API_KEY" }), { headers: { "content-type": "application/json" } });
+export async function onRequest(context){
+  const KEY=(context.env.LIVE_FOOTBALL_API_KEY||'').trim();
+  const reqUrl=new URL(context.request.url);
+  let dateParam=reqUrl.searchParams.get('date')||'';
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(dateParam)){
+    const d=new Date(); dateParam=d.toISOString().split('T')[0];
   }
+  if(!KEY) return new Response(JSON.stringify({response:[],error:"NO KEY"}),{headers:{"content-type":"application/json"}});
+  try{
+    const apiUrl=`https://live-football-api.com/api/v1/matches?date=${dateParam}&api_key=${KEY}`;
+    const r=await fetch(apiUrl);
+    const j=await r.json();
+    let matches=j.matches||[];
+    let logs={date:dateParam,count:matches.length,credits:j.credits_remaining||'?','message':j.message||'ok'};
 
-  // dateParam can be 2026-10-14 or today/yesterday/all
-  let dates = [];
-  const today = new Date();
-  const fmt = d => d.toISOString().split('T')[0];
-  const add = n => { const d = new Date(today); d.setDate(d.getDate()+n); return fmt(d); };
+    const toBerlin=(kickoff)=>{
+      if(!kickoff) return '00:00';
+      try{
+        let iso=String(kickoff).trim().replace(' ','T');
+        if(!iso.endsWith('Z') && !iso.includes('+')) iso+='Z';
+        const d=new Date(iso);
+        if(isNaN(d)) return String(kickoff).slice(11,16)||'00:00';
+        return d.toLocaleTimeString('en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit',hour12:false});
+      }catch(e){ return '00:00'; }
+    };
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
-    dates = [dateParam];
-  } else if (dateParam === 'yesterday') {
-    dates = [add(-1)];
-  } else if (dateParam === 'today') {
-    dates = [add(0)];
-  } else if (dateParam === 'tomorrow') {
-    dates = [add(1)];
-  } else if (dateParam === 'all') {
-    dates = [add(-1), add(0), add(1)];
-  } else if (dateParam === '') {
-    // If frontend sends ISO, use it directly
-    dates = [add(0)];
-  } else {
-    // fallback: if param is like 2026-10-14 from frontend, use it
-    const maybeDate = reqUrl.searchParams.get('date');
-    if (maybeDate && /^\d{4}-\d{2}-\d{2}$/.test(maybeDate)) dates = [maybeDate];
-    else dates = [add(0)];
-  }
+    const getPriority=(name,country)=>{
+      const s=(name+' '+(country||'')).toLowerCase();
+      if(s.includes('uefa champions league')) return 1;
+      if(s.includes('champions league') && !s.includes('afc') && !s.includes('gcc') && !s.includes('two')) return 1;
+      if(s.includes('europa league')) return 2;
+      if(s.includes('europa conference')||s.includes('conference league')) return 3;
+      if(s.includes('premier league')||s.includes('england')) return 4;
+      if(s.includes('la liga')||s.includes('spain')) return 5;
+      if(s.includes('bundesliga')||s.includes('germany')) return 6;
+      if(s.includes('serie a')||s.includes('italy')) return 7;
+      if(s.includes('ligue 1')||s.includes('france')) return 8;
+      if(s.includes('afc champions league elite')||s==='afc champions league') return 20;
+      if(s.includes('afc champions league two')) return 25;
+      if(s.includes('gcc champions league')||s.includes('gcc')) return 30;
+      return 100;
+    };
 
-  // Override: if original param itself is ISO (most important fix for your case)
-  const rawDate = reqUrl.searchParams.get('date');
-  if (rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
-    dates = [rawDate];
-  }
-
-  try {
-    let all = [];
-    let logs = [];
-
-    for (const date of dates) {
-      const apiUrl = `https://live-football-api.com/api/v1/matches?date=${date}&api_key=${KEY}`;
-      const r = await fetch(apiUrl);
-      const j = await r.json();
-      const matches = j.matches || j.data?.matches || j.data || [];
-      logs.push({ date, status: r.status, count: Array.isArray(matches)? matches.length : 0, message: j.message || 'ok' });
-      if (Array.isArray(matches)) all = all.concat(matches);
-    }
-
-    // dedup
-    const seen = new Set();
-    all = all.filter(m => { const id = String(m.id); if (seen.has(id)) return false; seen.add(id); return true; });
-
-    const formatted = all.map(m => {
-      let kickoff = m.kickoff || m.date || '';
-      let berlinTime = '00:00';
-      try {
-        const d = new Date(kickoff);
-        if (!isNaN(d)) berlinTime = d.toLocaleTimeString('en-GB', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit', hour12: false });
-        else berlinTime = kickoff.slice(11, 16) || '00:00';
-      } catch (e) { berlinTime = '00:00'; }
-
-      let hs = m.score?.home?? m.home_score?? null;
-      let as = m.score?.away?? m.away_score?? null;
-      if (typeof m.score === 'string' && m.score.includes('-')) {
-        const p = m.score.split('-'); hs = parseInt(p[0]); as = parseInt(p[1]);
-      }
-
-      const st = String(m.status || '').toLowerCase();
-      const short = st === 'live'? 'LIVE' : st === 'finished'? 'FT' : 'NS';
-
-      const leagueName = m.league?.name || 'Other';
-      const lower = leagueName.toLowerCase();
-      let pri = 999;
-      if (lower.includes('champions league')) pri = 1;
-      else if (lower.includes('europa league')) pri = 2;
-      else if (lower.includes('premier league')) pri = 3;
-      else if (lower.includes('la liga')) pri = 4;
-      else if (lower.includes('bundesliga')) pri = 5;
-      else if (lower.includes('serie a')) pri = 6;
-      else if (lower.includes('ligue 1')) pri = 7;
-
-      return {
-        fixture: { id: m.id, date: kickoff, berlinTime, status: { short, long: m.status }, minute: m.minute || null },
-        league: { name: leagueName, country: m.league?.country || '' },
-        teams: { home: { name: m.home?.name || 'Home' }, away: { name: m.away?.name || 'Away' } },
-        goals: { home: hs, away: as },
-        status: m.status,
-        priority: pri
+    const formatted=matches.map(m=>{
+      const kickoff=m.kickoff||m.date||'';
+      const berlin=toBerlin(kickoff);
+      let hs=m.score?.home??m.home_score??null; let as=m.score?.away??m.away_score??null;
+      if(typeof m.score==='string' && m.score.includes('-')){ const p=m.score.split('-'); hs=parseInt(p[0]); as=parseInt(p[1]); }
+      const st=String(m.status||'').toLowerCase();
+      let short='NS'; if(st==='live') short='LIVE'; else if(st==='finished') short='FT'; else if(st==='halftime'||st==='ht') short='HT';
+      const minute=m.minute||m.time?.minute||null;
+      return{
+        fixture:{id:m.id,date:kickoff,berlinTime:berlin,status:{short,long:m.status},minute:minute,elapsed:m.elapsed||null},
+        league:{name:m.league?.name||'Other',country:m.league?.country||'',logo:''},
+        teams:{home:{name:m.home?.name||'Home'},away:{name:m.away?.name||'Away'}},
+        goals:{home:hs,away:as},
+        priority:getPriority(m.league?.name||'',m.league?.country||''),
+        status:m.status
       };
     });
 
-    formatted.sort((a, b) => {
-      if (a.fixture.status.short === 'LIVE' && b.fixture.status.short!== 'LIVE') return -1;
-      if (b.fixture.status.short === 'LIVE' && a.fixture.status.short!== 'LIVE') return 1;
-      if (a.priority!== b.priority) return a.priority - b.priority;
+    formatted.sort((a,b)=>{
+      if(a.fixture.status.short==='LIVE' && b.fixture.status.short!=='LIVE') return -1;
+      if(b.fixture.status.short==='LIVE' && a.fixture.status.short!=='LIVE') return 1;
+      if(a.priority!==b.priority) return a.priority-b.priority;
       return a.fixture.berlinTime.localeCompare(b.fixture.berlinTime);
     });
 
-    return new Response(JSON.stringify({ response: formatted, results: formatted.length, debug: logs }), {
-      headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" }
-    });
-  } catch (e) {
-    return new Response(JSON.stringify({ response: [], error: e.message }), { headers: { "content-type": "application/json" } });
+    return new Response(JSON.stringify({response:formatted,results:formatted.length,debug:logs}),{headers:{"content-type":"application/json","Access-Control-Allow-Origin":"*"}});
+  }catch(e){
+    return new Response(JSON.stringify({response:[],error:e.message}),{headers:{"content-type":"application/json"}});
   }
 }
