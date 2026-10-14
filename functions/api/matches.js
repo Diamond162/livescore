@@ -8,45 +8,94 @@ export async function onRequest(context) {
   else if(dateParam==='tomorrow'){let d=new Date();d.setDate(d.getDate()+1);targetDate=toYYYYMMDD(d);}
   else if(/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) targetDate=dateParam;
 
-  const API_KEY = context.env.API_FOOTBALL_KEY || context.env.FOOTBALL_API_KEY || '';
+  // YOUR KEY from live-football-api.com (440 credits)
+  const API_KEY = context.env.LIVE_FOOTBALL_API_KEY || context.env.LIVE_API_KEY || context.env.API_FOOTBALL_KEY || '';
 
   if(!API_KEY){
-    return new Response(JSON.stringify({response:[], error:"NO KEY - Add API_FOOTBALL_KEY in Cloudflare Pages > Settings > Env variables"}),{headers:{"Content-Type":"application/json"}});
+    return new Response(JSON.stringify({response:[], error:"Set LIVE_FOOTBALL_API_KEY in Cloudflare"}),{headers:{"Content-Type":"application/json"}});
   }
 
-  async function callAPI(apiUrl){
-    const res = await fetch(apiUrl,{headers:{'x-apisports-key':API_KEY}});
-    const json = await res.json();
-    return json;
+  // Live-football-api.com endpoint - from official JS client: client.matches(date, lang)
+  // Docs: https://live-football-api.com/docs.php
+  async function fetchMatches(date){
+    try{
+      // Try v1 API - this is the real endpoint used by npm package live-football-api
+      const apiUrl = `https://live-football-api.com/api/matches?key=${API_KEY}&date=${date}&lang=en`;
+      const r = await fetch(apiUrl);
+      const j = await r.json();
+      // Response shape: {data:{matches:[...]}} or {matches:[...]} or {data:[...]}
+      let matches = [];
+      if(j.data && j.data.matches) matches = j.data.matches;
+      else if(j.matches) matches = j.matches;
+      else if(j.data && Array.isArray(j.data)) matches = j.data;
+      else if(Array.isArray(j)) matches = j;
+      return matches;
+    }catch(e){ return []; }
   }
 
-  // TRY DATE FIRST
-  let data = await callAPI(`https://v3.football.api-sports.io/fixtures?date=${targetDate}`);
-  let list = data.response||[];
+  let rawList = await fetchMatches(targetDate);
 
-  // IF TODAY EMPTY (like your screenshot 2026-10-14) → GET LIVE GAMES
-  if(list.length===0){
-    let liveData = await callAPI(`https://v3.football.api-sports.io/fixtures?live=all`);
-    list = liveData.response||[];
-    // If live also empty, try current real date 2026-05-13
-    if(list.length===0){
-      let realToday = new Date().toISOString().split('T')[0];
-      let realData = await callAPI(`https://v3.football.api-sports.io/fixtures?date=${realToday}`);
-      list = realData.response||[];
+  // If today empty (2026-10-14 may be future), try real today from server + yesterday + tomorrow
+  if(rawList.length===0){
+    let d = new Date(targetDate); d.setDate(d.getDate()-1);
+    let y = await fetchMatches(toYYYYMMDD(d));
+    if(y.length>0) rawList = y;
+  }
+  if(rawList.length===0){
+    let d = new Date(targetDate); d.setDate(d.getDate()+1);
+    let t = await fetchMatches(toYYYYMMDD(d));
+    if(t.length>0) rawList = t;
+  }
+  if(rawList.length===0){
+    const realToday = new Date().toISOString().split('T')[0];
+    if(realToday!==targetDate) rawList = await fetchMatches(realToday);
+  }
+
+  // Map live-football-api.com format to YOUR frontend format (ONLY minutes + Europe/Berlin time)
+  const norm = rawList.map(m=>{
+    // Handle many possible field names
+    const id = m.id || m.match_id || m.fixture_id || Math.random();
+    const date = m.date || m.kickoff || m.start_time || m.time || m.datetime || new Date().toISOString();
+    const leagueName = m.league?.name || m.competition || m.tournament || m.league_name || 'League';
+    const country = m.league?.country || m.country || m.country_name || 'WORLD';
+    const home = m.home_team?.name || m.home?.name || m.homeTeam?.name || m.team_home || m.home_team || 'Home';
+    const away = m.away_team?.name || m.away?.name || m.awayTeam?.name || m.team_away || m.away_team || 'Away';
+
+    // Status: NS, LIVE, FT, HT etc + minute
+    let short = 'NS';
+    let elapsed = null;
+    const statusRaw = (m.status || m.match_status || m.state || '').toString().toLowerCase();
+    if(statusRaw.includes('live') || statusRaw.includes('1h') || statusRaw.includes('2h') || statusRaw.includes('in_play') || statusRaw.includes('inplay')){
+      short = '1H';
+      elapsed = m.minute || m.time?.minute || m.status?.minute || m.live_minute || null;
+    } else if(statusRaw.includes('ht') || statusRaw.includes('halftime') || statusRaw.includes('half_time')){
+      short = 'HT';
+    } else if(statusRaw.includes('ft') || statusRaw.includes('finished') || statusRaw.includes('full') || statusRaw.includes('ended')){
+      short = 'FT';
+    } else {
+      short = 'NS';
     }
-  }
+    // If API gives minute directly
+    if(m.minute) elapsed = m.minute;
+    if(m.time && typeof m.time==='number') elapsed = m.time;
+    if(m.elapsed) elapsed = m.elapsed;
 
-  const norm = list.map(f=>{
-    const fix=f.fixture||{}; const sts=fix.status||{};
+    const homeGoals = m.score?.home?? m.home_score?? m.goals_home?? m.score_home?? m.home_team?.score?? null;
+    const awayGoals = m.score?.away?? m.away_score?? m.goals_away?? m.score_away?? m.away_team?.score?? null;
+
     return {
-      fixture:{id:fix.id,date:fix.date,status:{short:sts.short||'NS',long:sts.long||'Not Started',elapsed:sts.elapsed??null}},
-      league:{name:f.league?.name||'League',country:f.league?.country||'WORLD'},
-      teams:{home:{name:f.teams?.home?.name||'Home'},away:{name:f.teams?.away?.name||'Away'}},
-      goals:{home:f.goals?.home??null,away:f.goals?.away??null}
+      fixture:{
+        id:id,
+        date:date,
+        status:{short:short,long:m.status||short,elapsed:elapsed}
+      },
+      league:{name:leagueName,country:country},
+      teams:{home:{name:home},away:{name:away}},
+      goals:{home:homeGoals,away:awayGoals}
     };
   });
 
-  return new Response(JSON.stringify({response:norm, results:norm.length, date:targetDate, usedLive:norm.length>0 && data.response?.length===0}),{
+  return new Response(JSON.stringify({response:norm, results:norm.length, date:targetDate, rawCount:rawList.length}),{
     headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*","Cache-Control":"no-cache"}
   });
 }
