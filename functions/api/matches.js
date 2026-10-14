@@ -1,27 +1,29 @@
 export async function onRequest(context){
   const url = new URL(context.request.url);
-  const dateParam = url.searchParams.get('date') || 'today';
+  let dateParam = url.searchParams.get('date') || 'today';
   const KEY = context.env.FOOTBALL_API_KEY?.trim();
+
+  // FIX: Convert "today" to YYYY-MM-DD
+  if(dateParam==='today' ||!dateParam){
+    dateParam = new Date().toISOString().split('T')[0]; // e.g 2026-10-14
+  }
 
   async function fetchOne(d){
     const apiUrl = `https://live-football-api.com/api/v1/matches?api_key=${KEY}&date=${d}&lang=en`;
     const r = await fetch(apiUrl);
     const j = await r.json();
     const list = j?.data?.matches || [];
-    return {list, date:d, credits:j?.data?.credits_remaining||j?.credits_remaining};
+    return {list, date:d, raw:j, credits:j?.data?.credits_remaining};
   }
 
-  let final={list:[], date:dateParam};
+  let final = await fetchOne(dateParam);
 
-  if(dateParam!=='today'){
-    final = await fetchOne(dateParam);
-  } else {
-    const dates=[];
-    for(let i=0;i<4;i++){ const dt=new Date(); dt.setDate(dt.getDate()-i); dates.push(dt.toISOString().split('T')[0]); }
-    dates.push('2026-07-03','2026-07-02','2026-05-15');
-
-    for(const d of dates){
-      const res = await fetchOne(d);
+  // If today no matches, try last 6 days (to save your 482 credits)
+  if(final.list.length===0){
+    for(let i=1;i<=6;i++){
+      const dt=new Date(); dt.setDate(dt.getDate()-i);
+      const dStr=dt.toISOString().split('T')[0];
+      const res = await fetchOne(dStr);
       if(res.list.length>0){ final=res; break; }
     }
   }
@@ -30,7 +32,7 @@ export async function onRequest(context){
     const st = m.status || {};
     let short='NS';
     const sStr = (st.status||st.display||'').toLowerCase();
-    if(st.is_live || sStr.includes('live') || sStr.includes('inplay') || sStr.includes('ht')) short='LIVE';
+    if(st.is_live) short='LIVE';
     else if(st.state==='postGame' || sStr.includes('finish') || st.display==='FT') short='FT';
 
     return {
@@ -46,13 +48,13 @@ export async function onRequest(context){
         away:{name:m.away?.name||'Away', logo:m.away?.logo}
       },
       goals:{
-        home:m.home?.score??m.score?.home??m.halftime?.home??null,
-        away:m.away?.score??m.score?.away??m.halftime?.away??null
+        home:m.home?.score??null,
+        away:m.away?.score??null
       }
     };
   });
 
-  return new Response(JSON.stringify({response:norm, found:norm.length, date_used:final.date, credits:final.credits, source:'livefootball'}),{
+  return new Response(JSON.stringify({response:norm, found:norm.length, date_used:final.date, credits:final.credits, source:'livefootball-only'}),{
     headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*","Cache-Control":"public, max-age=60"}
   });
 }
