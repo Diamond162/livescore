@@ -3,109 +3,190 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LiveScore - BLACK & GREEN Europe Time</title>
+<title>LiveScore - Flashscore.mobi Clone</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}body{background:#080808;color:#fff;font-family:Arial}
-.header{background:#111;border-bottom:3px solid #00ff88;padding:12px;text-align:center;position:sticky;top:0;z-index:20}
-.header h1{color:#00ff88;font-size:14px}
-.days{display:flex;gap:6px;overflow-x:auto;padding:10px;background:#0a0a0a;position:sticky;top:48px;z-index:15}
-.days::-webkit-scrollbar{display:none}.day{min-width:68px;background:#1e1e1e;border:1px solid #333;border-radius:10px;padding:7px 5px;text-align:center;cursor:pointer;flex-shrink:0}
-.day.active{background:#00ff88;color:#000;font-weight:800}.day small{display:block;font-size:11px;opacity:.8}.day b{display:block;font-size:13px}
-.filters{display:flex;gap:6px;padding:8px 10px;overflow-x:auto}.f{background:#1a1a1a;border:1px solid #333;padding:6px 12px;border-radius:20px;font-size:13px;cursor:pointer;white-space:nowrap}
-.f.active{background:#00ff88;color:#000}.search{padding:0 10px 10px}.search input{width:100%;padding:11px;border-radius:10px;border:1px solid #333;background:#141414;color:#fff}
-.league{background:#1e1e1e;padding:7px 10px;font-weight:800;font-size:11px;text-transform:uppercase;display:flex;justify-content:space-between;border-left:4px solid #333;margin-top:1px}
-.league.top{background:#002b15;border-left:4px solid #00ff88;color:#00ff88}.league span{color:#00ff88;font-weight:400;text-transform:none;text-decoration:underline}
-.row{display:flex;align-items:center;padding:9px 10px;border-bottom:1px solid #151515;font-size:13px;background:#0e0e0e}.row.live{background:#1a1010}
-.t{width:60px;color:#00ff88;font-weight:800}.t.live{color:#ff3b3b}.n{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.s{width:52px;text-align:center;font-weight:800}.s.live{color:#ff3b3b}
-.info{padding:30px;text-align:center;color:#777}
+*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif}
+.header{background:#111;border-bottom:3px solid #00ff88;padding:12px 10px;text-align:center;position:sticky;top:0;z-index:30}
+.header h1{color:#00ff88;font-size:15px;font-weight:800}
+.days{display:flex;gap:6px;overflow-x:auto;padding:10px;background:#0a0a0a;border-bottom:1px solid #222;position:sticky;top:48px;z-index:25}
+.days::-webkit-scrollbar{display:none}
+.day{min-width:70px;background:#1e1e1e;border:1px solid #333;border-radius:10px;padding:8px 4px;text-align:center;cursor:pointer;flex-shrink:0}
+.day.active{background:#00ff88;color:#000;font-weight:800;border-color:#00ff88}
+.day small{display:block;font-size:11px;opacity:.8;text-transform:uppercase}
+.day b{display:block;font-size:13px;margin-top:2px}
+.filters{display:flex;gap:6px;padding:10px;overflow-x:auto;background:#080808}
+.filters::-webkit-scrollbar{display:none}
+.f{background:#1a1a1a;border:1px solid #333;padding:7px 14px;border-radius:20px;font-size:13px;cursor:pointer;white-space:nowrap}
+.f.active{background:#00ff88;color:#000;font-weight:700}
+.search{padding:0 10px 10px;background:#080808}
+.search input{width:100%;padding:12px;border-radius:10px;border:1px solid #333;background:#141414;color:#fff;font-size:14px}
+.league{background:#1e1e1e;padding:8px 10px;font-weight:800;font-size:11px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;border-left:4px solid #333;margin-top:2px;color:#ccc}
+.league.top{background:#002b15;border-left:4px solid #00ff88;color:#00ff88}
+.league span{color:#00ff88;font-weight:400;text-transform:none;text-decoration:underline;font-size:11px;cursor:pointer}
+.row{display:flex;align-items:center;padding:10px;border-bottom:1px solid #151515;font-size:13px;background:#0e0e0e}
+.row.live{background:#1a1010}
+.t{width:58px;color:#00ff88;font-weight:800;font-size:13px}
+.t.live{color:#ff3b3b}
+.t.ft{color:#888}
+.n{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:8px}
+.s{width:48px;text-align:center;font-weight:800}
+.s.live{color:#ff3b3b}
+.info{padding:40px 20px;text-align:center;color:#777;font-size:14px}
 </style>
 </head>
 <body>
 <div class="header"><h1>⚽ LiveScore — BLACK & GREEN • Europe/Berlin Time</h1></div>
 <div class="days" id="days"></div>
-<div class="filters"><div class="f active" data-f="all">All</div><div class="f" data-f="live">🔴 Live</div><div class="f" data-f="scheduled">Scheduled</div><div class="f" data-f="finished">Finished</div></div>
+<div class="filters">
+<div class="f active" data-f="all">All</div>
+<div class="f" data-f="live">🔴 Live</div>
+<div class="f" data-f="scheduled">Scheduled</div>
+<div class="f" data-f="finished">Finished</div>
+</div>
 <div class="search"><input id="q" placeholder="Search team, league..."></div>
-<div id="list"><div class="info">Loading...</div></div>
+<div id="list"><div class="info">Loading today...</div></div>
 <script>
-let ALL=[],curF='all',curDate='today';
-function priority(l){const s=(l.country+' '+l.name).toLowerCase();if(s.includes('champions league'))return 1;if(s.includes('europa league'))return 2;if(s.includes('conference league'))return 3;if(s.includes('europe'))return 4;return 99;}
-
-// FIX 1: CORRECT EUROPE TIME FOR ALL LEAGUES - NO CLUB NAME
+let ALL=[],curF='all',curISO='';
+function priority(l){
+  const s=(l.country+' '+l.name).toLowerCase();
+  if(s.includes('champions league'))return 1;
+  if(s.includes('europa league'))return 2;
+  if(s.includes('conference league'))return 3;
+  if(s.includes('europe'))return 4;
+  if(s.includes('england'))return 5;
+  if(s.includes('spain'))return 6;
+  if(s.includes('germany'))return 7;
+  if(s.includes('italy'))return 8;
+  if(s.includes('france'))return 9;
+  return 99;
+}
+// CORRECT EUROPE/BERLIN TIME - NO CLUB NAMES - WORKS FOR ALL LEAGUES
 function toEuropeTime(dateString){
-  if(!dateString) return '19:00';
+  if(!dateString) return '';
   try{
-    // API gives UTC like 2026-10-15T16:45:00+00:00 -> convert to Europe/Berlin
-    let iso = dateString.toString().trim().replace(' ','T');
-    if(!iso.endsWith('Z') &&!iso.includes('+') &&!iso.match(/-\d{2}:\d{2}$/)) iso+='Z';
-    const d = new Date(iso);
-    if(isNaN(d)) return '19:00';
-    const time = d.toLocaleTimeString('en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit',hour12:false});
-    // If API returns 00:00 midnight (bad data), keep it but try to parse hour from string
-    if(time==='00:00' || time==='01:00'){
-      const m = dateString.toString().match(/T(\d{2}):(\d{2})/);
-      if(m){
-        // Convert that hour from UTC to Berlin (+2 in summer)
-        let h = parseInt(m[1]);
-        // Simple summer conversion: UTC 16:45 -> 18:45 Berlin, 19:00 -> 21:00 Berlin
-        h = (h + 2) % 24;
-        return String(h).padStart(2,'0')+':'+m[2];
-      }
+    let iso=dateString.toString().trim().replace(' ','T');
+    if(!iso.endsWith('Z') &&!iso.includes('+') &&!iso.includes('-04') &&!iso.includes('-05')){
+      if(!iso.includes('Z')) iso+='Z';
     }
-    return time;
-  }catch{
-    return '19:00';
+    const d=new Date(iso);
+    if(isNaN(d)){
+      const m=dateString.match(/(\d{2}):(\d{2})/);
+      return m?m[0]:'19:00';
+    }
+    // Convert UTC to Europe/Berlin like flashscore.mobi
+    const berlin=d.toLocaleTimeString('en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit',hour12:false});
+    if(berlin && berlin!=='00:00' && berlin!=='Invalid Date') return berlin;
+    // Fallback: UTC +2 (summer)
+    const utcH=d.getUTCHours(); const utcM=d.getUTCMinutes();
+    const berlinH=(utcH+2)%24;
+    return String(berlinH).padStart(2,'0')+':'+String(utcM).padStart(2,'0');
+  }catch(e){ return '19:00'; }
+}
+// LIVE MINUTES LIKE FLASHSCORE.MOBI
+function getLiveText(fixture){
+  const short=fixture.status.short;
+  const elapsed=fixture.status.elapsed;
+  if(short==='HT') return 'HT';
+  if(short==='FT' || short==='AET' || short==='PEN') return 'FT';
+  if(elapsed && elapsed>0) return elapsed+"'";
+  const long=(fixture.status.long||'');
+  const mm=long.match(/(\d+)'/);
+  if(mm) return mm[0];
+  if(['1H','2H','LIVE'].includes(short)) return 'LIVE';
+  return short||'';
+}
+function getTodayISO(){return new Date().toISOString().split('T')[0];}
+function buildDays(){
+  const cont=document.getElementById('days');
+  const today=new Date();
+  let html='';
+  for(let i=-3;i<=4;i++){
+    const dt=new Date(today); dt.setDate(today.getDate()+i);
+    const iso=dt.toISOString().split('T')[0];
+    let label=''; if(i===-1) label='YESTERDAY'; else if(i===0) label='TODAY'; else if(i===1) label='TOMORROW';
+    const dayName=dt.toLocaleDateString('en',{weekday:'short'}).toUpperCase();
+    const isActive=(i===0);
+    if(isActive) curISO=iso;
+    html+=`<div class="day ${isActive?'active':''}" data-iso="${iso}"><small>${label||dayName}</small><b>${dt.getDate()} ${dt.toLocaleDateString('en',{month:'short'}).toUpperCase()}</b></div>`;
+  }
+  cont.innerHTML=html;
+  cont.querySelectorAll('.day').forEach(el=>{
+    el.addEventListener('click',()=>{
+      cont.querySelectorAll('.day').forEach(x=>x.classList.remove('active'));
+      el.classList.add('active');
+      load(el.dataset.iso);
+    });
+  });
+}
+async function load(isoDate){
+  if(!isoDate) isoDate=getTodayISO();
+  curISO=isoDate;
+  document.getElementById('list').innerHTML=`<div class="info">Loading ${isoDate}...</div>`;
+  try{
+    const r=await fetch('/api/matches?date='+isoDate);
+    if(!r.ok) throw new Error('API error '+r.status);
+    const j=await r.json();
+    ALL=j.response||[];
+    render();
+  }catch(e){
+    document.getElementById('list').innerHTML=`<div class="info">Failed to load: ${e.message}<br>Check /api/matches?date=${isoDate}</div>`;
   }
 }
-
-// FIX 2: LIVE MINUTES LIKE FLASHSCORE
-function getLiveMinute(fixture){
-  const s = fixture.status.short;
-  const elapsed = fixture.status.elapsed;
-  const long = (fixture.status.long||'').toString();
-  if(s==='HT') return 'HT';
-  if(s==='FT' || s==='AET' || s==='PEN') return 'FT';
-  if(s==='BT') return 'BT';
-  if(elapsed) return elapsed+"'";
-  const m = long.match(/(\d+)'/);
-  if(m) return m[0];
-  if(s==='1H' || s==='2H' || s==='LIVE') return 'LIVE';
-  return '';
-}
-
-function buildDays(){
-  const cont=document.getElementById('days'); let html='';
-  for(let i=-3;i<=4;i++){const dt=new Date(); dt.setDate(dt.getDate()+i); const iso=dt.toISOString().split('T')[0];
-  let label=iso; if(i===0) label='today'; if(i===-1) label='yesterday'; if(i===1) label='tomorrow';
-  const active=(label===curDate|| (curDate==='today'&&i===0))?'active':'';
-  html+=`<div class="day ${active}" data-d="${label}"><small>${dt.toLocaleDateString('en',{weekday:'short'})}</small><b>${dt.getDate()} ${dt.toLocaleDateString('en',{month:'short'})}</b></div>`;}
-  cont.innerHTML=html;
-  cont.querySelectorAll('.day').forEach(el=>el.addEventListener('click',e=>{
-    cont.querySelectorAll('.day').forEach(x=>x.classList.remove('active'));
-    e.currentTarget.classList.add('active'); curDate=e.currentTarget.dataset.d; load(curDate);
-  }));
-}
-async function load(d){
-  curDate=d; document.getElementById('list').innerHTML='<div class="info">Loading '+d+'...</div>';
-  try{const r=await fetch('/api/matches?date='+d); const j=await r.json(); ALL=j.response||[]; render();}catch(e){document.getElementById('list').innerHTML='<div class="info">'+e.message+'</div>';}
-}
 function render(){
-  let list=[...ALL]; const q=document.getElementById('q').value.toLowerCase();
-  if(q) list=list.filter(m=>(m.teams.home.name+' '+m.teams.away.name+' '+m.league.name).toLowerCase().includes(q));
-  if(curF!=='all'){list=list.filter(m=>{const s=m.fixture.status.short; if(curF==='live') return ['1H','2H','HT','LIVE'].includes(s); if(curF==='finished') return ['FT','AET','PEN'].includes(s); if(curF==='scheduled') return s==='NS'||s==='TBD'; return true;});}
+  let list=[...ALL];
+  const q=document.getElementById('q').value.toLowerCase().trim();
+  if(q) list=list.filter(m=>(m.teams.home.name+' '+m.teams.away.name+' '+m.league.name+' '+m.league.country).toLowerCase().includes(q));
+  if(curF!=='all'){
+    list=list.filter(m=>{
+      const s=m.fixture.status.short;
+      if(curF==='live') return ['1H','2H','HT','LIVE'].includes(s);
+      if(curF==='finished') return ['FT','AET','PEN'].includes(s);
+      if(curF==='scheduled') return s==='NS'||s==='TBD';
+      return true;
+    });
+  }
+  if(list.length===0){
+    document.getElementById('list').innerHTML=`<div class="info">No matches for ${curISO}</div>`;
+    return;
+  }
   const groups={}; const order=[];
-  list.forEach(m=>{const key=`${(m.league.country||'WORLD').toUpperCase()}: ${m.league.name.toUpperCase()}`; if(!groups[key]){groups[key]=[];order.push(key);} groups[key].push(m);});
+  list.forEach(m=>{
+    const key=`${(m.league.country||'WORLD').toUpperCase()}: ${m.league.name.toUpperCase()}`;
+    if(!groups[key]){groups[key]=[];order.push(key);}
+    groups[key].push(m);
+  });
   order.sort((a,b)=>priority({country:a,name:a})-priority({country:b,name:b}));
   let html='';
   order.forEach(key=>{
-    html+=`<div class="league ${priority({country:key,name:key})<5?'top':''}">${key} <span>Standings</span></div>`;
+    const isTop=priority({country:key,name:key})<=9;
+    html+=`<div class="league ${isTop?'top':''}"><span style="display:flex;gap:6px;align-items:center">${key}</span><span>Standings</span></div>`;
     groups[key].forEach(m=>{
-      const status=m.fixture.status.short;
-      const isLive=['1H','2H','HT','LIVE'].includes(status);
-      const isFinished=['FT','AET','PEN'].includes(status);
+      const short=m.fixture.status.short;
+      const isLive=['1H','2H','HT','LIVE'].includes(short);
+      const isFT=['FT','AET','PEN'].includes(short);
       let timeTxt='';
-      if(isLive){
-        timeTxt=getLiveMinute(m.fixture);
-      } else if(isFinished){
-        timeTxt='FT';
-      } else {
-        // CORRECT EUROPE TIME FOR EACH
+      if(isLive){ timeTxt=getLiveText(m.fixture); }
+      else if(isFT){ timeTxt='FT'; }
+      else { timeTxt=toEuropeTime(m.fixture.date); }
+      const h=m.goals.home, a=m.goals.away;
+      let score='-'; if(h!=null && a!=null) score=`${h}-${a}`;
+      else if(isFT || isLive) score=`${h??0}-${a??0}`;
+      html+=`<div class="row ${isLive?'live':''}"><div class="t ${isLive?'live':''} ${isFT?'ft':''}">${timeTxt}</div><div class="n">${m.teams.home.name} - ${m.teams.away.name}</div><div class="s ${isLive?'live':''}">${score}</div></div>`;
+    });
+  });
+  document.getElementById('list').innerHTML=html;
+}
+document.querySelectorAll('.f').forEach(f=>{
+  f.addEventListener('click',e=>{
+    document.querySelectorAll('.f').forEach(x=>x.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+    curF=e.currentTarget.dataset.f;
+    render();
+  });
+});
+document.getElementById('q').addEventListener('input',render);
+buildDays();
+load(curISO||getTodayISO());
+</script>
+</body>
+</html>
