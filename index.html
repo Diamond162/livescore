@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LiveScore - Arranged by League</title>
+<title>LiveScore Top Leagues First</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#080808;color:#fff;font-family:Arial,system-ui}
+body{background:#080808;color:#fff;font-family:Arial}
 .header{background:#111;border-bottom:3px solid #00ff88;padding:14px;text-align:center;position:sticky;top:0;z-index:20}
 .header h1{color:#00ff88;font-size:18px}
 .tabs{display:flex;gap:8px;justify-content:center;padding:12px;background:#0a0a0a;position:sticky;top:52px;z-index:10}
@@ -17,16 +17,16 @@ body{background:#080808;color:#fff;font-family:Arial,system-ui}
 .f.active{background:#00ff88;color:#000}
 .search{padding:0 10px 10px}
 .search input{width:100%;padding:11px 14px;border-radius:10px;border:1px solid #333;background:#141414;color:#fff}
-.league-header{background:#1a1a1a;border-top:1px solid #252525;border-bottom:1px solid #252525;padding:8px 10px;font-weight:800;font-size:12px;color:#fff;text-transform:uppercase;letter-spacing:.3px;display:flex;justify-content:space-between}
-.league-header span{color:#00ff88;font-weight:400;text-transform:none;text-decoration:underline;cursor:pointer}
+.league-header{background:#1e1e1e;border-top:1px solid #2a2a2a;border-bottom:1px solid #2a2a2a;padding:8px 10px;font-weight:800;font-size:12px;color:#fff;text-transform:uppercase;display:flex;justify-content:space-between}
+.league-header.top{background:#002b15;border-left:4px solid #00ff88}
+.league-header span{color:#00ff88;font-weight:400;text-transform:none;text-decoration:underline}
 .match-row{display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid #151515;font-size:14px;background:#0e0e0e}
-.match-row.live{background:#151111}
-.time{width:52px;color:#aaa;font-size:13px}
+.match-row.live{background:#1a1010}
+.time{width:48px;color:#aaa;font-size:13px}
 .time.live{color:#ff3b3b;font-weight:800}
-.teams{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.teams{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .score{width:50px;text-align:center;font-weight:800}
 .score.live{color:#ff3b3b}
-.score.ft{color:#fff}
 .info{padding:30px;text-align:center;color:#777}
 </style>
 </head>
@@ -50,41 +50,49 @@ body{background:#080808;color:#fff;font-family:Arial,system-ui}
 let ALL=[];
 let curF='all';
 
-function parseTimeEuro(dateStr){
+function getPriority(league){
+  const name=(league.name+' '+league.country).toLowerCase();
+  if(name.includes('europe')||name.includes('champions league')) return 1;
+  if(name.includes('england')||name.includes('premier league')) return 2;
+  if(name.includes('spain')||name.includes('la liga')) return 3;
+  if(name.includes('germany')||name.includes('bundesliga')) return 4;
+  if(name.includes('italy')||name.includes('serie a')) return 5;
+  if(name.includes('france')||name.includes('ligue 1')) return 6;
+  if(name.includes('europa league')||name.includes('conference')) return 7;
+  if(name.includes('asia')&&name.includes('champions')) return 8;
+  if(name.includes('argentina')||name.includes('brazil')) return 9;
+  return 99;
+}
+
+function parseEuro(dateStr){
   try{
-    let t=(dateStr||'').toString().replace(' ','T');
-    if(t &&!t.endsWith('Z') &&!t.includes('+')) t+='Z';
+    let t=(dateStr||'').toString().trim().replace(' ','T');
+    if(!t) return '00:00';
+    if(!t.endsWith('Z')&&!t.includes('+')) t+='Z';
     const d=new Date(t);
-    if(isNaN(d)) return '00:00';
+    if(isNaN(d)){
+      const m=t.match(/T(\d{2}):(\d{2})/);
+      if(m) return m[1]+':'+m[2];
+      return '00:00';
+    }
     return d.toLocaleTimeString('en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit'});
-  }catch{ return '00:00'; }
+  }catch{return '00:00';}
 }
 
 async function load(d){
   document.getElementById('list').innerHTML='<div class="info">Loading '+d+'...</div>';
-  try{
-    const r=await fetch('/api/matches?date='+d);
-    const j=await r.json();
-    ALL=j.response||[];
-    console.log('Used:',j.date_used,' Found:',j.found,' Credits:',j.credits);
-    if(ALL.length===0){
-      document.getElementById('list').innerHTML=`<div class="info">No matches for ${j.date_used}<br>Credits: ${j.credits}</div>`;
-      return;
-    }
-    // Sort by country + league + time
-    ALL.sort((a,b)=>{
-      const c1=(a.league.country+a.league.name).localeCompare(b.league.country+b.league.name);
-      if(c1!==0) return c1;
-      return new Date(a.fixture.date)-new Date(b.fixture.date);
-    });
-    render();
-  }catch(e){
-    document.getElementById('list').innerHTML='<div class="info" style="color:#f66">'+e.message+'</div>';
+  const r=await fetch('/api/matches?date='+d);
+  const j=await r.json();
+  ALL=j.response||[];
+  if(ALL.length===0){
+    document.getElementById('list').innerHTML=`<div class="info">No matches for ${j.date_used}<br>Credits: ${j.credits}</div>`;
+    return;
   }
+  render();
 }
 
 function render(){
-  let list=ALL;
+  let list=[...ALL];
   const q=document.getElementById('q').value.toLowerCase();
   if(q) list=list.filter(m=> (m.teams.home.name+' '+m.teams.away.name+' '+m.league.name+' '+m.league.country).toLowerCase().includes(q));
   if(curF!=='all'){
@@ -96,47 +104,48 @@ function render(){
       return true;
     });
   }
-  if(list.length===0){ document.getElementById('list').innerHTML='<div class="info">No matches for filter</div>'; return;}
+  // SORT BY PRIORITY
+  list.sort((a,b)=>{
+    const pa=getPriority(a.league), pb=getPriority(b.league);
+    if(pa!==pb) return pa-pb;
+    return (a.league.country+a.league.name).localeCompare(b.league.country+b.league.name);
+  });
 
-  // GROUP BY COUNTRY: LEAGUE
   const groups={};
+  const order=[];
   list.forEach(m=>{
-    const key=`${(m.league.country||'WORLD').toUpperCase()}: ${m.league.name}`;
-    if(!groups[key]) groups[key]=[];
+    const key=`${(m.league.country||'WORLD').toUpperCase()}: ${m.league.name.toUpperCase()}`;
+    if(!groups[key]){
+      groups[key]=[];
+      order.push(key);
+    }
     groups[key].push(m);
   });
 
   let html='';
-  for(const league in groups){
-    html+=`<div class="league-header">${league} <span>Standings</span></div>`;
-    groups[league].forEach(m=>{
+  order.forEach(key=>{
+    const isTop=getPriority({name:key,country:key})<=8;
+    html+=`<div class="league-header ${isTop?'top':''}">${key} <span>Standings</span></div>`;
+    groups[key].forEach(m=>{
       const isLive=m.fixture.status.short==='LIVE';
       const isFT=m.fixture.status.short==='FT';
-      const euro=parseTimeEuro(m.fixture.date);
-      let timeText=euro;
-      let scoreText=' - ';
-      const h=m.goals.home; const a=m.goals.away;
+      const euro=parseEuro(m.fixture.date);
+      const h=m.goals.home, a=m.goals.away;
+      let score='-';
+      if(h!=null && a!=null) score=`${h}-${a}`;
+      let timeLabel=euro;
       if(isLive){
-        timeText = (m.fixture.status.long||'LIVE').replace('Live','') || euro;
-        if(!timeText.includes("'") && isLive) timeText = euro;
-        scoreText = (h!=null && a!=null)? `${h}-${a}` : '0-0';
-      }else if(isFT){
-        scoreText = (h!=null && a!=null)? `${h}-${a}` : ' - ';
-      }else{
-        scoreText = ' - ';
+        timeLabel=m.fixture.status.long||euro;
+        if(timeLabel.length>5 &&!timeLabel.includes("'")) timeLabel=euro;
       }
-      // For scheduled show vs
-      if(!isLive &&!isFT) scoreText=' - ';
-      if(h!=null && a!=null && (isLive||isFT)) scoreText=`${h}-${a}`;
-
       html+=`<div class="match-row ${isLive?'live':''}">
-        <div class="time ${isLive?'live':''}">${isLive? (m.fixture.status.long.includes("'")?m.fixture.status.long:euro) : euro}</div>
+        <div class="time ${isLive?'live':''}">${timeLabel}</div>
         <div class="teams">${m.teams.home.name} - ${m.teams.away.name}</div>
-        <div class="score ${isLive?'live':''} ${isFT?'ft':''}">${scoreText}</div>
+        <div class="score ${isLive?'live':''}">${score}</div>
       </div>`;
     });
-  }
-  document.getElementById('list').innerHTML=html;
+  });
+  document.getElementById('list').innerHTML=html||'<div class="info">No matches</div>';
 }
 
 document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',e=>{
