@@ -1,101 +1,106 @@
 export async function onRequest(context) {
-  const url = new URL(context.request.url);
-  let dateParam = url.searchParams.get('date') || 'today';
-  const todayStr = new Date().toISOString().split('T')[0];
-  function toYYYYMMDD(d){return d.toISOString().split('T')[0];}
-  let targetDate = todayStr;
-  if(dateParam==='yesterday'){let d=new Date();d.setDate(d.getDate()-1);targetDate=toYYYYMMDD(d);}
-  else if(dateParam==='tomorrow'){let d=new Date();d.setDate(d.getDate()+1);targetDate=toYYYYMMDD(d);}
-  else if(/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) targetDate=dateParam;
+  const KEY = context.env.LIVE_FOOTBALL_API_KEY || context.env.FOOTBALL_API_KEY || context.env.FOOTBALL_API_KEY2 || context.env.API_FOOTBALL_KEY;
+  if (!KEY) return new Response(JSON.stringify({ response: [], error: "Set LIVE_FOOTBALL_API_KEY" }), { headers: { "content-type": "application/json" } });
 
-  // YOUR KEY from live-football-api.com (440 credits)
-  const API_KEY = context.env.LIVE_FOOTBALL_API_KEY || context.env.LIVE_API_KEY || context.env.API_FOOTBALL_KEY || '';
+  const reqUrl = new URL(context.request.url);
+  const filter = (reqUrl.searchParams.get('date') || reqUrl.searchParams.get('filter') || 'all').toLowerCase();
 
-  if(!API_KEY){
-    return new Response(JSON.stringify({response:[], error:"Set LIVE_FOOTBALL_API_KEY in Cloudflare"}),{headers:{"Content-Type":"application/json"}});
+  const today = new Date();
+  const fmt = (d) => d.toISOString().split('T')[0];
+  const dates = {
+    yesterday: new Date(today.getTime() - 86400000),
+    today: today,
+    tomorrow: new Date(today.getTime() + 86400000),
+  };
+
+  // Build URLs to fetch - we fetch ALL
+  let urls = [];
+  if (filter === 'all' || filter === 'today' || filter === 'allgames') {
+    urls.push(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&date=${fmt(dates.today)}`);
+    urls.push(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&date=${fmt(dates.yesterday)}`);
+    urls.push(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&date=${fmt(dates.tomorrow)}`);
+    urls.push(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&status=live`);
+    urls.push(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&status=finished`);
+    urls.push(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&status=scheduled`);
+  } else if (filter === 'live') {
+    urls.push(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&status=live`);
+  } else if (filter === 'finished' || filter === 'ft') {
+    urls.push(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&status=finished`);
+  } else if (filter === 'scheduled') {
+    urls.push(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&status=scheduled`);
+  } else {
+    // specific date like 2026-10-14
+    urls.push(`https://live-football-api.com/api/v1/matches?api_key=${KEY}&date=${filter}`);
   }
 
-  // Live-football-api.com endpoint - from official JS client: client.matches(date, lang)
-  // Docs: https://live-football-api.com/docs.php
-  async function fetchMatches(date){
-    try{
-      // Try v1 API - this is the real endpoint used by npm package live-football-api
-      const apiUrl = `https://live-football-api.com/api/matches?key=${API_KEY}&date=${date}&lang=en`;
-      const r = await fetch(apiUrl);
-      const j = await r.json();
-      // Response shape: {data:{matches:[...]}} or {matches:[...]} or {data:[...]}
-      let matches = [];
-      if(j.data && j.data.matches) matches = j.data.matches;
-      else if(j.matches) matches = j.matches;
-      else if(j.data && Array.isArray(j.data)) matches = j.data;
-      else if(Array.isArray(j)) matches = j;
-      return matches;
-    }catch(e){ return []; }
+  try {
+    const results = await Promise.all(urls.map(u => fetch(u).then(r => r.json()).catch(() => ({matches: []}))));
+    let allMatches = [];
+    results.forEach(data => {
+      const ms = data.matches || data.response || data.data || [];
+      allMatches = allMatches.concat(ms);
+    });
+
+    // Deduplicate by id
+    const map = new Map();
+    allMatches.forEach(m => { if (m.id &&!map.has(String(m.id))) map.set(String(m.id), m); });
+    allMatches = Array.from(map.values());
+
+    // Convert to format your frontend expects (api-football style)
+    const formatted = allMatches.map(m => {
+      const statusRaw = (m.status || '').toLowerCase();
+      let short = 'NS';
+      let elapsed = null;
+      if (statusRaw === 'live') { short = 'LIVE'; elapsed = m.minute || m.time || null; }
+      else if (statusRaw === 'finished') short = 'FT';
+      else if (statusRaw === 'scheduled') short = 'NS';
+
+      // If minute exists like "67"
+      if (m.minute) elapsed = m.minute;
+
+      return {
+        fixture: {
+          id: m.id,
+          date: m.kickoff || m.date || new Date().toISOString(),
+          status: { short: short, elapsed: elapsed, long: m.status },
+          minute: m.minute || null
+        },
+        league: {
+          id: m.league?.id || 0,
+          name: m.league?.name || 'Unknown',
+          country: m.league?.country || '',
+          logo: m.league?.logo || ''
+        },
+        teams: {
+          home: { id: m.home?.id, name: m.home?.name || m.home_team_name, logo: m.home?.logo || m.home_team_logo },
+          away: { id: m.away?.id, name: m.away?.name || m.away_team_name, logo: m.away?.logo || m.away_team_logo }
+        },
+        goals: {
+          home: m.score?.home?? m.homeScore?? m.goals?.home?? null,
+          away: m.score?.away?? m.awayScore?? m.goals?.away?? null
+        },
+        score: m.score || { home: m.homeScore, away: m.awayScore },
+        status: m.status,
+        minute: m.minute,
+        _raw: m
+      };
+    });
+
+    // Sort: live first, then scheduled, then finished
+    formatted.sort((a,b) => {
+      if (a.fixture.status.short === 'LIVE' && b.fixture.status.short!== 'LIVE') return -1;
+      if (b.fixture.status.short === 'LIVE' && a.fixture.status.short!== 'LIVE') return 1;
+      return new Date(a.fixture.date) - new Date(b.fixture.date);
+    });
+
+    return new Response(JSON.stringify({
+      response: formatted,
+      results: formatted.length,
+      date: filter,
+      rawCount: formatted.length
+    }), { headers: { "content-type": "application/json", "Access-Control-Allow-Origin": "*" } });
+
+  } catch (e) {
+    return new Response(JSON.stringify({ response: [], error: e.message }), { headers: { "content-type": "application/json" } });
   }
-
-  let rawList = await fetchMatches(targetDate);
-
-  // If today empty (2026-10-14 may be future), try real today from server + yesterday + tomorrow
-  if(rawList.length===0){
-    let d = new Date(targetDate); d.setDate(d.getDate()-1);
-    let y = await fetchMatches(toYYYYMMDD(d));
-    if(y.length>0) rawList = y;
-  }
-  if(rawList.length===0){
-    let d = new Date(targetDate); d.setDate(d.getDate()+1);
-    let t = await fetchMatches(toYYYYMMDD(d));
-    if(t.length>0) rawList = t;
-  }
-  if(rawList.length===0){
-    const realToday = new Date().toISOString().split('T')[0];
-    if(realToday!==targetDate) rawList = await fetchMatches(realToday);
-  }
-
-  // Map live-football-api.com format to YOUR frontend format (ONLY minutes + Europe/Berlin time)
-  const norm = rawList.map(m=>{
-    // Handle many possible field names
-    const id = m.id || m.match_id || m.fixture_id || Math.random();
-    const date = m.date || m.kickoff || m.start_time || m.time || m.datetime || new Date().toISOString();
-    const leagueName = m.league?.name || m.competition || m.tournament || m.league_name || 'League';
-    const country = m.league?.country || m.country || m.country_name || 'WORLD';
-    const home = m.home_team?.name || m.home?.name || m.homeTeam?.name || m.team_home || m.home_team || 'Home';
-    const away = m.away_team?.name || m.away?.name || m.awayTeam?.name || m.team_away || m.away_team || 'Away';
-
-    // Status: NS, LIVE, FT, HT etc + minute
-    let short = 'NS';
-    let elapsed = null;
-    const statusRaw = (m.status || m.match_status || m.state || '').toString().toLowerCase();
-    if(statusRaw.includes('live') || statusRaw.includes('1h') || statusRaw.includes('2h') || statusRaw.includes('in_play') || statusRaw.includes('inplay')){
-      short = '1H';
-      elapsed = m.minute || m.time?.minute || m.status?.minute || m.live_minute || null;
-    } else if(statusRaw.includes('ht') || statusRaw.includes('halftime') || statusRaw.includes('half_time')){
-      short = 'HT';
-    } else if(statusRaw.includes('ft') || statusRaw.includes('finished') || statusRaw.includes('full') || statusRaw.includes('ended')){
-      short = 'FT';
-    } else {
-      short = 'NS';
-    }
-    // If API gives minute directly
-    if(m.minute) elapsed = m.minute;
-    if(m.time && typeof m.time==='number') elapsed = m.time;
-    if(m.elapsed) elapsed = m.elapsed;
-
-    const homeGoals = m.score?.home?? m.home_score?? m.goals_home?? m.score_home?? m.home_team?.score?? null;
-    const awayGoals = m.score?.away?? m.away_score?? m.goals_away?? m.score_away?? m.away_team?.score?? null;
-
-    return {
-      fixture:{
-        id:id,
-        date:date,
-        status:{short:short,long:m.status||short,elapsed:elapsed}
-      },
-      league:{name:leagueName,country:country},
-      teams:{home:{name:home},away:{name:away}},
-      goals:{home:homeGoals,away:awayGoals}
-    };
-  });
-
-  return new Response(JSON.stringify({response:norm, results:norm.length, date:targetDate, rawCount:rawList.length}),{
-    headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*","Cache-Control":"no-cache"}
-  });
 }
