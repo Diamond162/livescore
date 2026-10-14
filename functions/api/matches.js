@@ -1,14 +1,60 @@
-export async function onRequest(){
-  const demo = [
-    { fixture:{id:101, date:new Date().toISOString(), timestamp:Math.floor(new Date().setHours(18,45)/1000), status:{short:'NS',long:'Not Started',elapsed:null}}, league:{name:'Champions League',country:'EUROPE'}, teams:{home:{name:'Real Madrid'},away:{name:'Man City'}}, goals:{home:null,away:null}},
-    { fixture:{id:102, date:new Date().toISOString(), timestamp:Math.floor(new Date().setHours(21,0)/1000), status:{short:'NS',long:'Not Started',elapsed:null}}, league:{name:'Premier League',country:'ENGLAND'}, teams:{home:{name:'Arsenal'},away:{name:'Liverpool'}}, goals:{home:null,away:null}},
-    { fixture:{id:103, date:new Date().toISOString(), timestamp:Math.floor(Date.now()/1000), status:{short:'LIVE',long:'Second Half',elapsed:67}}, league:{name:'La Liga',country:'SPAIN'}, teams:{home:{name:'Barcelona'},away:{name:'Real Madrid'}}, goals:{home:1,away:0}},
-    { fixture:{id:104, date:new Date(Date.now()-86400000).toISOString(), timestamp:Math.floor((Date.now()-86400000)/1000), status:{short:'FT',long:'Finished',elapsed:90}}, league:{name:'Serie A',country:'ITALY'}, teams:{home:{name:'AC Milan'},away:{name:'Inter'}}, goals:{home:2,away:1}},
-    { fixture:{id:105, date:new Date(Date.now()-86400000).toISOString(), timestamp:Math.floor((Date.now()-86400000)/1000), status:{short:'FT',long:'Finished',elapsed:90}}, league:{name:'Bundesliga',country:'GERMANY'}, teams:{home:{name:'Bayern Munich'},away:{name:'Dortmund'}}, goals:{home:3,away:2}},
-    { fixture:{id:106, date:new Date().toISOString(), timestamp:Math.floor(new Date().setHours(19,30)/1000), status:{short:'NS',long:'Not Started',elapsed:null}}, league:{name:'Ligue 1',country:'FRANCE'}, teams:{home:{name:'PSG'},away:{name:'Marseille'}}, goals:{home:null,away:null}},
-    { fixture:{id:107, date:new Date().toISOString(), timestamp:Math.floor(new Date().setHours(20,45)/1000), status:{short:'NS',long:'Not Started',elapsed:null}}, league:{name:'Europa League',country:'EUROPE'}, teams:{home:{name:'Man United'},away:{name:'Roma'}}, goals:{home:null,away:null}}
-  ];
-  return new Response(JSON.stringify({response:demo}),{
-    headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*","Cache-Control":"no-store"}
-  });
+export async function onRequest(context){
+  const reqUrl = new URL(context.request.url);
+  let date = reqUrl.searchParams.get('date') || new Date().toISOString().split('T')[0];
+  if(date==='today') date = new Date().toISOString().split('T')[0];
+
+  const API_KEY = context.env.FOOTBALL_API_KEY?.trim();
+
+  if(!API_KEY){
+    return new Response(JSON.stringify({response:[], error:"NO_KEY"}),{headers:{"Content-Type":"application/json"}});
+  }
+
+  try{
+    const apiUrl = `https://live-football-api.com/api/v1/matches?api_key=${API_KEY}&date=${date}&lang=en`;
+    const r = await fetch(apiUrl);
+    const data = await r.json();
+
+    if(data.success===false){
+      return new Response(JSON.stringify({response:[], api_error:data.message, success:false}),{headers:{"Content-Type":"application/json"}});
+    }
+
+    // If API returns 0 for today, try yesterday to prove key works
+    let matches = data.matches || data.response || [];
+    if(matches.length===0 && date===new Date().toISOString().split('T')[0]){
+      // Try yesterday
+      const y = new Date(); y.setDate(y.getDate()-1);
+      const yDate = y.toISOString().split('T')[0];
+      const apiUrl2 = `https://live-football-api.com/api/v1/matches?api_key=${API_KEY}&date=${yDate}&lang=en`;
+      const r2 = await fetch(apiUrl2);
+      const data2 = await r2.json();
+      matches = data2.matches || data2.response || [];
+      if(matches.length>0){
+        data.matches = matches;
+        date = yDate;
+      }
+    }
+
+    // Convert to your site format
+    const norm = (data.matches||data.response||[]).map(m=>{
+      const status = (m.status||'').toString();
+      let short = 'NS';
+      const low = status.toLowerCase();
+      if(low.includes('live')||low.includes('1h')||low.includes('ht')||low.includes('2h')) short='LIVE';
+      else if(low.includes('ft')||low.includes('finished')||low.includes('full')) short='FT';
+
+      return {
+        fixture:{id:m.id, date:m.kickoff||m.date||`${date}T15:00:00Z`, timestamp:Date.now()/1000, status:{short:short, long:status, elapsed:m.minute||null}},
+        league:{name:m.league?.name||'League', country:m.league?.country||'WORLD'},
+        teams:{home:{name:m.home?.name||m.home_team||'Home'}, away:{name:m.away?.name||m.away_team||'Away'}},
+        goals:{home:m.score?.home??m.home_score??null, away:m.score?.away??m.away_score??null}
+      };
+    });
+
+    return new Response(JSON.stringify({response:norm, raw_count:norm.length, date_used:date}),{
+      headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*"}
+    });
+
+  }catch(e){
+    return new Response(JSON.stringify({response:[], error:e.message}),{headers:{"Content-Type":"application/json"}});
+  }
 }
