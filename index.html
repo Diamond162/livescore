@@ -2,26 +2,27 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FlashScore</title>
 <style>
 body{margin:0;font-family:Arial;background:#f5f5f5}
-h1{background:#000;color:#fff;padding:12px;text-align:center;margin:0;font-size:16px}
+h1{background:#000;color:#fff;padding:12px;text-align:center;margin:0;font-size:15px}
 #dates{display:flex;gap:5px;padding:8px;background:#fff;overflow:auto}
-#dates div{border:1px solid #ddd;padding:6px 10px;border-radius:4px;background:#fff;min-width:55px;text-align:center;cursor:pointer}
-#dates div.on{border:2px solid #000;font-weight:bold}
-#filters{display:flex;gap:5px;padding:8px;background:#fff}
-#filters button{padding:5px 10px;border:1px solid #ddd;background:#fff;border-radius:4px}
+#dates div{border:1px solid #ddd;padding:6px 10px;border-radius:5px;min-width:55px;text-align:center;background:#fff}
+#dates div.on{border:2px solid #000;font-weight:bold;background:#fffbe6}
+#filters{display:flex;gap:5px;padding:8px;background:#fff;border-bottom:1px solid #eee}
+#filters button{padding:6px 12px;border:1px solid #ddd;background:#fff;border-radius:5px}
 #filters button.on{background:#000;color:#fff}
-.league{background:#e0e0e0;padding:6px;font-size:11px}
+.league{background:#e8e8e8;padding:6px 8px;font-size:11px;color:#555;font-weight:bold}
 .match{display:flex;justify-content:space-between;padding:10px;background:#fff;border-bottom:1px solid #eee}
-.time{width:50px;font-weight:bold;text-align:center}
+.time{width:55px;font-weight:bold;text-align:center}
 .teams{flex:1;padding:0 8px}
-.score{width:40px;font-weight:bold;text-align:center}
+.team{font-size:13px;line-height:17px}
+.score{width:45px;font-weight:bold;text-align:center}
 </style>
 </head>
 <body>
-<h1>FlashScore - FOOTBALL API</h1>
+<h1>⚽ FlashScore - Berlin Time</h1>
 <div id="dates"></div>
 <div id="filters">
 <button class="on" onclick="setF('ALL',this)">ALL</button>
@@ -31,9 +32,10 @@ h1{background:#000;color:#fff;padding:12px;text-align:center;margin:0;font-size:
 </div>
 <div id="list">Loading...</div>
 <script>
-let sel = new Date().toISOString().slice(0,10);
+let sel=new Date().toISOString().slice(0,10);
 let filter='ALL';
 let all=[];
+let loading=false;
 function setF(f,btn){filter=f;document.querySelectorAll('#filters button').forEach(b=>b.className='');btn.className='on';show(all)}
 function gen(){
 let d=document.getElementById('dates');d.innerHTML='';
@@ -46,34 +48,21 @@ if(i==0)dn='TODAY';if(i==1)dn='TOM';if(i==-1)dn='YEST';
 let el=document.createElement('div');
 el.innerHTML='<small>'+dn+'</small><br><b>'+txt+'</b>';
 if(iso==sel)el.className='on';
-el.onclick=function(){sel=iso;document.querySelectorAll('#dates div').forEach(x=>x.className='');el.className='on';load()};
+el.onclick=function(){
+if(loading)return;
+sel=iso;document.querySelectorAll('#dates div').forEach(x=>x.className='');el.className='on';load()
+};
 d.appendChild(el);
 }
 }
 gen();
 async function load(){
-document.getElementById('list').innerHTML='Loading '+sel+'...';
+if(loading)return;loading=true;
+document.getElementById('list').innerHTML='<p style="padding:30px;text-align:center">Loading '+sel+'...<br><small>Please wait 1 sec (free API limit 1/min)</small></p>';
 try{
 let r=await fetch('/api/matches?date='+sel);
 let j=await r.json();
-if(j.error){document.getElementById('list').innerHTML='<p style="padding:20px;text-align:center;color:red">Error: '+JSON.stringify(j.error)+'<br><small>'+JSON.stringify(j.full||j.apiError||'')+'</small></p>';return;}
-all=j.response||[];show(all);
-}catch(e){document.getElementById('list').innerHTML='Fail: '+e.message}
-}
-function show(data){
-let f=data;
-if(filter=='LIVE')f=data.filter(m=>['LIVE','1H','2H','HT'].includes(m.fixture.status.short));
-if(filter=='FINISHED')f=data.filter(m=>['FT','AET','PEN'].includes(m.fixture.status.short));
-if(filter=='UPCOMING')f=data.filter(m=>['NS','TBD'].includes(m.fixture.status.short));
-if(f.length==0){document.getElementById('list').innerHTML='<p style="padding:20px;text-align:center">No '+filter+' matches for '+sel+'<br>Try date 2025-10-15</p>';return;}
-let h='';let last='';
-f.forEach(m=>{
-if(m.league.name!=last){h+='<div class=league>'+m.league.name+'</div>';last=m.league.name;}
-h+='<div class=match><div class=time>'+m.berlinTime+'<br><small>'+m.fixture.status.short+'</small></div><div class=teams><div>'+m.teams.home.name+'</div><div>'+m.teams.away.name+'</div></div><div class=score>'+m.goals.home+'-'+m.goals.away+'</div></div>';
-});
-document.getElementById('list').innerHTML=h;
-}
-load();
-</script>
-</body>
-</html>
+if(j.error){
+let msg=typeof j.error==='string'?j.error:JSON.stringify(j.error);
+let extra=j.full?JSON.stringify(j.full).slice(0,400):'';
+document.getElementById('list').innerHTML='<p style="padding:20px;text-align:center;color:red"><b>'+msg+'</b><br><br><small>'+extra+'</small><br><br>Tip: Try 2025-10-15 has many games. 2026 has no data on free plan.<br><br>Wait
