@@ -21,7 +21,7 @@ body{font-family:Arial,sans-serif;background:#e8e8e8}
 .match{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#fff;border-bottom:1px solid #eee;cursor:pointer}
 .match:hover{background:#f8f9ff}
 .left{display:flex;align-items:center;gap:10px;flex:1}
-.time{font-size:12px;min-width:45px;color:#333;font-weight:500}
+.time{font-size:12px;min-width:55px;color:#333;font-weight:600}
 .teams{font-size:14px;line-height:20px;flex:1}
 .score{font-weight:bold;color:#d00;min-width:50px;text-align:right}
 .liveTag{color:#fff;background:#e00;padding:2px 6px;border-radius:4px;font-size:11px}
@@ -29,11 +29,7 @@ body{font-family:Arial,sans-serif;background:#e8e8e8}
 </head>
 <body>
 <div class="header">FlashScore - LIVE 2026 - Europe Time</div>
-<div class="sports" id="sports">
-<button class="active">FOOTBALL</button>
-<button>TENNIS</button>
-<button>BASKETBALL</button>
-</div>
+<div class="sports"><button class="active">FOOTBALL</button><button>TENNIS</button><button>BASKETBALL</button></div>
 <div class="dateBar" id="dateBar"></div>
 <div class="filters" id="filters">
 <button class="active" data-f="ALL">ALL</button>
@@ -63,27 +59,39 @@ function initDates(){
 async function load(){
   listEl.innerHTML='<div style="padding:20px;text-align:center">Loading...</div>';
   try{
-    let r=await fetch('/api/matches?date='+currentDate);
-    let j=await r.json(); allData=j.response||[]; render();
+    let r=await fetch('/api/matches?date='+currentDate+'&t='+Date.now());
+    let j=await r.json();
+    if(j.debug) console.log('DEBUG:', j.debug);
+    allData=j.response||[];
+    if(allData.length===0 && j.message) listEl.innerHTML='<div style="padding:20px;text-align:center">'+j.message+'<br><small>Debug: '+(JSON.stringify(j.debug||{}).slice(0,200))+'</small></div>';
+    else render();
   }catch(e){ listEl.innerHTML='Error: '+e.message; }
+}
+function getStatusShort(m){
+  try{
+    let s = m.fixture?.status?.short || m.fixture?.status || "";
+    if(typeof s === 'object') s = s.short || s.name || "";
+    return String(s).toUpperCase();
+  }catch{ return ""; }
 }
 function render(){
   let filtered=allData;
-  if(currentFilter==='LIVE') filtered=allData.filter(m=>['LIVE','INPLAY','1H','2H','HT'].includes((m.fixture.status.short||'').toUpperCase()));
-  else if(currentFilter==='FINISHED') filtered=allData.filter(m=>['FT','FINISHED'].includes((m.fixture.status.short||'').toUpperCase()));
-  else if(currentFilter==='UPCOMING') filtered=allData.filter(m=>m.goals.display==='-:-');
-  if(!filtered.length){ listEl.innerHTML='<div style="padding:30px;text-align:center">No matches for '+currentDate+'</div>'; return; }
-  let byLeague={}; filtered.forEach(m=>{ let key=(m.league.country||'World')+' - '+(m.league.name||'League'); if(!byLeague[key]) byLeague[key]=[]; byLeague[key].push(m); });
+  if(currentFilter==='LIVE') filtered=allData.filter(m=>{ let s=getStatusShort(m); return ['LIVE','INPLAY','1H','2H','HT','LIVE_MATCH'].includes(s) || s.includes('LIVE'); });
+  else if(currentFilter==='FINISHED') filtered=allData.filter(m=>{ let s=getStatusShort(m); return ['FT','FINISHED','ENDED','AET','FT_PEN'].includes(s); });
+  else if(currentFilter==='UPCOMING') filtered=allData.filter(m=> (m.goals?.display||'-:-') === '-:-' &&!getStatusShort(m).includes('LIVE'));
+  if(!filtered.length){ listEl.innerHTML='<div style="padding:30px;text-align:center">No matches for '+currentDate+'<br><small>Try YESTERDAY - your phone date is future (Oct 2026)</small></div>'; return; }
+  let byLeague={}; filtered.forEach(m=>{ let key=(m.league?.country||'World')+' - '+(m.league?.name||'League'); if(!byLeague[key]) byLeague[key]=[]; byLeague[key].push(m); });
   let html='';
   for(let league in byLeague){
     let ms=byLeague[league];
     html+=`<div class="leagueHead"><span>${league}</span><span>${ms.length}</span></div>`;
     ms.forEach(m=>{
       let time=m.fixture.berlinTime||'--:--';
-      let isLive=['LIVE','INPLAY','1H','2H','HT'].includes((m.fixture.status.short||'').toUpperCase());
-      let score=m.goals.display||'-:-';
+      let s=getStatusShort(m);
+      let isLive=s.includes('LIVE')||['INPLAY','1H','2H','HT'].includes(s);
+      let score=m.goals?.display||'-:-';
       html+=`<div class="match" onclick="location.href='/match.html?id=${m.fixture.id}&date=${currentDate}'">
-        <div class="left"><div class="time">${isLive?'<span class=liveTag>LIVE</span>':time}</div><div class="teams"><div>${m.teams.home.name}</div><div>${m.teams.away.name}</div></div></div>
+        <div class="left"><div class="time">${isLive?'<span class=liveTag>'+s+'</span>':time}</div><div class="teams"><div>${m.teams.home.name}</div><div>${m.teams.away.name}</div></div></div>
         <div class="score" style="color:${isLive?'#e00':score!=='-:-'?'#111':'#888'}">${score}</div>
       </div>`;
     });
@@ -94,7 +102,6 @@ document.querySelectorAll('#filters button').forEach(b=>{
   b.onclick=()=>{ document.querySelectorAll('#filters button').forEach(x=>x.classList.remove('active')); b.classList.add('active'); currentFilter=b.dataset.f; render(); };
 });
 initDates(); load(); setInterval(load,60000);
-function openMatch(id){ location.href='/match.html?id='+id+'&date='+currentDate; }
 </script>
 </body>
 </html>
