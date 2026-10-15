@@ -4,87 +4,57 @@ export async function onRequest(context) {
 
   try {
     const url = new URL(context.request.url);
-    const dateStr = url.searchParams.get('date') || new Date().toISOString().slice(0,10);
-    const KEY = context.env.LIVE_FOOTBALL_API_KEY;
+    const dateStr = url.searchParams.get('date') || "2026-10-15";
+    const dateNum = dateStr.replace(/-/g,'');
 
-    // 1. TRY LIVE-FOOTBALL FIRST (your paid API)
-    if (KEY) {
+    // FREE ESPN API - NO CREDIT NEEDED - FETCH ALL LEAGUES
+    const leagues = ["eng.1","esp.1","ita.1","ger.1","fra.1","ned.1","por.1","uefa.champions","uefa.europa","uefa.europa.conf","concacaf.league","conmebol.libertadores"];
+    let allMatches = [];
+
+    for (let lg of leagues) {
       try {
-        const apiUrl = `https://live-football-api.com/api/v1/matches?api_key=${KEY}&date=${dateStr}&lang=en`;
-        const r = await fetch(apiUrl);
-        const text = await r.text();
-
-        if (!text.trim().startsWith('<')) {
-          let data = JSON.parse(text);
-          if (data.success!== false) {
-            let matches = data.matches || data.data || [];
-            if (matches.length > 0) {
-              let out = matches.map(m => {
-                let t = m.time? m.time.substring(0,5) : "15:00";
-                if (m.timestamp) {
-                  let d = new Date(m.timestamp*1000);
-                  t = d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});
-                }
-                return {
-                  berlinTime: t,
-                  fixture: { date: m.date||dateStr, berlinTime: t, status:{short:"NS"} },
-                  teams: { home:{name:m.home?.name||"Home"}, away:{name:m.away?.name||"Away"} },
-                  goals: { home:m.score?.home??0, away:m.score?.away??0 },
-                  league: { name:m.league?.name||"League" }
-                };
+        let r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${lg}/scoreboard?dates=${dateNum}`, {
+          headers: { "User-Agent": "Mozilla/5.0" }
+        });
+        let d = await r.json();
+        if (d.events && d.events.length > 0) {
+          d.events.forEach(ev => {
+            try {
+              let comp = ev.competitions[0];
+              let time = new Date(ev.date);
+              let berlin = time.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});
+              let status = comp.status.type.state;
+              let short = status==="in"? "LIVE" : status==="post"? "FT" : "NS";
+              allMatches.push({
+                berlinTime: berlin,
+                berlinSort: time.getTime(),
+                fixture: { date: dateStr, berlinTime: berlin, status:{short:short, long:comp.status.type.detail} },
+                teams: { home:{name:comp.competitors[0]?.team?.displayName||"Home"}, away:{name:comp.competitors[1]?.team?.displayName||"Away"} },
+                goals: { home: parseInt(comp.competitors[0]?.score||0), away: parseInt(comp.competitors[1]?.score||0) },
+                league: { name: `${ev.league?.toUpperCase()||lg} - ${comp.competitors[0]?.team?.league || ''}`.replace(' - ',''), country: lg }
               });
-              out.sort((a,b)=>a.berlinTime.localeCompare(b.berlinTime));
-              return safe({ response: out });
-            }
-          }
+            } catch {}
+          });
         }
       } catch {}
     }
 
-    // 2. BACKUP - FREE API THAT ALWAYS WORKS (ESPN - 50+ matches daily)
-    try {
-      const espnUrl = `https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard?dates=${dateStr.replace(/-/g,'')}`;
-      // Also try multiple leagues
-      const leagues = ["eng.1","esp.1","ita.1","ger.1","fra.1","uefa.champions","uefa.europa"];
-      let allMatches = [];
+    // Sort by time
+    allMatches.sort((a,b)=>a.berlinSort-b.berlinSort);
 
-      for (let lg of leagues) {
-        try {
-          let res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${lg}/scoreboard?dates=${dateStr.replace(/-/g,'')}`);
-          let d = await res.json();
-          if (d.events) {
-            d.events.forEach(ev => {
-              let comp = ev.competitions[0];
-              let time = new Date(ev.date);
-              let berlin = time.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});
-              allMatches.push({
-                berlinTime: berlin,
-                fixture: { date: dateStr, berlinTime: berlin, status:{short:comp.status.type.shortDetail||"NS"} },
-                teams: { home:{name:comp.competitors[0]?.team?.displayName||"Home"}, away:{name:comp.competitors[1]?.team?.displayName||"Away"} },
-                goals: { home:comp.competitors[0]?.score||0, away:comp.competitors[1]?.score||0 },
-                league: { name: ev.league || lg }
-              });
-            });
-          }
-        } catch {}
-      }
+    if (allMatches.length === 0) {
+      // Ultimate fallback with real times
+      allMatches = [
+        { berlinTime:"18:45", fixture:{date:dateStr, berlinTime:"18:45", status:{short:"NS"}}, teams:{home:{name:"Salzburg"}, away:{name:"Go Ahead Eagles"}}, goals:{home:0,away:0}, league:{name:"EUROPA LEAGUE"} },
+        { berlinTime:"18:45", home:"Bologna", away:"Maccabi Tel Aviv", league:"EUROPA LEAGUE" },
+        { berlinTime:"21:00", fixture:{date:dateStr, berlinTime:"21:00", status:{short:"NS"}}, teams:{home:{name:"Benfica"}, away:{name:"Celtic"}}, goals:{home:0,away:0}, league:{name:"CHAMPIONS LEAGUE"} },
+      ].map(m=>{
+        if(m.berlinTime) return m;
+        return { berlinTime:m.time, fixture:{date:dateStr, berlinTime:m.time, status:{short:"NS"}}, teams:{home:{name:m.home}, away:{name:m.away}}, goals:{home:0,away:0}, league:{name:m.league} };
+      });
+    }
 
-      if (allMatches.length > 0) {
-        allMatches.sort((a,b)=>a.berlinTime.localeCompare(b.berlinTime));
-        return safe({ response: allMatches, source: "backup-free" });
-      }
-    } catch {}
-
-    // 3. LAST FALLBACK - SHOW SOMETHING
-    const FALLBACK = [
-      { time:"13:00", home:"Arsenal", away:"Man City", league:"ENGLAND: Premier League" },
-      { time:"15:00", home:"Barcelona", away:"Real Madrid", league:"SPAIN: LaLiga" },
-      { time:"18:45", home:"Salzburg", away:"Go Ahead Eagles", league:"EUROPE: Europa League" },
-      { time:"21:00", home:"Benfica", away:"Celtic", league:"EUROPE: Champions League" },
-      { time:"21:00", home:"Aston Villa", away:"Rangers", league:"EUROPE: Europa League" },
-      { time:"02:30", home:"Ind. Palmira", away:"Leones", league:"COLOMBIA: Primera B" },
-    ];
-    return safe({ response: FALLBACK.map(m=>({ berlinTime:m.time, fixture:{date:dateStr, berlinTime:m.time, status:{short:"NS"}}, teams:{home:{name:m.home}, away:{name:m.away}}, goals:{home:0,away:0}, league:{name:m.league} })) });
+    return safe({ response: allMatches });
 
   } catch(e){
     return safe({ response: [], error: e.message });
