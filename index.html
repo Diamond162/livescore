@@ -1,94 +1,21 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FlashScore - Lagos</title>
-<style>
-*{box-sizing:border-box}
-body{margin:0;font-family:Arial;background:#eee}
-header{background:#111;color:#fff;padding:14px;text-align:center;font-weight:700;font-size:18px;position:sticky;top:0;z-index:10}
-.dates{display:flex;gap:8px;overflow:auto;padding:10px;background:#fff;position:sticky;top:50px;z-index:9;border-bottom:1px solid #ddd}
-.dates div{border:1px solid #ccc;padding:8px 14px;border-radius:20px;white-space:nowrap;cursor:pointer;background:#fff;font-size:13px}
-.dates div.active{background:#111;color:#fff;border-color:#111}
-.filters{display:flex;gap:8px;padding:10px;background:#fff}
-.filters button{padding:7px 15px;border-radius:20px;border:1px solid #ccc;background:#fff;cursor:pointer;font-weight:600}
-.filters button.active{background:#111;color:#fff}
-#list{padding:8px;min-height:300px}
-.match{background:#fff;margin:8px 0;padding:12px;border-radius:12px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 3px rgba(0,0,0,.1)}
-.team{font-weight:600;font-size:14px;margin:3px 0}
-.score{font-weight:800;font-size:18px;text-align:center;min-width:50px;line-height:1.2}
-.meta{font-size:11px;color:#888;margin-bottom:4px}
-.live{color:#e00;font-weight:700;animation:blink 1s infinite}
-@keyframes blink{50%{opacity:.5}}
-</style>
-</head>
-<body>
-<header>⚽ FlashScore - Lagos (WAT)</header>
-<div class="dates" id="dates"></div>
-<div class="filters">
-<button class="active" id="bALL">ALL</button>
-<button id="bLIVE">LIVE</button>
-<button id="bFIN">FINISHED</button>
-<button id="bUP">UPCOMING</button>
-</div>
-<div id="list">Loading...</div>
-
-<script>
-let matchesList=[],curDate="",curF="ALL",refreshTimer=null;
-
-function initDates(){
- let w=document.getElementById('dates');w.innerHTML="";
- for(let i=-1;i<=4;i++){
-  let dt=new Date();dt.setDate(dt.getDate()+i);
-  let iso=dt.toISOString().split('T')[0];
-  let lab=dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
-  if(i==-1)lab="YEST"; if(i==0)lab="TODAY "+lab; if(i==1)lab="TOM";
-  let el=document.createElement('div');el.textContent=lab;el.dataset.date=iso;
-  if(i==0){el.classList.add('active');curDate=iso;}
-  el.onclick=()=>{document.querySelectorAll('.dates div').forEach(x=>x.classList.remove('active'));el.classList.add('active');curDate=el.dataset.date;load();};
-  w.appendChild(el);
- }
-}
-function setF(f){
- curF=f;
- document.querySelectorAll('.filters button').forEach(b=>b.classList.remove('active'));
- let map={ALL:'bALL',LIVE:'bLIVE',FINISHED:'bFIN',UPCOMING:'bUP'};
- document.getElementById(map[f]).classList.add('active');
- render();
-}
-document.getElementById('bALL').onclick=()=>setF('ALL');
-document.getElementById('bLIVE').onclick=()=>setF('LIVE');
-document.getElementById('bFIN').onclick=()=>setF('FINISHED');
-document.getElementById('bUP').onclick=()=>setF('UPCOMING');
-
-async function load(){
- let l=document.getElementById('list');
- l.innerHTML='<div style="text-align:center;padding:20px">Loading '+curDate+'...</div>';
- try{
-  let r=await fetch('/api/matches?date='+curDate+'&lang=en');
-  let d=await r.json();
-  let arr=d.matches||[];
-  if(!Array.isArray(arr)) arr=Object.values(arr);
-  matchesList=arr;
-  render();
-  // Auto refresh for LIVE
-  clearInterval(refreshTimer);
-  refreshTimer=setInterval(()=>{if(curF==='LIVE'||curF==='ALL') load();},30000);
- }catch(e){
-  l.innerHTML='<div style="background:#fff;padding:20px;border-radius:10px;color:red">Error: '+e.message+'<br><small>Check /api/matches link</small></div>';
- }
-}
-
 function render(){
  let l=document.getElementById('list');
  if(!Array.isArray(matchesList)) matchesList=[];
  let f=[...matchesList];
- if(curF=="LIVE") f=f.filter(m=>{let s=(m.status||'').toUpperCase(); return s.includes('LIVE')||['1H','2H','HT','ET','LIVE'].includes(s);});
- if(curF=="FINISHED") f=f.filter(m=>{let s=(m.status||'').toUpperCase(); return s.includes('FIN')||['FT','AET','PEN','FINISHED'].includes(s);});
- if(curF=="UPCOMING") f=f.filter(m=>{let s=(m.status||'').toUpperCase(); return s==''||['NS','TBD','PST','CANC','SCHEDULED','NOT STARTED'].includes(s);});
+ 
+ function getStatus(m){
+   let s = m.status;
+   if(!s) return 'NS';
+   if(typeof s === 'string') return s;
+   if(typeof s === 'object') return s.short || s.type || s.name || 'NS';
+   return String(s);
+ }
 
- if(!f.length){l.innerHTML='<div style="text-align:center;padding:30px;background:#fff;border-radius:12px">No '+curF+' matches for '+curDate+'<br><small style="color:#888">Try ALL tab</small></div>';return;}
+ if(curF=="LIVE") f=f.filter(m=>{let s=getStatus(m).toUpperCase(); return s.includes('LIVE')||['1H','2H','HT','ET','LIVE'].includes(s);});
+ if(curF=="FINISHED") f=f.filter(m=>{let s=getStatus(m).toUpperCase(); return s.includes('FIN')||['FT','AET','PEN','FINISHED'].includes(s);});
+ if(curF=="UPCOMING") f=f.filter(m=>{let s=getStatus(m).toUpperCase(); return s==''||['NS','TBD','PST','CANC','SCHEDULED','NOT STARTED'].includes(s);});
+
+ if(!f.length){l.innerHTML='<div style="text-align:center;padding:30px;background:#fff;border-radius:12px">No '+curF+' matches for '+curDate+'</div>';return;}
 
  let h='';
  f.forEach(m=>{
@@ -96,7 +23,8 @@ function render(){
   let away=m.away?.name||'Away';
   let hs=m.score?.home??m.home?.score??'-';
   let as=m.score?.away??m.away?.score??'-';
-  let st=m.status||'NS';
+  let stRaw=getStatus(m);
+  let st=stRaw;
   let lg=m.league?.name||'League';
   let liveClass=st.toUpperCase().includes('LIVE')||['1H','2H','HT'].includes(st.toUpperCase())?'live':'';
   let timeStr='';
@@ -105,8 +33,3 @@ function render(){
  });
  l.innerHTML=h;
 }
-initDates();
-load();
-</script>
-</body>
-</html>
