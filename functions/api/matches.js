@@ -8,10 +8,10 @@ export async function onRequest(c){
   }
 
   try{
-    // CORRECT header for Highlightly direct key = x-rapidapi-key
     let r=await fetch(`https://soccer.highlightly.net/matches?date=${date}&limit=500`,{
       headers:{
         "x-rapidapi-key": KEY,
+        "x-rapidapi-host": "soccer.highlightly.net",
         "x-api-key": KEY
       }
     });
@@ -30,7 +30,7 @@ export async function onRequest(c){
       }
     });
 
-    return new Response(JSON.stringify({response:out,results:out.length,date,debug:{status:r.status,raw:txt.substring(0,200)}}),{
+    return new Response(JSON.stringify({response:out,results:out.length,date,debug:{status:r.status,raw:txt.substring(0,250)}}),{
       headers:{"content-type":"application/json","Access-Control-Allow-Origin":"*"}
     });
   }catch(e){
