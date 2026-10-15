@@ -2,35 +2,68 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Flashscore 2026 - Live Scores</title>
+<title>Flashscore 2026 - Live</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;background:#f5f5f5}
-.header{background:#001e28;color:white;padding:12px;display:flex;align-items:center;gap:12px}
-.header h1{font-size:20px}.header span{color:#00b050}
-.nav{background:white;display:flex;overflow-x:auto;border-bottom:1px solid #ddd}
-.nav button{padding:12px 18px;border:none;background:white;white-space:nowrap;font-weight:bold;cursor:pointer}
-.nav button.active{color:#00b050;border-bottom:3px solid #00b050}
-.date-bar{background:#001e28;color:white;display:flex;overflow-x:auto;padding:8px}
-.date-bar button{background:transparent;color:#aaa;border:1px solid #333;padding:6px 12px;margin-right:6px;border-radius:20px;cursor:pointer}
-.date-bar button.active{background:white;color:#001e28}
-.match{background:white;border-bottom:1px solid #eee;padding:10px 12px;display:flex;justify-content:space-between;align-items:center}
-.league{font-size:12px;color:#888;margin-bottom:2px}.teams{font-size:14px}
-.time{font-size:13px;font-weight:bold;min-width:45px}.score{font-weight:bold;color:#d00}
-.live{color:#d00;animation:blink 1s infinite} @keyframes blink{50%{opacity:.3}}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;background:#f0f0f0}
+.header{background:#001e28;color:#fff;padding:12px 15px;font-size:22px;font-weight:bold}
+.header span{color:#00b050}
+.tabs{background:#fff;display:flex;border-bottom:1px solid #ddd;overflow-x:auto}
+.tabs button{padding:14px 20px;border:none;background:#fff;font-weight:bold;cursor:pointer;border-bottom:3px solid transparent}
+.tabs button.active{border-color:#00b050;color:#00b050}
+.dates{background:#001e28;display:flex;overflow-x:auto;padding:8px;gap:6px}
+.dates button{background:transparent;color:#9ab;border:1px solid #334;padding:6px 14px;border-radius:20px;white-space:nowrap;cursor:pointer}
+.dates button.active{background:#fff;color:#001e28;border-color:#fff}
+.league-head{background:#e9e9e9;padding:7px 12px;font-weight:bold;font-size:13px;color:#333;border-top:1px solid #ddd}
+.match{background:#fff;padding:10px 12px;display:flex;justify-content:space-between;border-bottom:1px solid #eee}
+.match.teams div{font-size:14px;line-height:20px}
+.match.meta{text-align:right;min-width:60px}
+.time{font-size:13px;font-weight:bold}.score{font-size:14px;font-weight:bold;color:#c00;margin-top:2px}
+.live{color:#d00;animation:blink 1s infinite} @keyframes blink{50%{opacity:.4}}
 </style>
 </head>
 <body>
-<div class="header"><h1>Flash<span>score</span> 2026</h1></div>
-<div class="nav">
-<button class="active">⚽ FOOTBALL</button><button>TENNIS</button><button>BASKETBALL</button>
-</div>
-<div class="date-bar" id="dateBar"></div>
-<div id="matches">Loading 2026 matches...</div>
+<div class="header">Flash<span>score</span> 2026</div>
+<div class="tabs"><button class="active">⚽ FOOTBALL</button><button>TENNIS</button><button>BASKETBALL</button></div>
+<div class="dates" id="dateBar"></div>
+<div id="list">Loading matches...</div>
 <script>
-const dateBar=document.getElementById('dateBar');const matchesDiv=document.getElementById('matches');
-let selectedDate="2026-06-11";
-function makeDates(){
-  let dates=[];let base=new Date("2026-06-11");
-  for(let i=-2;i<12;i++){let d=new Date(base);d.setDate(base.getDate()+i);dates.push(d.toISOString().split('T')[0]);}
-  dateBar.innerHTML=dates.map(d=>{
-    let dt=new Date(d);let label=dt.toLocaleDateString('en',{month:'short',
+let sel="2026-06-11";
+const listEl=document.getElementById('list');
+const barEl=document.getElementById('dateBar');
+function buildDates(){
+  let out=[]; let base=new Date("2026-06-11");
+  for(let i=-3;i<15;i++){let d=new Date(base);d.setDate(base.getDate()+i);out.push(d.toISOString().split('T')[0]);}
+  barEl.innerHTML=out.map(d=>{
+    let dt=new Date(d); let lbl=dt.toLocaleDateString('en',{month:'short',day:'numeric'});
+    if(d===new Date().toISOString().split('T')[0]) lbl="TODAY";
+    return `<button class="${d===sel?'active':''}" onclick="load('${d}')">${lbl}</button>`;
+  }).join('');
+}
+async function load(date){
+  sel=date; buildDates();
+  listEl.innerHTML="<div style='padding:20px;text-align:center'>Loading "+date+"...</div>";
+  try{
+    let r=await fetch(`/api/matches?date=${date}`);
+    let j=await r.json();
+    let ms=j.response||[];
+    if(ms.length===0){
+      // try today if 2026 empty
+      if(date.startsWith("2026")){ return load(new Date().toISOString().split('T')[0]); }
+      listEl.innerHTML=`<div style='padding:30px;text-align:center'>No matches for ${date}<br>Try TODAY</div>`; return;
+    }
+    let html=""; let last="";
+    ms.forEach(m=>{
+      let lg=`${m.league.country} - ${m.league.name}`;
+      if(lg!==last){html+=`<div class="league-head">🌍 ${lg}</div>`; last=lg;}
+      let isLive=(m.fixture.status.short||"").toLowerCase().includes("live")|| (m.fixture.status.short||"").includes("1H")|| (m.fixture.status.short||"").includes("2H");
+      let timeHtml=isLive?`<span class="live">● LIVE ${m.fixture.berlinTime}</span>`:m.fixture.berlinTime;
+      let score=m.goals.display|| (m.goals.home!=null?`${m.goals.home} - ${m.goals.away}`:"- : -");
+      html+=`<div class="match"><div class="teams"><div>${m.teams.home.name}</div><div>${m.teams.away.name}</div></div><div class="meta"><div class="time">${timeHtml}</div><div class="score">${score}</div></div></div>`;
+    });
+    listEl.innerHTML=html;
+  }catch(e){listEl.innerHTML="Error: "+e.message;}
+}
+buildDates(); load(sel);
+</script>
+</body>
+</html>
