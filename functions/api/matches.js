@@ -1,38 +1,35 @@
 export async function onRequest(context) {
-  const apiKey = context.env.FOOTBALL_API_KEY;
-  if (!apiKey) {
-    return new Response(JSON.stringify({error: "FOOTBALL_API_KEY not set"}), {status: 500});
-  }
-
-  const url = new URL(context.request.url);
-  const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0];
-  const lang = url.searchParams.get('lang') || 'en';
-
-  // Caching to save your 500 credits (1/min)
-  const cache = caches.default;
-  const cacheKey = new Request(url.toString());
-  let response = await cache.match(cacheKey);
-  if (response) {
-    return response;
-  }
-
-  const apiUrl = `https://live-football-api.com/api/v1/matches?api_key=${apiKey}&date=${date}&lang=${en}`;
-  // Corrected - use lang param
-  const apiUrlFixed = `https://live-football-api.com/api/v1/matches?api_key=${apiKey}&date=${date}&lang=${lang}`;
-
-  const fetchRes = await fetch(apiUrlFixed);
-  const data = await fetchRes.json();
-
-  // data = {status:"success", matches:[...] }
-  const finalRes = new Response(JSON.stringify(data), {
-    headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": "public, max-age=60",
-      "Access-Control-Allow-Origin": "*"
+  try {
+    const apiKey = context.env.FOOTBALL_API_KEY;
+    if (!apiKey) {
+      return new Response(JSON.stringify({error: "FOOTBALL_API_KEY not set in Cloudflare"}), {status: 500, headers: {"Content-Type":"application/json"}});
     }
-  });
 
-  // Store in cache 60s
-  context.waitUntil(cache.put(cacheKey, finalRes.clone()));
-  return finalRes;
+    const reqUrl = new URL(context.request.url);
+    const date = reqUrl.searchParams.get('date') || new Date().toISOString().split('T')[0];
+    const lang = reqUrl.searchParams.get('lang') || 'en';
+
+    const apiUrl = `https://live-football-api.com/api/v1/matches?api_key=${apiKey}&date=${date}&lang=${lang}`;
+
+    const res = await fetch(apiUrl);
+    const text = await res.text();
+
+    // Try parse json, if fails show raw
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch(e) {
+      return new Response(JSON.stringify({error: "API returned HTML, not JSON", raw: text.substring(0,500)}), {status:500, headers:{"Content-Type":"application/json"}});
+    }
+
+    return new Response(JSON.stringify(data), {
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "public, max-age=60"
+      }
+    });
+  } catch(err) {
+    return new Response(JSON.stringify({error: err.message}), {status:500, headers:{"Content-Type":"application/json"}});
+  }
 }
