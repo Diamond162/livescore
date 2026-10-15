@@ -83,21 +83,51 @@ document.querySelectorAll('.filter').forEach(b=>{
 
 async function loadMatches(){
   try{
-    document.getElementById('list').innerHTML="<p style='padding:20px;text-align:center'>Loading...</p>";
-    let res = await fetch(`/api/matches?date=${selectedDate}`);
+    document.getElementById('list').innerHTML="<p style='padding:20px;text-align:center'>Loading FotMob...</p>";
+    let fotmobDate = selectedDate.replaceAll("-", "");
+    let res = await fetch(`https://www.fotmob.com/api/matches?date=${fotmobDate}`);
     let data = await res.json();
-    allData = data.response || [];
+    
+    let out = [];
+    let leagues = data.leagues || [];
+    for(let league of leagues){
+      let leagueName = league.name;
+      for(let m of league.matches || []){
+        let berlinTime = "15:00";
+        if(m.status?.utcTime){
+          let d = new Date(m.status.utcTime);
+          berlinTime = d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"Europe/Berlin"});
+        } else if(m.time){
+          berlinTime = m.time.substring(0,5);
+        }
+        let statusShort = m.status?.reason?.short || m.status?.liveTime?.short || "NS";
+        let homeScore = 0, awayScore = 0;
+        if(m.status?.scoreStr){
+          let p = m.status.scoreStr.split("-");
+          if(p.length==2){ homeScore=parseInt(p[0])||0; awayScore=parseInt(p[1])||0; }
+        }
+        out.push({
+          berlinTime: berlinTime,
+          fixture: { date: selectedDate, berlinTime: berlinTime, status: { short: statusShort } },
+          teams: { home: { name: m.home?.name || "Home" }, away: { name: m.away?.name || "Away" } },
+          goals: { home: homeScore, away: awayScore },
+          league: { name: leagueName }
+        });
+      }
+    }
+    
+    out.sort((a,b)=>a.berlinTime.localeCompare(b.berlinTime));
+    allData = out;
     renderMatches(allData);
   }catch(e){
     console.error(e);
-    document.getElementById('list').innerHTML="<p style='padding:20px;text-align:center'>No matches yet. Refreshing...</p>";
-    setTimeout(loadMatches,3000);
+    document.getElementById('list').innerHTML=`<p style='padding:20px;text-align:center'>Error: ${e.message}. Try refresh.</p>`;
   }
 }
 
 function renderMatches(data){
   let filtered = data;
-  if(filter==="LIVE") filtered = data.filter(m=>m.fixture.status.short==="LIVE"||m.fixture.status.short==="1H"||m.fixture.status.short==="2H");
+  if(filter==="LIVE") filtered = data.filter(m=>["LIVE","1H","2H","HT"].includes(m.fixture.status.short));
   if(filter==="FINISHED") filtered = data.filter(m=>m.fixture.status.short==="FT");
   if(filter==="UPCOMING") filtered = data.filter(m=>m.fixture.status.short==="NS");
 
@@ -113,21 +143,21 @@ function renderMatches(data){
       html+=`<div class="league-header">${m.league.name}</div>`;
       lastLeague=m.league.name;
     }
+    let liveClass = ["LIVE","1H","2H","HT"].includes(m.fixture.status.short) ? "live" : "";
     html+=`<div class="match">
-      <div class="time">${m.berlinTime}<small>${m.fixture.status.short}</small></div>
+      <div class="time ${liveClass}">${m.berlinTime}<small>${m.fixture.status.short}</small></div>
       <div class="teams">
         <div class="team">${m.teams.home.name}</div>
         <div class="team">${m.teams.away.name}</div>
       </div>
-      <div class="score">${m.goals.home} - ${m.goals.away}</div>
+      <div class="score ${liveClass}">${m.goals.home} - ${m.goals.away}</div>
     </div>`;
   });
   document.getElementById('list').innerHTML=html;
 }
 
 loadMatches();
-// Auto refresh every 5 minutes (not every minute) to save your 500 credits - FIXES HTML BLOCK!
-setInterval(loadMatches, 300000);
+setInterval(loadMatches, 120000);
 </script>
 </body>
 </html>
