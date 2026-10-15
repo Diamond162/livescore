@@ -3,14 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FlashScore - LIVE 2026 - Europe Time</title>
+<title>FlashScore - LIVE</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
 body{background:#f5f5f5}
 header{background:#000;color:#fff;padding:12px;text-align:center;font-weight:bold;position:sticky;top:0;z-index:10}
-.sport-bar{display:flex;gap:8px;padding:8px;background:#001e28;overflow:auto;white-space:nowrap}
-.sport-bar button{padding:6px 12px;border-radius:20px;border:none;font-weight:bold;cursor:pointer;background:#0a3d4f;color:#fff}
-.sport-bar button.active{background:#fff;color:#000}
 .date-bar{display:flex;gap:6px;padding:8px;background:#fff;overflow:auto;position:sticky;top:41px;z-index:9;border-bottom:1px solid #ddd}
 .date-bar div{padding:6px 10px;border:1px solid #e0e0e0;border-radius:4px;text-align:center;background:white;min-width:60px;cursor:pointer}
 .date-bar div.active{border:2px solid #000;font-weight:700}
@@ -19,50 +16,37 @@ header{background:#000;color:#fff;padding:12px;text-align:center;font-weight:bol
 .filter-bar button.active{font-weight:bold;background:#000;color:#fff}
 .league-header{background:#e9e9e9;padding:8px;font-size:12px;color:#555;border-top:1px solid #ddd;text-transform:uppercase}
 .match{display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid #eee;background:#fff}
-.match .teams{flex:1}
-.match .team{font-size:14px;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.match .time{width:60px;text-align:center;font-weight:bold}
-.match .time small{display:block;font-size:11px;color:#888}
-.match .score{width:50px;text-align:center;font-weight:bold}
+.time{width:60px;text-align:center;font-weight:bold}
+.time small{display:block;font-size:11px;color:#888}
+.teams{flex:1;padding:0 10px}
+.team{font-size:14px;line-height:18px}
+.score{width:50px;text-align:center;font-weight:bold}
 .live{color:#e60000}
 </style>
 </head>
 <body>
-<header>FlashScore - LIVE 2026 - Europe Time</header>
-
-<div class="sport-bar">
-<button class="sport active" data-sport="FOOTBALL">FOOTBALL</button>
-<button class="sport" data-sport="BASKETBALL">BASKETBALL</button>
-</div>
-
+<header>FlashScore - FOOTBALL API - Europe Time</header>
 <div class="date-bar" id="dateBar"></div>
-
 <div class="filter-bar">
 <button class="filter active" data-filter="ALL">ALL</button>
 <button class="filter" data-filter="LIVE">LIVE</button>
 <button class="filter" data-filter="FINISHED">FINISHED</button>
 <button class="filter" data-filter="UPCOMING">UPCOMING</button>
 </div>
-
 <div id="list"></div>
-
 <script>
 let selectedDate = new Date().toISOString().slice(0,10);
 let filter = "ALL";
 let allData = [];
-
 function genDates(){
   const bar = document.getElementById('dateBar');
   bar.innerHTML = "";
   for(let i=-2;i<=5;i++){
-    let d = new Date();
-    d.setDate(d.getDate()+i);
+    let d = new Date(); d.setDate(d.getDate()+i);
     let iso = d.toISOString().slice(0,10);
     let label = d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
     let dayName = d.toLocaleDateString('en-GB',{weekday:'short'}).toUpperCase();
-    if(i===0) dayName="TODAY";
-    if(i===1) dayName="TOMORROW";
-    if(i===-1) dayName="YESTERDAY";
+    if(i===0) dayName="TODAY"; if(i===1) dayName="TOMORROW"; if(i===-1) dayName="YESTERDAY";
     let div = document.createElement('div');
     div.className = iso===selectedDate?"active":"";
     div.innerHTML = `<small>${dayName}</small><br><b>${label}</b>`;
@@ -71,91 +55,33 @@ function genDates(){
   }
 }
 genDates();
-
 document.querySelectorAll('.filter').forEach(b=>{
-  b.onclick=()=>{
-    document.querySelectorAll('.filter').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
-    filter=b.dataset.filter;
-    renderMatches(allData);
-  }
+  b.onclick=()=>{document.querySelectorAll('.filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');filter=b.dataset.filter;renderMatches(allData);}
 });
-
 async function loadMatches(){
   try{
-    document.getElementById('list').innerHTML="<p style='padding:20px;text-align:center'>Loading FotMob...</p>";
-    let fotmobDate = selectedDate.replaceAll("-", "");
-    let res = await fetch(`https://www.fotmob.com/api/matches?date=${fotmobDate}`);
+    document.getElementById('list').innerHTML="<p style='padding:20px;text-align:center'>Loading...</p>";
+    let res = await fetch(`/api/matches?date=${selectedDate}`);
     let data = await res.json();
-    
-    let out = [];
-    let leagues = data.leagues || [];
-    for(let league of leagues){
-      let leagueName = league.name;
-      for(let m of league.matches || []){
-        let berlinTime = "15:00";
-        if(m.status?.utcTime){
-          let d = new Date(m.status.utcTime);
-          berlinTime = d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"Europe/Berlin"});
-        } else if(m.time){
-          berlinTime = m.time.substring(0,5);
-        }
-        let statusShort = m.status?.reason?.short || m.status?.liveTime?.short || "NS";
-        let homeScore = 0, awayScore = 0;
-        if(m.status?.scoreStr){
-          let p = m.status.scoreStr.split("-");
-          if(p.length==2){ homeScore=parseInt(p[0])||0; awayScore=parseInt(p[1])||0; }
-        }
-        out.push({
-          berlinTime: berlinTime,
-          fixture: { date: selectedDate, berlinTime: berlinTime, status: { short: statusShort } },
-          teams: { home: { name: m.home?.name || "Home" }, away: { name: m.away?.name || "Away" } },
-          goals: { home: homeScore, away: awayScore },
-          league: { name: leagueName }
-        });
-      }
-    }
-    
-    out.sort((a,b)=>a.berlinTime.localeCompare(b.berlinTime));
-    allData = out;
+    if(data.error){ document.getElementById('list').innerHTML=`<p style='padding:20px;text-align:center'>Error: ${data.error}<br><small>${JSON.stringify(data.apiError||"")}</small></p>`; return; }
+    allData = data.response || [];
     renderMatches(allData);
-  }catch(e){
-    console.error(e);
-    document.getElementById('list').innerHTML=`<p style='padding:20px;text-align:center'>Error: ${e.message}. Try refresh.</p>`;
-  }
+  }catch(e){ document.getElementById('list').innerHTML=`<p style='padding:20px;text-align:center'>Failed: ${e.message}</p>`; }
 }
-
 function renderMatches(data){
   let filtered = data;
-  if(filter==="LIVE") filtered = data.filter(m=>["LIVE","1H","2H","HT"].includes(m.fixture.status.short));
-  if(filter==="FINISHED") filtered = data.filter(m=>m.fixture.status.short==="FT");
-  if(filter==="UPCOMING") filtered = data.filter(m=>m.fixture.status.short==="NS");
-
-  if(filtered.length===0){
-    document.getElementById('list').innerHTML=`<p style='padding:30px;text-align:center'>No ${filter} matches for ${selectedDate}</p>`;
-    return;
-  }
-
-  let html="";
-  let lastLeague="";
+  if(filter==="LIVE") filtered = data.filter(m=>["LIVE","1H","2H","HT","ET","P","BT"].includes(m.fixture.status.short));
+  if(filter==="FINISHED") filtered = data.filter(m=>["FT","AET","PEN"].includes(m.fixture.status.short));
+  if(filter==="UPCOMING") filtered = data.filter(m=>["NS","TBD"].includes(m.fixture.status.short));
+  if(filtered.length===0){ document.getElementById('list').innerHTML=`<p style='padding:30px;text-align:center'>No ${filter} matches for ${selectedDate}</p>`; return; }
+  let html=""; let lastLeague="";
   filtered.forEach(m=>{
-    if(m.league.name!==lastLeague){
-      html+=`<div class="league-header">${m.league.name}</div>`;
-      lastLeague=m.league.name;
-    }
-    let liveClass = ["LIVE","1H","2H","HT"].includes(m.fixture.status.short) ? "live" : "";
-    html+=`<div class="match">
-      <div class="time ${liveClass}">${m.berlinTime}<small>${m.fixture.status.short}</small></div>
-      <div class="teams">
-        <div class="team">${m.teams.home.name}</div>
-        <div class="team">${m.teams.away.name}</div>
-      </div>
-      <div class="score ${liveClass}">${m.goals.home} - ${m.goals.away}</div>
-    </div>`;
+    if(m.league.name!==lastLeague){ html+=`<div class="league-header">${m.league.name}</div>`; lastLeague=m.league.name; }
+    let liveClass = ["LIVE","1H","2H","HT","ET","P","BT"].includes(m.fixture.status.short)? "live" : "";
+    html+=`<div class="match"><div class="time ${liveClass}">${m.berlinTime}<small>${m.fixture.status.short}</small></div><div class="teams"><div class="team">${m.teams.home.name}</div><div class="team">${m.teams.away.name}</div></div><div class="score ${liveClass}">${m.goals.home} - ${m.goals.away}</div></div>`;
   });
   document.getElementById('list').innerHTML=html;
 }
-
 loadMatches();
 setInterval(loadMatches, 120000);
 </script>
