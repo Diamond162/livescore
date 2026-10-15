@@ -9,57 +9,62 @@ export async function onRequest(context) {
   };
 
   if (!KEY) {
-    return new Response(JSON.stringify({ response: [], message: "NO API KEY SET IN CLOUDFLARE" }), { headers });
+    return new Response(JSON.stringify({ response: [], message: "NO API KEY SET" }), { headers });
   }
 
   try {
-    // Try today's date
-    let endpoint = `https://live-football-api.com/api/matches?api_key=${KEY}&date=${date}&lang=en`;
-    let res = await fetch(endpoint);
-    let json = await res.json();
-    let matches = json.matches || json.data || json.response || [];
+    // Use correct domain - try api. subdomain
+    let endpoints = [
+      `https://live-football-api.com/api/matches?api_key=${KEY}&date=${date}`,
+      `https://api.live-football-api.com/matches?api_key=${KEY}&date=${date}`,
+      `https://live-football-api.com/api/matches?key=${KEY}&date=${date}&lang=en`
+    ];
 
-    // If empty, try without date (get all)
-    if (!matches || matches.length === 0) {
-      let endpoint2 = `https://live-football-api.com/api/matches?api_key=${KEY}&lang=en`;
-      let res2 = await fetch(endpoint2);
-      let json2 = await res2.json();
-      matches = json2.matches || json2.data || json2.response || [];
+    let matches = [];
+    let lastError = "";
+
+    for (let ep of endpoints) {
+      try {
+        let res = await fetch(ep);
+        let text = await res.text();
+        // If it starts with < it's HTML - skip
+        if (text.trim().startsWith('<')) {
+          lastError = "API returned HTML: " + text.slice(0,100);
+          continue;
+        }
+        let json = JSON.parse(text);
+        matches = json.matches || json.data || json.response || [];
+        if (matches.length > 0) break;
+      } catch (e) {
+        lastError = e.message;
+      }
     }
 
     let out = matches.map(item => ({
-      id: item.id,
+      id: item.id || Math.random(),
       fixture: {
         date: item.date || date,
-        status: { short: item.status || "Live" }
+        status: { short: item.status || "NS" }
       },
       teams: {
         home: { name: item.home_team || item.home?.name || "Home" },
         away: { name: item.away_team || item.away?.name || "Away" }
       },
       goals: {
-        home: item.home_score ?? 0,
-        away: item.away_score ?? 0
+        home: item.home_score ?? item.score?.home ?? 0,
+        away: item.away_score ?? item.score?.away ?? 0
       },
-      league: { name: item.league?.name || "" },
-      status: item.status || "Live",
-      time: item.time || item.minute || "",
-      home: item.home_team || item.home?.name || "Home",
-      away: item.away_team || item.away?.name || "Away",
-      score: `${item.home_score ?? 0}-${item.away_score ?? 0}`
+      league: { name: item.league?.name || "" }
     }));
 
-    // RETURN BOTH formats so frontend no go confuse again
     return new Response(JSON.stringify({
-      response: out,      // for index.html
-      matches: out,       // backup
+      response: out,
       count: out.length,
       date: date,
-      message: out.length === 0 ? `No matches for ${date} - checking other dates...` : "OK",
-      debug: `Checked date ${date}, found ${out.length}`
+      message: out.length === 0 ? `No matches for ${date} - API says: ${lastError}` : "OK"
     }), { headers });
 
   } catch (e) {
-    return new Response(JSON.stringify({ response: [], matches: [], error: e.message, message: "Error: " + e.message }), { headers });
+    return new Response(JSON.stringify({ response: [], message: "Error: " + e.message }), { headers });
   }
 }
