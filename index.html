@@ -1,87 +1,56 @@
 <!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FlashScore - Live Scores</title>
-<style>
-body{margin:0;font-family:Arial;background:#f5f5f5}
-h1{background:#000;color:#fff;padding:12px;text-align:center;margin:0;font-size:16px}
-#dates{display:flex;gap:5px;padding:8px;background:#fff;overflow:auto}
-#dates div{border:1px solid #ddd;padding:6px 10px;border-radius:6px;min-width:55px;text-align:center;cursor:pointer}
-#dates div.on{border:2px solid #000;font-weight:bold;background:#fffbe6}
-#filters{display:flex;gap:5px;padding:8px;background:#fff;border-bottom:1px solid #eee;position:sticky;top:0;z-index:10}
-#filters button{padding:8px 14px;border:1px solid #ddd;background:#fff;border-radius:6px;font-weight:bold}
-#filters button.on{background:#000;color:#fff}
-.league{background:#e8e8e8;padding:6px 8px;font-size:11px;color:#555;font-weight:bold;border-top:1px solid #ddd}
-.match{display:flex;justify-content:space-between;padding:12px;background:#fff;border-bottom:1px solid #eee;align-items:center}
-.time{width:60px;font-weight:bold;text-align:center;font-size:13px}
-.teams{flex:1;padding:0 10px}
-.team{font-size:13px;line-height:18px}
-.score{width:50px;font-weight:bold;text-align:center;font-size:14px}
-</style>
-</head>
-<body>
-<h1>⚽ FlashScore</h1>
-<div id="dates"></div>
-<div id="filters">
-<button class="on" onclick="setF('ALL',this)">ALL</button>
-<button onclick="setF('LIVE',this)">LIVE</button>
-<button onclick="setF('FINISHED',this)">FINISHED</button>
-<button onclick="setF('UPCOMING',this)">UPCOMING</button>
-</div>
-<div id="list" style="padding:30px;text-align:center">Loading...</div>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FlashScore - Live Scores</title>
+<style>body{margin:0;font-family:Arial;background:#f5f5f5}header{background:#111;color:#fff;padding:15px;text-align:center;font-size:18px}.dates{display:flex;gap:8px;overflow:auto;padding:10px;background:#fff;border-bottom:1px solid #eee;position:sticky;top:0;z-index:10}.dates div{border:1px solid #ddd;padding:8px 14px;border-radius:20px;white-space:nowrap;cursor:pointer}.dates div.active{background:#111;color:#fff}.filters{display:flex;gap:8px;padding:10px}.filters button{padding:6px 14px;border-radius:20px;border:1px solid #ddd}.filters button.active{background:#111;color:#fff}.match{background:#fff;margin:8px;padding:12px;border-radius:10px;display:flex;justify-content:space-between;align-items:center}.team{font-weight:600}.score{font-weight:bold;text-align:center}.status{font-size:11px;color:#888}</style>
+</head><body>
+<header>⚽ FlashScore</header>
+<div class="dates" id="dates"></div>
+<div class="filters"><button class="active" id="fALL">ALL</button><button id="fLIVE">LIVE</button><button id="fFINISHED">FINISHED</button><button id="fUPCOMING">UPCOMING</button></div>
+<div id="list" style="padding:10px">Loading...</div>
 <script>
-let sel=new Date().toISOString().slice(0,10);
-let filter='ALL';
-let all=[];
-let loading=false;
-function setF(f,btn){filter=f;document.querySelectorAll('#filters button').forEach(b=>b.className='');btn.className='on';show(all)}
-function gen(){
-let d=document.getElementById('dates');d.innerHTML='';
-for(let i=-2;i<=5;i++){
-let dt=new Date();dt.setDate(dt.getDate()+i);
-let iso=dt.toISOString().slice(0,10);
-let txt=dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
-let dn=dt.toLocaleDateString('en-GB',{weekday:'short'});
-if(i==0)dn='TODAY';if(i==1)dn='TOM';if(i==-1)dn='YEST';
-let el=document.createElement('div');
-el.innerHTML='<small>'+dn+'</small><br><b>'+txt+'</b>';
-if(iso==sel)el.className='on';
-el.onclick=function(){if(loading)return;sel=iso;document.querySelectorAll('#dates div').forEach(x=>x.className='');el.className='on';load()};
-d.appendChild(el);
+let allData=[], curDate="", filter="ALL";
+function initDates(){
+ let d=document.getElementById('dates'); d.innerHTML="";
+ for(let i=-2;i<=4;i++){let dt=new Date(); dt.setDate(dt.getDate()+i);
+  let iso=dt.toISOString().split('T')[0];
+  let label=dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}); if(i==0) label="TODAY "+label; if(i==-1) label="YEST"; if(i==1) label="TOM";
+  let el=document.createElement('div'); el.textContent=label; el.dataset.date=iso; if(i==0){el.classList.add('active'); curDate=iso;} el.onclick=()=>{document.querySelectorAll('.dates div').forEach(x=>x.classList.remove('active')); el.classList.add('active'); curDate=iso; load();}; d.appendChild(el);
+ }
 }
-}
-gen();
+function setFilter(f){filter=f; document.querySelectorAll('.filters button').forEach(b=>b.classList.remove('active')); document.getElementById('f'+f).classList.add('active'); show();}
+
+initDates();
+document.getElementById('fALL').onclick=()=>setFilter('ALL');
+document.getElementById('fLIVE').onclick=()=>setFilter('LIVE');
+document.getElementById('fFINISHED').onclick=()=>setFilter('FINISHED');
+document.getElementById('fUPCOMING').onclick=()=>setFilter('UPCOMING');
+
 async function load(){
-if(loading)return;loading=true;
-document.getElementById('list').innerHTML='<p style="padding:30px">Loading '+sel+'...<br><small>Wait 1 sec (free API)</small></p>';
-try{
-let r=await fetch('/api/matches?date='+sel);
-let j=await r.json();
-if(j.error){
-let msg=typeof j.error==='string'?j.error:JSON.stringify(j.error);
-document.getElementById('list').innerHTML='<p style="padding:20px;color:red">'+msg+'<br><br>Wait 60s and try again<br><br>Try date 2025-10-15</p>';
-loading=false;return;
+ document.getElementById('list').innerHTML='<div style="padding:20px;text-align:center">Loading... wait 1 sec (free API 1/min)</div>';
+ try{
+  let r=await fetch(`/api/matches?date=${curDate}`);
+  let t=await r.text();
+  let j; try{j=JSON.parse(t);}catch(e){throw new Error(t.slice(0,200));}
+  allData=j.matches||j.data||[];
+  show();
+ }catch(e){document.getElementById('list').innerHTML=`<div style="color:red;padding:20px">Fail: ${e.message}</div>`;}
 }
-all=j.response||[];show(all);
-}catch(e){document.getElementById('list').innerHTML='Fail: '+e.message;}
-loading=false;
-}
-function show(data){
-let f=data;
-if(filter=='LIVE')f=data.filter(m=>['1H','2H','HT','ET','P','BT','LIVE'].includes(m.fixture.status.short));
-if(filter=='FINISHED')f=data.filter(m=>['FT','AET','PEN'].includes(m.fixture.status.short));
-if(filter=='UPCOMING')f=data.filter(m=>['NS','TBD'].includes(m.fixture.status.short));
-if(f.length==0){document.getElementById('list').innerHTML='<p style="padding:30px">No '+filter+' matches<br>Try 2025-10-15 (has many games)</p>';return;}
-let h='';let last='';
-f.forEach(m=>{
-if(m.league.name!=last){h+='<div class=league>'+m.league.name+'</div>';last=m.league.name;}
-h+='<div class=match><div class=time>'+m.time+'<br><small>'+m.fixture.status.short+'</small></div><div class=teams><div class=team>'+m.teams.home.name+'</div><div class=team>'+m.teams.away.name+'</div></div><div class=score>'+m.goals.home+' - '+m.goals.away+'</div></div>';
-});
-document.getElementById('list').innerHTML=h;
+
+function show(){
+ let filtered=allData;
+ if(filter=="LIVE") filtered=filtered.filter(m=> (m.status||"").toLowerCase().includes('live')||m.status=='1H'||m.status=='2H'||m.status=='HT');
+ if(filter=="FINISHED") filtered=filtered.filter(m=> (m.status||"").toLowerCase().includes('fin')||m.status=='FT'||m.status=='AET'||m.status=='PEN');
+ if(filter=="UPCOMING") filtered=filtered.filter(m=> (m.status||"").toLowerCase().includes('not')||m.status=='NS'||m.status=='');
+ let html="";
+ if(!filtered.length){html=`<div style="text-align:center;padding:30px">No ${filter} matches for ${curDate}<br><small>Try other date - data is live</small></div>`;}
+ filtered.forEach(m=>{
+  let home=m.home?.name||m.teams?.home?.name||"Home";
+  let away=m.away?.name||m.teams?.away?.name||"Away";
+  let sh=m.score?.home??m.goals?.home??"-"; let sa=m.score?.away??m.goals?.away??"-";
+  let status=m.status||m.fixture?.status?.short||"";
+  let time=""; try{time=new Date(m.date||m.time||"").toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Lagos'});}catch(e){time=status;}
+  html+=`<div class="match"><div><div class="team">${home}</div><div class="team">${away}</div><div class="status">${time} • ${status}</div></div><div class="score">${sh}<br>${sa}</div></div>`;
+ });
+ document.getElementById('list').innerHTML=html;
 }
 load();
-</script>
-</body>
-</html>
+</script></body></html>
