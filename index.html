@@ -1,148 +1,180 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FlashScore - LIVE 2026 - Europe Time</title>
 <style>
-body{margin:0;font-family:Arial;background:#f2f2f2}
-.header{background:#0a2a4a;color:#fff;padding:15px;text-align:center;font-weight:bold;font-size:18px}
-.tabs{display:flex;gap:10px;padding:10px;overflow:auto;background:#fff}
-.tabs button{border:none;padding:10px 18px;border-radius:20px;font-weight:bold;white-space:nowrap}
-.tabs button.active{background:#0a2a4a;color:#fff}
-.subtabs{display:flex;gap:8px;padding:8px 10px;overflow:auto;background:#fff;border-top:1px solid #ddd}
-.subtabs button{border:1px solid #ccc;background:#fff;padding:6px 14px;border-radius:20px}
-.subtabs button.active{background:#0a2a4a;color:#fff;border-color:#0a2a4a}
-.filters{display:flex;gap:8px;padding:8px 10px;overflow:auto;background:#fff}
-.filters button{border:1px solid #ccc;background:#fff;padding:6px 14px;border-radius:20px}
-.filters button.active{background:#0a2a4a;color:#fff}
-.match{background:#fff;margin:8px;padding:12px;border-radius:8px;display:flex;justify-content:space-between;align-items:center}
-.team{font-weight:bold}
-.time{color:#666;font-size:13px}
-.score{font-weight:bold;font-size:18px}
-.league{font-size:12px;color:#888;margin-bottom:4px}
-#error{padding:20px;text-align:center}
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
+body{background:#f0f0f0}
+.header{background:#001e28;color:white;text-align:center;padding:14px;font-weight:bold;font-size:16px;position:sticky;top:0;z-index:10}
+.sports{display:flex;gap:8px;padding:10px;background:#001e28;overflow-x:auto}
+.sport{padding:8px 16px;border-radius:20px;border:none;font-weight:bold;white-space:nowrap}
+.sport.active{background:white;color:#001e28}
+.sport.inactive{background:#0f3a4a;color:white}
+
+.dates{display:flex;gap:8px;padding:10px;background:white;overflow-x:auto;border-bottom:1px solid #ddd;position:sticky;top:48px;z-index:9}
+.date{flex:0 0 auto;min-width:70px;padding:8px;border:1px solid #ddd;border-radius:12px;text-align:center;background:white;font-size:13px;cursor:pointer}
+.date.active{background:#001e28;color:white;border-color:#001e28}
+.date small{display:block;font-size:11px;opacity:0.7}
+
+.filters{display:flex;gap:8px;padding:8px 10px;background:white;border-bottom:1px solid #ddd;overflow-x:auto}
+.filter{padding:6px 14px;border-radius:20px;border:1px solid #ddd;font-size:13px;background:white;white-space:nowrap}
+.filter.active{background:#001e28;color:white}
+
+.league-header{background:#e8e8e8;padding:8px 10px;font-size:13px;color:#555;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #ddd}
+.league-header b{color:#333}
+.match{display:flex;background:white;border-bottom:1px solid #eee;padding:8px 10px;align-items:center}
+.time{width:65px;font-size:13px;text-align:left;color:#333;font-weight:bold}
+.time small{display:block;font-size:11px;color:#d00;font-weight:bold}
+.teams{flex:1}
+.teams div{font-size:14px;padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.teams div.loser{color:#777}
+.score{width:60px;text-align:right;font-weight:bold;font-size:15px}
+.score small{font-size:11px;color:#777;font-weight:normal;display:block}
+.live{color:#e30613!important}
 </style>
 </head>
 <body>
+
 <div class="header">FlashScore - LIVE 2026 - Europe Time</div>
 
-<div class="tabs">
-<button class="active">FOOTBALL</button>
-<button>TENNIS</button>
-<button>BASKETBALL</button>
+<div class="sports">
+<button class="sport active">FOOTBALL</button>
+<button class="sport inactive">TENNIS</button>
+<button class="sport inactive">BASKETBALL</button>
 </div>
 
-<div class="subtabs" id="dateTabs">
-<button data-date="2026-10-13">13 Oct</button>
-<button data-date="2026-10-14">YESTERDAY</button>
-<button class="active" data-date="2026-10-15">TODAY 15 OCT</button>
-<button data-date="2026-10-16">TOMORROW</button>
-</div>
+<div class="dates" id="dates"></div>
 
-<div class="filters" id="filters">
-<button class="active" data-filter="ALL">ALL</button>
-<button data-filter="LIVE">LIVE</button>
-<button data-filter="FINISHED">FINISHED</button>
-<button data-filter="UPCOMING">UPCOMING</button>
+<div class="filters">
+<button class="filter active" data-f="ALL">ALL</button>
+<button class="filter" data-f="LIVE">LIVE</button>
+<button class="filter" data-f="FINISHED">FINISHED</button>
+<button class="filter" data-f="UPCOMING">UPCOMING</button>
 </div>
 
 <div id="list"></div>
-<div id="error"></div>
 
 <script>
+let selectedDate = '2026-10-15';
 let allMatches = [];
-let currentFilter = "ALL";
-let currentDate = "2026-10-15";
+let filter = 'ALL';
 
-function safeBerlinTime(m){
-  // NEVER CRASH AGAIN - this fixes berlinTime error
-  return m?.berlinTime || m?.fixture?.date?.split('T')[1]?.slice(0,5) || m?.time || "15:00";
-}
-function safeStatus(m){
-  return m?.fixture?.status?.short || m?.status || "NS";
-}
-function safeHome(m){
-  return m?.teams?.home?.name || m?.home_team || "Home";
-}
-function safeAway(m){
-  return m?.teams?.away?.name || m?.away_team || "Away";
-}
-function safeGoals(m){
-  let h = m?.goals?.home?? 0;
-  let a = m?.goals?.away?? 0;
-  return h + " - " + a;
+// Generate 7 days like FlashScore
+function genDates(){
+  const container = document.getElementById('dates');
+  container.innerHTML = '';
+  const base = new Date('2026-10-15'); // change to new Date() for real today
+  for(let i=-3;i<=3;i++){
+    let d = new Date(base);
+    d.setDate(base.getDate()+i);
+    let yyyy = d.toISOString().slice(0,10);
+    let label = d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}).toUpperCase();
+    let dayName = d.toLocaleDateString('en-GB',{weekday:'short'}).toUpperCase();
+    let isToday = yyyy===selectedDate;
+    if(i===-1) dayName='YESTERDAY';
+    if(i===0) dayName='TODAY';
+    if(i===1) dayName='TOMORROW';
+
+    let btn = document.createElement('button');
+    btn.className = 'date'+(isToday?' active':'');
+    btn.innerHTML = `<small>${dayName}</small>${label}`;
+    btn.onclick=()=>{selectedDate=yyyy; genDates(); loadMatches();};
+    container.appendChild(btn);
+  }
 }
 
-async function load(date){
-  currentDate = date;
-  document.getElementById('list').innerHTML = "<p style='text-align:center'>Loading...</p>";
+async function loadMatches(){
+  document.getElementById('list').innerHTML = '<p style="padding:20px;text-align:center">Loading...</p>';
   try{
-    let res = await fetch(`/api/matches?date=${date}`);
+    let res = await fetch(`/api/matches?date=${selectedDate}`);
     let data = await res.json();
     allMatches = data.response || [];
     render();
   }catch(e){
-    document.getElementById('error').innerHTML = "Error: " + e.message;
+    document.getElementById('list').innerHTML = 'Error: '+e.message;
   }
 }
 
 function render(){
-  let list = document.getElementById('list');
-  list.innerHTML = "";
+  const list = document.getElementById('list');
+  list.innerHTML='';
+
   let filtered = allMatches.filter(m=>{
-    if(currentFilter==="ALL") return true;
-    let s = safeStatus(m);
-    if(currentFilter==="LIVE") return s==="LIVE" || s==="1H" || s==="2H";
-    if(currentFilter==="FINISHED") return s==="FT" || s==="AET" || s==="PEN";
-    if(currentFilter==="UPCOMING") return s==="NS" || s==="TBD";
+    if(filter==='ALL') return true;
+    if(filter==='LIVE') return m.fixture?.status?.short==='LIVE';
+    if(filter==='FINISHED') return m.fixture?.status?.short==='FT';
+    if(filter==='UPCOMING') return m.fixture?.status?.short==='NS';
     return true;
   });
 
-  if(filtered.length===0){
-    list.innerHTML = `<p style='text-align:center;padding:20px'>No matches for ${currentDate}</p>`;
-    return;
+  // Group by league - FlashScore style
+  let groups = {};
+  filtered.forEach(m=>{
+    let league = m.league?.name || 'Other';
+    // Add country emoji from league name
+    let country = 'WORLD';
+    if(league.toLowerCase().includes('liga primera')) country='NICARAGUA';
+    else if(league.toLowerCase().includes('brasil')) country='BRAZIL';
+    else if(league.toLowerCase().includes('caribbean')) country='NORTH & CENTRAL AMERICA';
+    else if(league.toLowerCase().includes('libertadores')) country='SOUTH AMERICA';
+    else country = league.split(':')[0] || 'WORLD';
+
+    let key = `${country}: ${league}`;
+    if(!groups[key]) groups[key]=[];
+    groups[key].push(m);
+  });
+
+  for(let key in groups){
+    let parts = key.split(':');
+    let country = parts[0];
+    let leagueName = parts.slice(1).join(':').trim() || country;
+
+    let header = document.createElement('div');
+    header.className='league-header';
+    // Simple flag logic
+    let flag = '🏳️';
+    if(country.includes('NICARAGUA')) flag='🇳🇮';
+    if(country.includes('BRAZIL')) flag='🇧🇷';
+    if(country.includes('AMERICA')) flag='🌎';
+    header.innerHTML = `<span>${flag} ${country}: <b>${leagueName}</b></span>`;
+    list.appendChild(header);
+
+    groups[key].forEach(m=>{
+      let row = document.createElement('div');
+      row.className='match';
+      let time = m.berlinTime || m.fixture?.berlinTime || '15:00';
+      let status = m.fixture?.status?.short || 'NS';
+      let isLive = status==='LIVE';
+      row.innerHTML = `
+        <div class="time ${isLive?'live':''}">${time}<small>${status}</small></div>
+        <div class="teams">
+          <div>${m.teams?.home?.name || 'Home'}</div>
+          <div>${m.teams?.away?.name || 'Away'}</div>
+        </div>
+        <div class="score">${m.goals?.home?? 0} - ${m.goals?.away?? 0}<small>${status==='LIVE'?'LIVE':''}</small></div>
+      `;
+      list.appendChild(row);
+    });
   }
 
-  filtered.forEach(m=>{
-    let div = document.createElement('div');
-    div.className = "match";
-    div.innerHTML = `
-      <div>
-        <div class="league">${m?.league?.name || ""}</div>
-        <div class="team">${safeHome(m)}</div>
-        <div class="team">${safeAway(m)}</div>
-      </div>
-      <div style="text-align:right">
-        <div class="time">${safeBerlinTime(m)} - ${safeStatus(m)}</div>
-        <div class="score">${safeGoals(m)}</div>
-      </div>
-    `;
-    list.appendChild(div);
-  });
+  if(filtered.length===0){
+    list.innerHTML='<p style="padding:20px;text-align:center;color:#777">No matches for this day</p>';
+  }
 }
 
-// Date tabs
-document.getElementById('dateTabs').addEventListener('click', e=>{
-  if(e.target.tagName==="BUTTON"){
-    document.querySelectorAll('#dateTabs button').forEach(b=>b.classList.remove('active'));
-    e.target.classList.add('active');
-    load(e.target.dataset.date);
-  }
-});
-
-// Filter tabs
-document.getElementById('filters').addEventListener('click', e=>{
-  if(e.target.tagName==="BUTTON"){
-    document.querySelectorAll('#filters button').forEach(b=>b.classList.remove('active'));
-    e.target.classList.add('active');
-    currentFilter = e.target.dataset.filter;
+document.querySelectorAll('.filter').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('.filter').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    filter=b.dataset.f;
     render();
-  }
+  };
 });
 
-// Initial load TODAY 15 OCT
-load("2026-10-15");
+genDates();
+loadMatches();
 </script>
 </body>
 </html>
