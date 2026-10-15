@@ -1,139 +1,80 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Flashcore - LiveScore</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<title>FLASHCORE LIVE</title>
 <style>
-body{background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif}
-.flash-green{color:#00ff88}
-.bg-flash-green{background:#00ff88}
-.border-flash-green{border-color:#00ff88}
-.match-row:hover{background:#1a1a1a}
-.scrollbar-hide::-webkit-scrollbar{display:none}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;color:#fff;font-family:Arial}
+.header{background:#111;padding:12px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #00ff88}
+.logo{font-size:22px;font-weight:900}
+.logo span{color:#00ff88}
+.dates{display:flex;overflow-x:auto;gap:6px;padding:10px;background:#111;border-bottom:1px solid #222}
+.dates button{padding:6px 12px;border-radius:20px;border:1px solid #333;background:#222;color:#fff;font-size:12px;white-space:nowrap}
+.dates button.active{background:#00ff88;color:#000;font-weight:bold}
+.tabs{display:flex;gap:6px;padding:8px;background:#111}
+.tabs button{padding:6px 14px;border-radius:16px;background:#222;color:#fff;border:none;font-size:12px;font-weight:bold}
+.tabs button.active{background:#00ff88;color:#000}
+.league-head{background:#222;padding:8px 12px;font-size:12px;font-weight:bold;border-left:4px solid #00ff88;margin-top:8px}
+.match{display:flex;padding:10px 12px;border-bottom:1px solid #1a1a1a;background:#0f0f0f}
+.match:hover{background:#1a1a1a}
+.time{width:50px;font-size:11px;color:#888}
+.time.live{color:#ff4444;font-weight:bold}
+.teams{flex:1;font-size:13px}
+.score{font-weight:bold;color:#00ff88}
 </style>
 </head>
-<body class="bg-black">
-<!-- FLASHCORE HEADER -->
-<header class="bg-[#111] border-b-2 border-[#00ff88] sticky top-0 z-50">
-<div class="max-w-[1280px] mx-auto px-3 py-2 flex items-center justify-between">
-<div class="flex items-center gap-6">
-<div class="text-[22px] font-black"><span class="text-white">FLASH</span><span class="text-[#00ff88]">CORE</span><span class="text-[10px] ml-1 bg-[#00ff88] text-black px-1 rounded">LIVE</span></div>
-<nav class="hidden md:flex gap-5 text-[13px] font-bold">
-<a class="text-[#00ff88] border-b-2 border-[#00ff88] pb-1">FOOTBALL</a>
-<a class="text-gray-400">TENNIS</a>
-<a class="text-gray-400">BASKETBALL</a>
-</nav>
+<body>
+<div class="header">
+<div class="logo">FLASH<span>CORE</span> <span style="font-size:10px;background:#00ff88;color:#000;padding:2px 6px;border-radius:4px">LIVE</span></div>
+<div>⚙️</div>
 </div>
-<div class="flex items-center gap-3 text-gray-400">
-<i class="fa-solid fa-search"></i>
-<i class="fa-regular fa-star"></i>
-<i class="fa-solid fa-gear"></i>
-<div class="w-7 h-7 bg-[#00ff88] rounded-full flex items-center justify-center text-black font-bold text-xs">D</div>
+<div class="dates" id="dates"></div>
+<div class="tabs">
+<button class="active">ALL</button><button>LIVE</button><button>FINISHED</button><button>SCHEDULED</button>
 </div>
-</div>
-</header>
-
-<div class="max-w-[1280px] mx-auto flex">
-<!-- LEFT SIDEBAR - like Flashscore -->
-<aside class="hidden lg:block w-[220px] bg-[#0f0f0f] min-h-screen p-3 border-r border-[#222]">
-<div class="text-[11px] text-gray-500 font-bold mb-2">MY LEAGUES (0)</div>
-<div class="text-[11px] text-gray-500 font-bold mt-4 mb-2">TOP LEAGUES</div>
-<div class="space-y-1 text-[13px]">
-<div class="flex items-center gap-2 p-1.5 hover:bg-[#222] rounded cursor-pointer"><span>🏴󠁧󠁢󠁥󠁮󠁧󠁿</span> Premier League</div>
-<div class="flex items-center gap-2 p-1.5 hover:bg-[#222] rounded cursor-pointer"><span>🇪🇸</span> LaLiga</div>
-<div class="flex items-center gap-2 p-1.5 hover:bg-[#222] rounded cursor-pointer"><span>🇩🇪</span> Bundesliga</div>
-<div class="flex items-center gap-2 p-1.5 hover:bg-[#222] rounded cursor-pointer"><span>🇮🇹</span> Serie A</div>
-<div class="flex items-center gap-2 p-1.5 hover:bg-[#222] rounded cursor-pointer"><span>🇫🇷</span> Ligue 1</div>
-<div class="flex items-center gap-2 p-1.5 bg-[#00ff88]/10 text-[#00ff88] rounded cursor-pointer"><span>🌍</span> ALL MATCHES</div>
-</div>
-<div class="mt-4 text-[10px] text-gray-600">Europe/Berlin • Auto refresh 30s</div>
-</aside>
-
-<!-- MAIN CONTENT -->
-<main class="flex-1 bg-black min-w-0">
-<!-- DATE BAR - Flashscore style -->
-<div class="bg-[#111] border-b border-[#222] sticky top-[49px] z-40">
-<div class="flex overflow-x-auto scrollbar-hide p-2 gap-1" id="dateBar"></div>
-<div class="flex gap-2 px-3 pb-2 text-[11px]">
-<button class="bg-[#00ff88] text-black px-3 py-1 rounded-full font-bold">ALL</button>
-<button class="bg-[#222] text-white px-3 py-1 rounded-full">LIVE</button>
-<button class="bg-[#222] text-white px-3 py-1 rounded-full">FINISHED</button>
-<button class="bg-[#222] text-white px-3 py-1 rounded-full">SCHEDULED</button>
-</div>
-</div>
-
-<!-- MATCHES CONTAINER -->
-<div id="matches" class="pb-20">
-<div class="p-10 text-center text-gray-500">Loading Flashcore...</div>
-</div>
-</main>
-
-<!-- RIGHT SIDEBAR -->
-<aside class="hidden xl:block w-[300px] bg-[#0f0f0f] min-h-screen p-3 border-l border-[#222]">
-<div class="text-[11px] text-gray-500 font-bold mb-2">FEATURED</div>
-<div class="bg-[#1a1a1a] p-3 rounded text-xs">Your 500 credits • live-football-api.com<br><span class="text-[#00ff88] font-bold">BLACK & GREEN EDITION</span></div>
-</aside>
-</div>
-
+<div id="list" style="padding:20px;text-align:center;color:#666">Loading...</div>
 <script>
-let selectedDate = new Date().toISOString().split('T')[0];
-function buildDates(){
-const bar=document.getElementById('dateBar'); bar.innerHTML='';
-for(let i=-4;i<=4;i++){
-let d=new Date(); d.setDate(d.getDate()+i);
+let sel=new Date().toISOString().split('T')[0];
+function makeDates(){
+let c=document.getElementById('dates');c.innerHTML='';
+for(let i=-3;i<=4;i++){
+let d=new Date();d.setDate(d.getDate()+i);
 let iso=d.toISOString().split('T')[0];
-let dayName=d.toLocaleDateString('en-US',{weekday:'short'}).toUpperCase();
-let dayNum=d.getDate();
-let isToday=i===0;
-let btn=document.createElement('button');
-btn.className=`min-w-[68px] py-1.5 rounded text-[11px] font-bold border ${iso===selectedDate?'bg-[#00ff88] text-black border-[#00ff88]':'bg-[#1e1e1e] text-gray-300 border-[#333] hover:bg-[#2a2a2a]'}`;
-btn.innerHTML=`<div class="text-[10px]">${dayName}</div><div class="text-[13px]">${isToday?'TODAY':dayNum} ${isToday?dayNum:''}</div>`;
-if(isToday) btn.innerHTML=`<div class="text-[10px]">TODAY</div><div>${dayName} ${dayNum}</div>`;
-btn.onclick=()=>{selectedDate=iso; document.querySelectorAll('#dateBar button').forEach(b=>b.className='min-w-[68px] py-1.5 rounded text-[11px] font-bold border bg-[#1e1e1e] text-gray-300 border-[#333]'); btn.className='min-w-[68px] py-1.5 rounded text-[11px] font-bold border bg-[#00ff88] text-black border-[#00ff88]'; loadMatches();};
-bar.appendChild(btn);
+let label=(i==0?'TODAY ':'')+d.toLocaleDateString('en-US',{weekday:'short',day:'numeric'});
+let b=document.createElement('button');
+b.textContent=label;
+if(iso==sel) b.classList.add('active');
+b.onclick=()=>{document.querySelectorAll('.dates button').forEach(x=>x.classList.remove('active'));b.classList.add('active');sel=iso;load();};
+c.appendChild(b);
 }
 }
-async function loadMatches(){
-const container=document.getElementById('matches');
-container.innerHTML=`<div class="p-10 text-center"><div class="text-[#00ff88] animate-pulse">Loading ${selectedDate}...</div></div>`;
+async function load(){
+let el=document.getElementById('list');
+el.innerHTML='Loading '+sel+'...';
 try{
-let res=await fetch(`/api/matches?date=${selectedDate}`);
-let data=await res.json();
-let matches=data.response||[];
-if(!matches.length){container.innerHTML=`<div class="p-10 text-center text-gray-500">No matches on ${selectedDate}<br><span class="text-xs">${data.error||'Try another date'}</span></div>`; return;}
-// Group by league like Flashscore
+let r=await fetch('/api/matches?date='+sel);
+let j=await r.json();
+if(j.error){el.innerHTML='API Error: '+j.error+'<br><small>Check FOOTBALL_API_KEY in Cloudflare</small>';return;}
+let arr=j.response||[];
+if(!arr.length){el.innerHTML='No matches on '+sel+'<br>Try yesterday: <button onclick="sel=\'2025-10-15\';load()" style="color:#00ff88">2025-10-15</button>';return;}
 let groups={};
-matches.forEach(m=>{
-let leagueKey=m.league.name||'Other';
-if(!groups[leagueKey]) groups[leagueKey]=[];
-groups[leagueKey].push(m);
-});
+arr.forEach(m=>{let k=m.league.name;if(!groups[k])groups[k]=[];groups[k].push(m);});
 let html='';
-Object.keys(groups).forEach(leagueName=>{
-let leagueMatches=groups[leagueName];
-html+=`<div class="bg-[#1a1a1a] mt-2"><div class="flex items-center gap-2 px-3 py-2 text-[12px] font-bold bg-[#222] border-l-4 border-[#00ff88]"><span class="text-[#00ff88]">⚽</span> ${leagueName} <span class="ml-auto text-gray-500 text-[10px]">${leagueMatches[0].league.country||''}</span></div>`;
-leagueMatches.forEach(m=>{
-let time=m.fixture.berlinTime||'--:--';
-let status=m.fixture.status.short||'NS';
-let isLive=['1H','2H','LIVE','HT','ET'].includes(status.toUpperCase());
-let minute=m.fixture.minute||'';
-let home=m.teams.home.name; let away=m.teams.away.name;
-let gh=m.goals.home; let ga=m.goals.away;
-let score = (gh!==null && ga!==null)? `${gh} - ${ga}` : '- : -';
-html+=`
-<div class="match-row flex items-center px-3 py-2.5 border-b border-[#222] text-[13px] cursor-pointer">
-<div class="w-[52px] text-[11px] ${isLive?'text-red-500 font-bold':'text-gray-400'}">${isLive?`${minute}'`:time}<br><span class="text-[9px]">${isLive?status:''}</span></div>
-<div class="flex-1">
-<div class="flex justify-between"><span class="${gh>ga?'font-bold text-white':''}">${home}</span><span class="font-bold ${isLive?'text-[#00ff88]':''}">${gh!==null?gh:''}</span></div>
-<div class="flex justify-between text-gray-400"><span class="${ga>gh?'font-bold text-white':''}">${away}</span><span class="font-bold ${isLive?'text-[#00ff88]':''}">${ga!==null?ga:''}</span></div>
-</div>
-<div class="w-[40px] text-right text-gray-500"><i class="fa-regular fa-star text-[12px]"></i></div>
-</div>`;
+for(let league in groups){
+html+='<div class="league-head">⚽ '+league+' ('+groups[league].length+')</div>';
+groups[league].forEach(m=>{
+let isLive=m.fixture.status.short!='NS' && m.goals.home!==null;
+let t=m.fixture.berlinTime||'--:--';
+let s=m.fixture.status.short;
+html+='<div class="match"><div class="time '+(isLive?'live':'')+'">'+(isLive?s:t)+'</div><div class="teams">'+m.teams.home.name+'<br><span style="color:#888">'+m.teams.away.name+'</span></div><div class="score">'+(m.goals.home!=null?m.goals.home+' - '+m.goals.away:'- : -')+'</div></div>';
 });
-html+=`</div>`;
-});
-container.innerHTML=html;
-}catch(e){
+}
+el.innerHTML=html;
+}catch(e){el.innerHTML='Fetch error: '+e.message+'<br>API: /api/matches?date='+sel;}
+}
+makeDates();load();setInterval(load,30000);
+</script>
+</body>
+</html>
