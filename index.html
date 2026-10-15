@@ -1,84 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FlashScore - Live Football Scores</title>
-<style>
-*{box-sizing:border-box}body{margin:0;font-family:system-ui,Arial;background:#f2f2f2}
-header{background:#111;color:#fff;padding:14px;text-align:center;font-weight:700;font-size:19px;position:sticky;top:0;z-index:20}
-.dates{display:flex;gap:8px;overflow:auto;padding:10px;background:#fff;border-bottom:1px solid #e5e5e5;position:sticky;top:47px;z-index:10}
-.dates div{border:1px solid #ddd;padding:8px 16px;border-radius:20px;white-space:nowrap;cursor:pointer;font-size:14px}
-.dates div.active{background:#111;color:#fff;border-color:#111}
-.filters{display:flex;gap:8px;padding:10px;background:#fff}
-.filters button{padding:7px 16px;border-radius:20px;border:1px solid #ddd;background:#fff;cursor:pointer}
-.filters button.active{background:#111;color:#fff}
-#list{padding:8px;min-height:300px}
-.match{background:#fff;margin:8px 0;padding:12px 14px;border-radius:12px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 2px rgba(0,0,0,.06)}
-.team{font-weight:600;font-size:14px;line-height:1.4}
-.status{font-size:11px;color:#888;margin-top:4px}
-.score{font-weight:800;font-size:16px;text-align:center;min-width:40px}
-.err{color:red;background:#fff;padding:20px;border-radius:10px;margin:10px}
-</style>
-</head>
-<body>
-<header>⚽ FlashScore</header>
-<div class="dates" id="dates"></div>
-<div class="filters">
-<button class="active" id="bALL">ALL</button>
-<button id="bLIVE">LIVE</button>
-<button id="bFINISHED">FINISHED</button>
-<button id="bUPCOMING">UPCOMING</button>
-</div>
-<div id="list">Loading...</div>
-
-<script>
-let allMatches=[], curDate="", curFilter="ALL";
-
-function initDates(){
- const wrap=document.getElementById('dates'); wrap.innerHTML="";
- for(let i=-2;i<=4;i++){
-  let dt=new Date(); dt.setDate(dt.getDate()+i);
-  let iso=dt.toISOString().split('T')[0];
-  let label=dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
-  if(i===-1) label="YEST"; if(i===0) label="TODAY "+label; if(i===1) label="TOM";
-  let el=document.createElement('div'); el.textContent=label; el.dataset.date=iso;
-  if(i===0){el.classList.add('active'); curDate=iso;}
-  el.onclick=()=>{document.querySelectorAll('.dates div').forEach(x=>x.classList.remove('active')); el.classList.add('active'); curDate=el.dataset.date; load();};
-  wrap.appendChild(el);
- }
-}
-function setFilter(f){
- curFilter=f;
- document.querySelectorAll('.filters button').forEach(b=>b.classList.remove('active'));
- document.getElementById('b'+f).classList.add('active');
- render();
-}
-
-document.getElementById('bALL').onclick=()=>setFilter('ALL');
-document.getElementById('bLIVE').onclick=()=>setFilter('LIVE');
-document.getElementById('bFINISHED').onclick=()=>setFilter('FINISHED');
-document.getElementById('bUPCOMING').onclick=()=>setFilter('UPCOMING');
-
-async function load(){
- const list=document.getElementById('list');
- list.innerHTML=`<div style="text-align:center;padding:30px">Loading matches for ${curDate}...<br><small>Free API = 1 req/min, please wait</small></div>`;
- try{
-  const res=await fetch(`/api/matches?date=${curDate}&lang=en`);
-  const txt=await res.text();
-  let data;
-  try{ data=JSON.parse(txt); }catch(e){ throw new Error("Server not JSON: "+txt.slice(0,400)); }
-  if(data.raw){ throw new Error(data.raw); }
-  if(data.error || data.message && data.status==="error"){ throw new Error(data.message||data.error||JSON.stringify(data).slice(0,400)); }
-  // live-football-api returns {status:"success", matches:[...]}
-  allMatches = data.matches || data.data || data.result || [];
-  if(!Array.isArray(allMatches)){ allMatches = Object.values(allMatches); }
-  render();
- }catch(e){
-  list.innerHTML=`<div class="err">Fail: ${e.message}<br><br><small>Tip: Open /api/matches?date=2025-10-15 in new tab to see raw error. If it says FOOTBALL_API_KEY missing, add it in Cloudflare Variables and Redeploy.</small></div>`;
- }
-}
-
 function render(){
  const list=document.getElementById('list');
  let filtered=[...allMatches];
@@ -87,28 +6,33 @@ function render(){
  if(curFilter==="UPCOMING") filtered=filtered.filter(m=>{let s=(m.status||"").toUpperCase(); return s.includes("NOT")||["NS","TBD","CANC","PST",""].includes(s);});
 
  if(!filtered.length){
-  list.innerHTML=`<div style="text-align:center;padding:40px;background:#fff;border-radius:12px;margin:8px">No ${curFilter} matches for ${curDate}<br><small style="color:#888">Try ALL or other date</small></div>`;
+  list.innerHTML=`<div style="text-align:center;padding:40px;background:#fff;border-radius:12px;margin:8px">No ${curFilter} matches for ${curDate}</div>`;
   return;
  }
+ // DEBUG: show first match structure in console and first card
+ console.log("First match sample:", filtered[0]);
  let html="";
  filtered.forEach(m=>{
-  let home=m.home?.name||m.teams?.home?.name||m.homeTeam?.name||"Home";
-  let away=m.away?.name||m.teams?.away?.name||m.awayTeam?.name||"Away";
-  let hs=m.score?.home??m.goals?.home??m.score?.fullTime?.home??m.home?.score??"-";
-  let as=m.score?.away??m.goals?.away??m.score?.fullTime?.away??m.away?.score??"-";
-  let st=m.status||m.fixture?.status?.short||"";
-  let tStr=st;
+  // Try EVERY possible field name from live-football-api
+  let home = m.home?.name || m.homeTeam?.name || m.teams?.home?.name || m.team_home_name || m.home_name || m.localteam?.name || "Home";
+  let away = m.away?.name || m.awayTeam?.name || m.teams?.away?.name || m.team_away_name || m.away_name || m.visitorteam?.name || "Away";
+  // If still Home/Away, try show raw keys
+  if(home==="Home" && away==="Away"){
+   // Try to extract from object keys
+   let keys = Object.keys(m).join(",");
+   home = m.home?.name || m.home || keys.slice(0,30);
+  }
+  let hs = m.score?.home?? m.home?.score?? m.scores?.home?? m.goals?.home?? m.result?.home?? "-";
+  let as = m.score?.away?? m.away?.score?? m.scores?.away?? m.goals?.away?? m.result?.away?? "-";
+  let st = m.status || m.fixture?.status?.short || "";
+  let tStr = st;
   try{
-   let d = m.date||m.time||m.startTime||m.fixture?.date;
+   let d = m.date || m.time || m.startTime || m.fixture?.date || m.start_date;
    if(d){ let dt=new Date(d); tStr=dt.toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Lagos'})+" • "+st; }
   }catch(e){}
   html+=`<div class="match"><div><div class="team">${home}</div><div class="team">${away}</div><div class="status">${tStr}</div></div><div class="score">${hs}<br>${as}</div></div>`;
  });
+ // Add debug info at top
+ html = `<div style="background:#e8f5e9;padding:8px;margin:8px;border-radius:8px;font-size:12px">API working! Found ${filtered.length} matches. First match keys: ${Object.keys(filtered[0]||{}).join(", ")}</div>` + html;
  list.innerHTML=html;
 }
-
-initDates();
-load();
-</script>
-</body>
-</html>
