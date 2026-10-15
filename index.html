@@ -2,148 +2,146 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LiveScore BLACK & GREEN Berlin</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#000;color:#fff;font-family:Arial, sans-serif}
-.header{background:#0d0d0d;border-bottom:2px solid #00ff88;padding:14px;text-align:center;position:sticky;top:0;z-index:10}
-.header h1{color:#00ff88;font-size:14px;letter-spacing:.3px}
-.days{display:flex;gap:8px;overflow-x:auto;padding:10px;background:#0a0a0a;border-bottom:1px solid #222}
-.days::-webkit-scrollbar{display:none}
-.day{min-width:82px;background:#1a1a1a;border:1px solid #333;border-radius:14px;padding:10px 6px;text-align:center;cursor:pointer}
-.day.active{background:#00ff88;color:#000;font-weight:900;border-color:#00ff88}
-.day small{display:block;font-size:10px;opacity:.8;text-transform:uppercase}
-.day b{display:block;font-size:12px;margin-top:4px}
-.filters{display:flex;gap:8px;padding:12px 10px;overflow-x:auto}
-.f{background:#1a1a1a;border:1px solid #333;padding:8px 16px;border-radius:22px;font-size:13px;cursor:pointer;white-space:nowrap}
-.f.active{background:#00ff88;color:#000;font-weight:800}
-.search{padding:0 10px 12px}
-.search input{width:100%;padding:13px 14px;border-radius:12px;border:1px solid #333;background:#111;color:#fff;outline:none;font-size:14px}
-.league{background:#151515;padding:10px 12px;font-weight:900;font-size:11px;letter-spacing:.6px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #222}
-.league.top{background:#001a0f;border-left:4px solid #00ff88;color:#00ff88}
-.league span:last-child{opacity:.5;font-size:10px}
-.row{display:flex;align-items:center;padding:13px 10px;border-bottom:1px solid #151515;background:#0e0e0e;font-size:13px}
-.row.live{background:#1a0f0f;border-left:3px solid #ff3b30}
-.t{width:68px;color:#00ff88;font-weight:900;font-size:13px}
-.t.live{color:#ff3b30;animation:blink 1s infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
-.n{flex:1;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px}
-.s{width:70px;text-align:right;font-weight:800;font-size:13px}
-.info{padding:60px 20px;text-align:center;color:#666;line-height:1.6;font-size:14px}
-.info small{color:#444;font-size:12px;display:block;margin-top:10px}
+body{background:#0a0a0a;color:#fff;font-family:Arial,sans-serif}
+.header{background:#00FF88;color:#000;text-align:center;padding:14px;font-weight:900;font-size:18px;position:sticky;top:0;z-index:10}
+.days{display:flex;overflow-x:auto;gap:8px;padding:10px;background:#111;border-bottom:1px solid #222}
+.day{min-width:65px;border:1px solid #333;border-radius:10px;padding:8px 0;text-align:center;cursor:pointer;background:#1a1a1a}
+.day.active{background:#00FF88;color:#000;font-weight:900}
+.day small{display:block;font-size:10px;opacity:.7;text-transform:uppercase}
+.tabs{display:flex;gap:8px;padding:10px;overflow-x:auto}
+.tab{border:1px solid #333;padding:6px 14px;border-radius:20px;font-size:13px;cursor:pointer;white-space:nowrap}
+.tab.active{background:#00FF88;color:#000;font-weight:700}
+.search{padding:10px}
+.search input{width:100%;padding:12px;border-radius:10px;border:1px solid #333;background:#111;color:#fff}
+.league{background:#111;padding:10px 14px;font-weight:900;font-size:12px;color:#00FF88;border-top:1px solid #222;text-transform:uppercase}
+.match{display:flex;justify-content:space-between;align-items:center;padding:14px;border-bottom:1px solid #151515;background:#0f0f0f}
+.match.live{border-left:4px solid #00FF88}
+.time{color:#00FF88;font-weight:900;font-size:13px;min-width:50px}
+.teams{flex:1;margin:0 10px}
+.teams div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.score{font-weight:900;color:#00FF88;min-width:45px;text-align:right}
+.status{font-size:11px;color:#aaa}
+.live-dot{color:#00FF88;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:0}}
 </style>
 </head>
 <body>
-<div class="header"><h1>⚽ LiveScore — BLACK & GREEN • Europe/Berlin Time</h1></div>
+<div class="header">⚽ LiveScore - BLACK & GREEN - Europe/Berlin Time</div>
 <div class="days" id="days"></div>
-<div class="filters">
-  <div class="f active" data-f="all">All</div>
-  <div class="f" data-f="live">🔴 Live</div>
-  <div class="f" data-f="finished">Finished</div>
-  <div class="f" data-f="scheduled">Scheduled</div>
+<div class="tabs">
+ <div class="tab active" data-f="All">All</div>
+ <div class="tab" data-f="Live">🔴 Live</div>
+ <div class="tab" data-f="Scheduled">Scheduled</div>
+ <div class="tab" data-f="Finished">Finished</div>
 </div>
 <div class="search"><input id="q" placeholder="Search team, league, country..."></div>
-<div id="list"><div class="info">Loading matches...<br><small>Using Europe/Berlin Time</small></div></div>
+<div id="list">Loading matches...</div>
 
 <script>
-let All=[], curF='all', curISO='';
+let ALL=[],curF='All',curDS='';
 
 function buildDays(){
-  const cont=document.getElementById('days');
-  const base=new Date();
-  let html='';
-  const dates=[];
-  for(let i=-2;i<=3;i++){ const d=new Date(base); d.setDate(base.getDate()+i); dates.push(d); }
-
-  dates.forEach((d,i)=>{
-    const iso=d.toISOString().split('T')[0];
-    const diff=i-2;
-    let tag='';
-    if(diff===-1) tag='YESTERDAY';
-    else if(diff===0) tag='TODAY';
-    else if(diff===1) tag='TOMORROW';
-    else tag=d.toLocaleDateString('en-US',{weekday:'short'}).toUpperCase();
-    const label=d.getDate()+' '+d.toLocaleDateString('en-US',{month:'short'});
-    const active=diff===0?'active':'';
-    if(diff===0) curISO=iso;
-    html+=`<div class="day ${active}" data-iso="${iso}"><small>${tag}</small><b>${label}</b></div>`;
+ const cont=document.getElementById('days');
+ let h='';
+ const today=new Date();
+ for(let i=-1;i<6;i++){
+  const d=new Date(today); d.setDate(today.getDate()+i);
+  const ds=d.toISOString().split('T')[0];
+  const diff=i;
+  let tag=d.toLocaleDateString('en-US',{weekday:'short'}).toUpperCase();
+  if(diff===-1) tag='YESTERDAY';
+  else if(diff===0) tag='TODAY';
+  else if(diff===1) tag='TOMORROW';
+  const label=d.toLocaleDateString('en-US',{day:'2-digit',month:'short'});
+  const active=i===0?' active':'';
+  h+=`<div class="day${active}" data-ds="${ds}"><small>${tag}</small><b>${label}</b></div>`;
+ }
+ cont.innerHTML=h;
+ curDS=today.toISOString().split('T')[0];
+ document.querySelectorAll('.day').forEach(el=>{
+  el.addEventListener('click',()=>{
+   document.querySelectorAll('.day').forEach(x=>x.classList.remove('active'));
+   el.classList.add('active');
+   curDS=el.dataset.ds;
+   load();
   });
-  cont.innerHTML=html;
-  cont.querySelectorAll('.day').forEach(el=>{
-    el.addEventListener('click',()=>{
-      cont.querySelectorAll('.day').forEach(x=>x.classList.remove('active'));
-      el.classList.add('active');
-      curISO=el.dataset.iso;
-      load();
-    });
-  });
+ });
 }
 
 async function load(){
-  document.getElementById('list').innerHTML='<div class="info">Loading '+curISO+'...<br><small>Berlin Time</small></div>';
-  try{
-    const r=await fetch(`/api/matches?date=${curISO}`);
-    const j=await r.json();
-    All=j.response||[];
-    if(All.length===0){
-      // Show debug but with auto-fallback message
-      let dbg=j.debug||[];
-      if(Array.isArray(dbg)) dbg=dbg.map(d=>`${d.date}:${d.matches?.length||d.count||0}`).join(' | ');
-      else dbg=JSON.stringify(dbg).slice(0,200);
-      document.getElementById('list').innerHTML=`<div class="info">No matches for ${curISO}<br>Trying real today...<br><small>${dbg}</small><br><br><small>Tip: Your phone date is set to future (Oct). Set phone date to today for more games.</small></div>`;
-      // Auto-retry with real today if server provided fallback
-      if(j.requested && j.requested!==curISO){
-        curISO=j.requested;
-        All=j.response||[];
-        if(All.length>0){ render(); return; }
-      }
-      return;
-    }
-    render();
-  }catch(e){
-    document.getElementById('list').innerHTML='<div class="info">Error: '+e.message+'</div>';
-  }
-}
-
-function prioritySort(a,b){
-  if(a.fixture.status.short==='LIVE' && b.fixture.status.short!=='LIVE') return -1;
-  if(b.fixture.status.short==='LIVE' && a.fixture.status.short!=='LIVE') return 1;
-  if(a.priority!==b.priority) return a.priority-b.priority;
-  return a.fixture.berlinTime.localeCompare(b.fixture.berlinTime);
+ const list=document.getElementById('list');
+ list.innerHTML='Loading matches...';
+ try{
+  const url=`/api/matches?date=${curDS}`;
+  const res=await fetch(url);
+  const data=await res.json();
+  ALL=data.response||[];
+  // If API searched 7 days, show info
+  if(data.usedDates) console.log('Used dates:',data.usedDates);
+  render();
+ }catch(e){
+  list.innerHTML='Error: '+e.message;
+ }
 }
 
 function render(){
-  let filtered=All;
-  if(curF==='live') filtered=All.filter(m=>m.fixture.status.short==='LIVE');
-  if(curF==='finished') filtered=All.filter(m=>m.fixture.status.short==='FT');
-  if(curF==='scheduled') filtered=All.filter(m=>m.fixture.status.short==='NS');
-
-  const q=document.getElementById('q').value.toLowerCase().trim();
-  if(q) filtered=filtered.filter(m=>
-    (m.teams.home.name+' '+m.teams.away.name+' '+m.league.name+' '+m.league.country).toLowerCase().includes(q)
-  );
-
-  filtered.sort(prioritySort);
-
-  // Group by Country + League (Country at top)
-  const groups={};
-  filtered.forEach(m=>{
-    const country=(m.league.country||'World').toUpperCase();
-    const lname=m.league.name;
-    const key=`${country}: ${lname}`;
-    if(!groups[key]) groups[key]={list:[], pri:m.priority, country};
-    groups[key].list.push(m);
-  });
-
-  const leagueKeys=Object.keys(groups).sort((a,b)=>groups[a].pri-groups[b].pri);
-
-  let html='';
-  if(leagueKeys.length===0){
-    html=`<div class="info">No matches found<br><small>Try All filter</small></div>`;
+ const q=document.getElementById('q').value.toLowerCase();
+ let filtered=ALL.filter(m=>{
+  if(curF==='Live' && m.fixture.status.short!=='LIVE') return false;
+  if(curF==='Scheduled' && m.fixture.status.short!=='NS') return false;
+  if(curF==='Finished' &&!['FT','AET','PEN'].includes(m.fixture.status.short)) return false;
+  if(q){
+   const txt=(m.teams.home.name+' '+m.teams.away.name+' '+m.league.name+' '+m.league.country).toLowerCase();
+   if(!txt.includes(q)) return false;
   }
+  return true;
+ });
 
-  leagueKeys.forEach(key=>{
-    const g=groups[key];
-    const isTop=g.pri<=8;
-    html+=
+ if(filtered.length===0){
+  document.getElementById('list').innerHTML=`<div style="padding:20px;text-align:center;color:#666">No matches for ${curDS}<br><small>API found ${ALL.length} in next 7 days</small></div>`;
+  return;
+ }
+
+ // Group by country + league
+ let html=''; let lastLeague='';
+ filtered.forEach(m=>{
+  const leagueKey=`${m.league.country}: ${m.league.name}`;
+  if(leagueKey!==lastLeague){
+   html+=`<div class="league">${m.league.country.toUpperCase()}: ${m.league.name}</div>`;
+   lastLeague=leagueKey;
+  }
+  const liveClass=m.fixture.status.short==='LIVE'?' live':'';
+  const time=m.fixture.berlinTime||'00:00';
+  const home=m.teams.home.name;
+  const away=m.teams.away.name;
+  const hs=m.goals.home, as=m.goals.away;
+  const score=(hs!==null&&as!==null)?`${hs} - ${as}`:m.fixture.status.short;
+  const statusDot=m.fixture.status.short==='LIVE'?'<span class="live-dot">● LIVE</span>':`<span class="status">${m.fixture.status.short} - Berlin ${time}</span>`;
+  html+=`<div class="match${liveClass}">
+   <div class="time">${time}<br>${statusDot}</div>
+   <div class="teams"><div>${home}</div><div>${away}</div></div>
+   <div class="score">${score}</div>
+  </div>`;
+ });
+ document.getElementById('list').innerHTML=html;
+}
+
+document.getElementById('q').addEventListener('input',render);
+document.querySelectorAll('.tab').forEach(t=>{
+ t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  curF=t.dataset.f;
+  render();
+ });
+});
+
+buildDays();
+load();
+</script>
+</body>
+</html>
