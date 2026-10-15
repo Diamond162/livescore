@@ -1,47 +1,46 @@
 export async function onRequest(c){
   const KEY=(c.env.HIGHLIGHTLY_API_KEY||'').trim();
   try{
-    let dateParam=new URL(c.request.url).searchParams.get('date');
-    // If user asks 2026-06-11 but no data, try TODAY
-    let date=dateParam||new Date().toISOString().split('T')[0];
-    let url=`https://soccer.highlightly.net/matches?date=${date}&limit=50`;
+    let date=new URL(c.request.url).searchParams.get('date') || new Date().toISOString().split('T')[0];
+    let allMatches=[];
 
-    // Highlightly needs BOTH headers (works for direct + RapidAPI)
-    let r=await fetch(url,{
-      headers:{
-        "x-rapidapi-key":KEY,
-        "x-api-key":KEY
-      }
-    });
-    let text=await r.text();
-    let j;
-    try{ j=JSON.parse(text); }catch{ j={raw:text}; }
-
-    // If empty, try yesterday (more games)
-    if((!j.data||j.data.length===0) && date===dateParam){
-      let y=new Date(); y.setDate(y.getDate()-1);
-      let date2=y.toISOString().split('T')[0];
-      let r2=await fetch(`https://soccer.highlightly.net/matches?date=${date2}&limit=50`,{headers:{"x-rapidapi-key":KEY,"x-api-key":KEY}});
-      let j2=await r2.json();
-      if(j2.data&&j2.data.length>0){ j=j2; date=date2; }
+    // Fetch 500 at a time, get ALL pages
+    for(let offset=0; offset<2000; offset+=500){
+      let url=`https://soccer.highlightly.net/matches?date=${date}&limit=500&offset=${offset}`;
+      let r=await fetch(url,{
+        headers:{"x-rapidapi-key":KEY,"x-api-key":KEY,"x-rapidapi-host":"soccer.highlightly.net"}
+      });
+      let j=await r.json();
+      let list=j.data||[];
+      if(list.length===0) break;
+      allMatches.push(...list);
+      if(list.length<500) break; // last page
     }
 
-    let list=j.data||j.matches||[];
-    let out=list.map(m=>{
-      // From docs: m.date, m.country.name, m.league.name, m.homeTeam.name, m.state, m.score.current
-      let t="00:00"; try{ t=new Date(m.date).toLocaleTimeString('en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit'}); }catch{}
-      let score=m.score?.current||""; let gh=null,ga=null;
-      if(score && score.includes("-")){ let p=score.split("-"); gh=parseInt(p[0].trim()); ga=parseInt(p[1].trim()); }
+    // Sort BIG leagues first like Flashscore
+    const big=["Major League","Premier League","LaLiga","Bundesliga","Serie A","Ligue 1","Champions League","World Cup","Euro","MLS","Championship"];
+    allMatches.sort((a,b)=>{
+      let aBig=big.some(x=>(a.league?.name||"").includes(x))?0:1;
+      let bBig=big.some(x=>(b.league?.name||"").includes(x))?0:1;
+      return aBig-bBig;
+    });
+
+    let out=allMatches.map(m=>{
+      let t="--:--"; try{t=new Date(m.date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});}catch{}
+      let sc=m.score?.current||""; let gh=null,ga=null;
+      if(sc.includes("-")){let p=sc.split("-"); gh=parseInt(p[0]); ga=parseInt(p[1]);}
       return{
         fixture:{id:m.id,berlinTime:t,status:{short:m.state?.description||"NS"}},
-        league:{name:m.league?.name||"League",country:m.country?.name||m.league?.name||"World"},
+        league:{name:m.league?.name||"League",country:m.country?.name||"World"},
         teams:{home:{name:m.homeTeam?.name||"Home"},away:{name:m.awayTeam?.name||"Away"}},
-        goals:{home:gh,away:ga,display:score}
+        goals:{home:gh,away:ga,display:sc}
       }
     });
 
-    return new Response(JSON.stringify({response:out,results:out.length,usedDate:date,debug:{status:r.status,total:j.pagination?.totalCount||0}}),{headers:{"content-type":"application/json","Access-Control-Allow-Origin":"*"}});
+    return new Response(JSON.stringify({response:out,results:out.length,date}),{
+      headers:{"content-type":"application/json","Access-Control-Allow-Origin":"*","Cache-Control":"public, max-age=60"}
+    });
   }catch(e){
-    return new Response(JSON.stringify({response:[],results:0,error:e.message}),{headers:{"content-type":"application/json","Access-Control-Allow-Origin":"*"}});
+    return new Response(JSON.stringify({response:[],error:e.message}),{headers:{"content-type":"application/json"}});
   }
 }
