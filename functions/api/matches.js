@@ -1,18 +1,24 @@
-function show(){
- let filtered = Array.isArray(allData) ? allData : (allData.matches || []);
- if(!Array.isArray(filtered)){ filtered = Object.values(filtered); }
- if(filter=="LIVE") filtered=filtered.filter(m=> (m.status||"").toString().toLowerCase().includes('live')||['1H','2H','HT','LIVE'].includes(m.status));
- if(filter=="FINISHED") filtered=filtered.filter(m=> (m.status||"").toString().toLowerCase().includes('fin')||['FT','AET','PEN','FT_PEN'].includes(m.status));
- if(filter=="UPCOMING") filtered=filtered.filter(m=> (m.status||"").toString().toLowerCase().includes('not')||['NS','TBD',''].includes(m.status));
- let html="";
- if(!filtered.length){html=`<div style="text-align:center;padding:30px">No ${filter} matches for ${curDate}<br><small>Try other date</small></div>`;}
- filtered.forEach(m=>{
-  let home=m.home?.name||m.teams?.home?.name||"Home";
-  let away=m.away?.name||m.teams?.away?.name||"Away";
-  let sh=m.score?.home??m.goals?.home??m.score?.fullTime?.home??"-"; let sa=m.score?.away??m.goals?.away??m.score?.fullTime?.away??"-";
-  let status=m.status||m.fixture?.status?.short||"";
-  let time=status; try{ if(m.date) time=new Date(m.date).toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Lagos'});}catch(e){}
-  html+=`<div class="match"><div><div class="team">${home}</div><div class="team">${away}</div><div class="status">${time} • ${status}</div></div><div class="score">${sh}<br>${sa}</div></div>`;
- });
- document.getElementById('list').innerHTML=html;
+export async function onRequest(context) {
+  try {
+    const key = context.env.FOOTBALL_API_KEY;
+    if (!key) return new Response(JSON.stringify({status:"error", message:"FOOTBALL_API_KEY missing in Cloudflare Vars"}), {status:500, headers:{"Content-Type":"application/json"}});
+
+    const url = new URL(context.request.url);
+    const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0];
+    const lang = url.searchParams.get('lang') || 'en';
+
+    const apiUrl = `https://live-football-api.com/api/v1/matches?api_key=${key}&date=${date}&lang=${lang}`;
+    const r = await fetch(apiUrl);
+    const text = await r.text();
+
+    // If API returns error, show it
+    let json;
+    try { json = JSON.parse(text); } catch { json = {status:"error", raw:text.slice(0,800)}; }
+
+    return new Response(JSON.stringify(json), {
+      headers: {"Content-Type":"application/json", "Access-Control-Allow-Origin":"*", "Cache-Control":"public, max-age=60"}
+    });
+  } catch(e) {
+    return new Response(JSON.stringify({status:"error", message:e.message, stack:e.stack}), {status:500, headers:{"Content-Type":"application/json"}});
+  }
 }
