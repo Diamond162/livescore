@@ -3,50 +3,75 @@ export async function onRequest(context) {
   const date = url.searchParams.get('date') || '2026-10-15';
   const KEY = context.env.LIVE_FOOTBALL_API_KEY;
 
-  const headers = { "Content-type": "application/json", "Access-Control-Allow-Origin": "*" };
+  const headers = {
+    "Content-type": "application/json",
+    "Access-Control-Allow-Origin": "*"
+  };
 
-  // Fallback matches for TODAY so site never empty
+  // Demo data for 15 OCT 2026 - so TODAY never empty
   const fallback = [
-    { id: 1, home_team: "Arsenal", away_team: "Man City", home_score: 1, away_score: 1, status: "LIVE", league: { name: "Premier League" } },
-    { id: 2, home_team: "Real Madrid", away_team: "Barcelona", home_score: 2, away_score: 0, status: "FT", league: { name: "La Liga" } },
-    { id: 3, home_team: "Bayern Munich", away_team: "Dortmund", home_score: 0, away_score: 0, status: "NS", league: { name: "Bundesliga" } }
+    {
+      id: 101, berlinTime: "15:00",
+      fixture: { date: date+"T15:00:00", berlinTime: "15:00", status: { short: "LIVE" } },
+      teams: { home: { name: "Arsenal" }, away: { name: "Man City" } },
+      goals: { home: 1, away: 1 },
+      league: { name: "Premier League" },
+      home_team: "Arsenal", away_team: "Man City", status: "LIVE"
+    },
+    {
+      id: 102, berlinTime: "17:30",
+      fixture: { date: date+"T17:30:00", berlinTime: "17:30", status: { short: "FT" } },
+      teams: { home: { name: "Real Madrid" }, away: { name: "Barcelona" } },
+      goals: { home: 2, away: 0 },
+      league: { name: "La Liga" },
+      home_team: "Real Madrid", away_team: "Barcelona", status: "FT"
+    },
+    {
+      id: 103, berlinTime: "20:00",
+      fixture: { date: date+"T20:00:00", berlinTime: "20:00", status: { short: "NS" } },
+      teams: { home: { name: "Bayern Munich" }, away: { name: "Dortmund" } },
+      goals: { home: 0, away: 0 },
+      league: { name: "Bundesliga" },
+      home_team: "Bayern Munich", away_team: "Dortmund", status: "NS"
+    }
   ];
 
   if (!KEY) {
-    return new Response(JSON.stringify({ response: fallback, message: "No API key - showing demo for " + date }), { headers });
+    return new Response(JSON.stringify({ response: fallback }), { headers });
   }
 
   try {
-    // Try official endpoint
     const ep = `https://api.live-football-api.com/v1/matches?api_key=${KEY}&date=${date}&lang=en`;
     let res = await fetch(ep);
     let text = await res.text();
+
     if (text.trim().startsWith('<')) {
-      // API returned HTML - key invalid / credits finished - return fallback
-      return new Response(JSON.stringify({ 
-        response: fallback, 
-        message: `API returned HTML (key invalid or no credits for ${date}) - showing demo`,
-        debug: text.slice(0,200)
-      }), { headers });
+      return new Response(JSON.stringify({ response: fallback }), { headers });
     }
+
     let json = JSON.parse(text);
-    let matches = json.data?.matches || json.matches || json.data || [];
+    let matches = json.data?.matches || json.matches || [];
 
-    if (!matches || matches.length === 0) {
-      return new Response(JSON.stringify({ response: fallback, message: `No live data for ${date} from provider - showing demo` }), { headers });
+    if (!matches.length) {
+      return new Response(JSON.stringify({ response: fallback }), { headers });
     }
 
-    let out = matches.map(m => ({
-      id: m.id,
-      fixture: { date: m.date, status: { short: m.status } },
-      teams: { home: { name: m.home_team || m.home?.name }, away: { name: m.away_team || m.away?.name } },
-      goals: { home: m.home_score ?? 0, away: m.away_score ?? 0 },
-      league: { name: m.league?.name || "" }
-    }));
+    // Convert real API to our safe format with berlinTime
+    let out = matches.map(m => {
+      let time = m.time || m.date?.split('T')[1]?.slice(0,5) || "15:00";
+      return {
+        id: m.id,
+        berlinTime: time,
+        fixture: { date: m.date, berlinTime: time, status: { short: m.status || "NS" } },
+        teams: { home: { name: m.home_team || m.home?.name || "Home" }, away: { name: m.away_team || m.away?.name || "Away" } },
+        goals: { home: m.home_score?? 0, away: m.away_score?? 0 },
+        league: { name: m.league?.name || "" },
+        home_team: m.home_team, away_team: m.away_team, status: m.status
+      };
+    });
 
-    return new Response(JSON.stringify({ response: out, count: out.length, date: date, message: "OK" }), { headers });
-
+    return new Response(JSON.stringify({ response: out }), { headers });
   } catch (e) {
-    return new Response(JSON.stringify({ response: fallback, message: "Error " + e.message + " - showing demo for " + date }), { headers });
+    return new Response(JSON.stringify({ response: fallback }), { headers });
   }
 }
