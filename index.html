@@ -1,2 +1,109 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FlashScore</title><style>body{margin:0;font-family:Arial;background:#eee}header{background:#111;color:#fff;padding:14px;text-align:center;font-weight:700}.dates{display:flex;gap:8px;overflow:auto;padding:10px;background:#fff}.dates div{border:1px solid #ddd;padding:8px 14px;border-radius:20px;white-space:nowrap}.dates div.active{background:#111;color:#fff}.filters{display:flex;gap:8px;padding:10px;background:#fff}.filters button{padding:6px 14px;border-radius:20px;border:1px solid #ddd}.filters button.active{background:#111;color:#fff}.match{background:#fff;margin:8px;padding:12px;border-radius:10px;display:flex;justify-content:space-between}.team{font-weight:600}.score{font-weight:800;text-align:center}</style></head><body><header>⚽ FlashScore - Lagos</header><div class="dates" id="dates"></div><div class="filters"><button class="active" id="bALL">ALL</button><button id="bLIVE">LIVE</button><button id="bFIN">FINISHED</button><button id="bUP">UPCOMING</button></div><div id="list" style="padding:8px">Loading...</div><script>let all=[],curDate="",curF="ALL";function initDates(){let w=document.getElementById('dates');w.innerHTML="";for(let i=-2;i<=4;i++){let dt=new Date();dt.setDate(dt.getDate()+i);let iso=dt.toISOString().split('T')[0];let lab=dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});if(i==-1)lab="YEST";if(i==0)lab="TODAY "+lab;if(i==1)lab="TOM";let el=document.createElement('div');el.textContent=lab;el.dataset.date=iso;if(i==0){el.classList.add('active');curDate=iso;}el.onclick=()=>{document.querySelectorAll('.dates div').forEach(x=>x.classList.remove('active'));el.classList.add('active');curDate=el.dataset.date;load();};w.appendChild(el);}}function setF(f){curF=f;document.querySelectorAll('.filters button').forEach(b=>b.classList.remove('active'));document.getElementById('b'+f).classList.add('active');render();}document.getElementById('bALL').onclick=()=>setF('ALL');document.getElementById('bLIVE').onclick=()=>setF('LIVE');document.getElementById('bFIN').onclick=()=>setF('FINISHED');document.getElementById('bUP').onclick=()=>setF('UPCOMING');async function load(){let l=document.getElementById('list');l.innerHTML='Loading '+curDate+'...';try{let r=await fetch('/api/matches?date='+curDate);let t=await r.text();let d=JSON.parse(t);all=d.matches||d.data||[];render();}catch(e){l.innerHTML='Fail: '+e.message;}}function render(){let l=document.getElementById('list');let f=[...all];if(curF=="LIVE")f=f.filter(m=>(m.status||'').toUpperCase().includes('LIVE')||['1H','2H','HT'].includes(m.status));if(curF=="FINISHED")f=f.filter(m=>(m.status||'').toUpperCase().includes('FIN')||['FT'].includes(m.status));if(curF=="UPCOMING")f=f.filter(m=>['NS','TBD',''].includes(m.status));if(!f.length){l.innerHTML='No '+curF+' matches for '+curDate;return;}let h='';f.forEach(m=>{let home=m.home?.name||'Home';let away=m.away?.name||'Away';let hs=m.score?.home??'-';let as=m.score?.away??'-';let st=m.status||'';let lg=m.league?.name||'';let time=st;try{if(m.date)time=new Date(m.date).toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Lagos'})+' • '+st;}catch(e){}h+='<div class="match"><div><div style="font-size:11px;color:#888">'+lg+'</div><div class="team">'+home+'</div><div class="team">'+away+'</div><div style="font-size:11px;color:#888">'+time+'</div></div><div class="score">'+hs+'<br>'+as+'</div></div>';});l.innerHTML=h;}initDates();load();</script></body></html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FlashScore - Lagos</title>
+<style>
+body{margin:0;font-family:Arial;background:#eee}
+header{background:#111;color:#fff;padding:14px;text-align:center;font-weight:700;font-size:18px}
+.dates{display:flex;gap:8px;overflow:auto;padding:10px;background:#fff;position:sticky;top:0}
+.dates div{border:1px solid #ccc;padding:8px 14px;border-radius:20px;white-space:nowrap;cursor:pointer;background:#fff}
+.dates div.active{background:#111;color:#fff;border-color:#111}
+.filters{display:flex;gap:8px;padding:10px;background:#fff}
+.filters button{padding:7px 15px;border-radius:20px;border:1px solid #ccc;background:#fff;cursor:pointer}
+.filters button.active{background:#111;color:#fff}
+#list{padding:8px}
+.match{background:#fff;margin:8px 0;padding:12px;border-radius:12px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.team{font-weight:600;font-size:14px;margin:2px 0}
+.score{font-weight:800;font-size:16px;text-align:center;min-width:50px}
+.meta{font-size:11px;color:#888}
+</style>
+</head>
+<body>
+<header>⚽ FlashScore - Lagos</header>
+<div class="dates" id="dates"></div>
+<div class="filters">
+<button class="active" id="bALL">ALL</button>
+<button id="bLIVE">LIVE</button>
+<button id="bFIN">FINISHED</button>
+<button id="bUP">UPCOMING</button>
+</div>
+<div id="list">Loading...</div>
+
+<script>
+let matchesList=[],curDate="",curF="ALL";
+
+function initDates(){
+ let w=document.getElementById('dates');w.innerHTML="";
+ for(let i=-2;i<=4;i++){
+  let dt=new Date();dt.setDate(dt.getDate()+i);
+  let iso=dt.toISOString().split('T')[0];
+  let lab=dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+  if(i==-1)lab="YEST"; if(i==0)lab="TODAY "+lab; if(i==1)lab="TOM";
+  let el=document.createElement('div');el.textContent=lab;el.dataset.date=iso;
+  if(i==0){el.classList.add('active');curDate=iso;}
+  el.onclick=()=>{document.querySelectorAll('.dates div').forEach(x=>x.classList.remove('active'));el.classList.add('active');curDate=el.dataset.date;load();};
+  w.appendChild(el);
+ }
+}
+
+function setF(f){
+ curF=f;
+ document.querySelectorAll('.filters button').forEach(b=>b.classList.remove('active'));
+ let map={ALL:'bALL',LIVE:'bLIVE',FINISHED:'bFIN',UPCOMING:'bUP'};
+ document.getElementById(map[f]).classList.add('active');
+ render();
+}
+document.getElementById('bALL').onclick=()=>setF('ALL');
+document.getElementById('bLIVE').onclick=()=>setF('LIVE');
+document.getElementById('bFIN').onclick=()=>setF('FINISHED');
+document.getElementById('bUP').onclick=()=>setF('UPCOMING');
+
+async function load(){
+ let l=document.getElementById('list');
+ l.innerHTML='<div style="text-align:center;padding:20px">Loading '+curDate+'...</div>';
+ try{
+  let r=await fetch('/api/matches?date='+curDate+'&lang=en');
+  let t=await r.text();
+  let d;
+  try{d=JSON.parse(t);}catch(e){throw new Error('Server: '+t.slice(0,200));}
+  let arr=d.matches||d.data||d.result||[];
+  // FIX for "all is not iterable" - convert object to array if needed
+  if(!Array.isArray(arr)){arr=Object.values(arr);}
+  matchesList=arr;
+  render();
+ }catch(e){
+  l.innerHTML='<div style="background:#fff;padding:20px;border-radius:10px;color:red">Fail: '+e.message+'</div>';
+ }
+}
+
+function render(){
+ let l=document.getElementById('list');
+ if(!Array.isArray(matchesList)) matchesList=[];
+ let f=[...matchesList];
+ if(curF=="LIVE") f=f.filter(m=>{let s=(m.status||'').toUpperCase(); return s.includes('LIVE')||['1H','2H','HT','ET'].includes(s);});
+ if(curF=="FINISHED") f=f.filter(m=>{let s=(m.status||'').toUpperCase(); return s.includes('FIN')||['FT','AET','PEN'].includes(s);});
+ if(curF=="UPCOMING") f=f.filter(m=>{let s=(m.status||'').toUpperCase(); return s==''||['NS','TBD','PST','CANC'].includes(s)||s.includes('NOT');});
+
+ if(!f.length){l.innerHTML='<div style="text-align:center;padding:30px;background:#fff;border-radius:12px">No '+curF+' matches for '+curDate+'<br><small>Try ALL</small></div>';return;}
+
+ let h='';
+ f.forEach(m=>{
+  let home=m.home?.name||m.homeTeam?.name||m.localTeam?.name||'Home';
+  let away=m.away?.name||m.awayTeam?.name||m.visitorTeam?.name||'Away';
+  let hs=m.score?.home??m.home?.score??m.scores?.home??'-';
+  let as=m.score?.away??m.away?.score??m.scores?.away??'-';
+  let st=m.status||''; let lg=m.league?.name||m.competition?.name||'';
+  let time=st;
+  try{let d=m.date||m.time||m.start_date; if(d){time=new Date(d).toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit',timeZone:'Africa/Lagos'})+' • '+st;}}catch(e){}
+  h+='<div class="match"><div><div class="meta">'+lg+'</div><div class="team">'+home+'</div><div class="team">'+away+'</div><div class="meta">'+time+'</div></div><div class="score">'+hs+'<br>'+as+'</div></div>';
+ });
+ l.innerHTML=h;
+}
+
+initDates();
+load();
+</script>
+</body>
+</html>
