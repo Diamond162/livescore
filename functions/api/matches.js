@@ -10,71 +10,64 @@ export async function onRequest(context) {
     const dateStr = url.searchParams.get('date') || '2026-10-15';
     const KEY = context.env.LIVE_FOOTBALL_API_KEY;
 
-    if (!KEY) {
-      return new Response(JSON.stringify({ response: [], message: "No API key set in Cloudflare env" }), { headers });
-    }
-
-    // CORRECT OFFICIAL ENDPOINT - only your API
     const apiUrl = `https://live-football-api.com/api/v1/matches?api_key=${KEY}&date=${dateStr}&lang=en`;
 
-    let r = await fetch(apiUrl, {
-      headers: { "User-Agent": "Mozilla/5.0" }
-    });
-
+    let r = await fetch(apiUrl);
     let text = await r.text();
-
-    // If still returns HTML, key invalid or no credits
-    if (text.trim().startsWith('<') || text.trim().startsWith('<!DOCTYPE')) {
-      return new Response(JSON.stringify({
-        response: [],
-        message: "Your API returned HTML - key invalid or 500 credits finished. Check live-football-api.com dashboard",
-        debug: text.slice(0, 300)
-      }), { headers });
+    if (text.trim().startsWith('<')) {
+      return new Response(JSON.stringify({ response: [], message: "API key invalid or credits finished" }), { headers });
     }
-
     let data = JSON.parse(text);
+    let matches = data.matches || [];
 
-    // API returns { status: "success", matches: [...] }
-    let matches = data.matches || data.data?.matches || [];
-
-    if (!matches || matches.length === 0) {
-      return new Response(JSON.stringify({ response: [], message: `No matches for ${dateStr} from your API` }), { headers });
-    }
-
-    // Convert to your frontend format with berlinTime
     let out = matches.map(m => {
-      // m.date or m.time
-      let rawDate = m.date || m.kickoff || dateStr + "T" + (m.time || "15:00") + ":00";
-      let d = new Date(rawDate);
-      let berlinTime = isNaN(d) ? (m.time || "15:00") : d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' });
+      // YOUR API gives: m.time = "18:45" , m.date = "2026-10-15" and m.timestamp (UTC)
+      // Use timestamp if available - it's the REAL time
+      let timeStr = "15:00";
+      let berlinTime = "15:00";
+      let rawDateISO = "";
 
-      let homeName = m.home?.name || m.home_team || "Home";
-      let awayName = m.away?.name || m.away_team || "Away";
-      let homeScore = m.score?.home ?? m.home_score ?? 0;
-      let awayScore = m.score?.away ?? m.away_score ?? 0;
-      let status = m.status || "NS";
-      let short = "NS";
-      if (typeof status === 'string') {
-        if (status.toLowerCase().includes('live') || status.toLowerCase().includes('progress')) short = "LIVE";
-        else if (status.toLowerCase().includes('ft') || status.toLowerCase().includes('final')) short = "FT";
-        else if (status.toLowerCase().includes('ht')) short = "HT";
-        else short = status.toUpperCase().slice(0,4);
+      if (m.timestamp) {
+        // timestamp is UTC seconds - convert to Europe/Berlin
+        let d = new Date(m.timestamp * 1000);
+        berlinTime = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' });
+        rawDateISO = d.toISOString();
+      } else if (m.date && m.time) {
+        // date + time already in Europe time per API
+        timeStr = m.time;
+        berlinTime = m.time; // DON'T convert again
+        rawDateISO = `${m.date}T${m.time}:00`;
+      } else if (m.time) {
+        berlinTime = m.time;
+        rawDateISO = `${dateStr}T${m.time}:00`;
+      } else if (m.date) {
+        // date may contain time like "2026-10-15T18:45:00"
+        let d = new Date(m.date);
+        if (!isNaN(d)) {
+          berlinTime = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' });
+          rawDateISO = m.date;
+        }
       }
+
+      let short = "NS";
+      let s = (m.status || "").toString().toLowerCase();
+      if (s.includes("live")) short = "LIVE";
+      else if (s.includes("ft") || s.includes("finished") || s.includes("final")) short = "FT";
+      else if (s.includes("ht")) short = "HT";
 
       return {
         id: m.id,
         berlinTime: berlinTime,
-        fixture: { date: rawDate, berlinTime: berlinTime, status: { short: short } },
-        teams: { home: { name: homeName }, away: { name: awayName } },
-        goals: { home: homeScore, away: awayScore },
-        league: { name: m.league?.name || m.competition || "" },
-        status: short
+        fixture: { date: rawDateISO, berlinTime: berlinTime, status: { short: short } },
+        teams: { home: { name: m.home?.name || m.home_team || "Home" }, away: { name: m.away?.name || m.away_team || "Away" } },
+        goals: { home: m.score?.home ?? m.home_score ?? 0, away: m.score?.away ?? m.away_score ?? 0 },
+        league: { name: m.league?.name || m.competition || "Other" },
+        country: m.country || m.league?.country || ""
       };
     });
 
     return new Response(JSON.stringify({ response: out }), { headers });
-
   } catch (e) {
-    return new Response(JSON.stringify({ response: [], message: "Error: " + e.message }), { headers });
+    return new Response(JSON.stringify({ response: [], message: e.message }), { headers });
   }
 }
