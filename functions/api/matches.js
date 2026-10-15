@@ -1,44 +1,41 @@
 export async function onRequest(c){
   const K=(c.env.FOOTBALL_API_KEY||'').trim();
+  function toBerlin(iso){
+    try{
+      if(!iso) return "00:00";
+      if(/^\d{2}:\d{2}$/.test(iso)) return iso; // already 20:00
+      return new Date(iso).toLocaleTimeString('en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit',hour12:false});
+    }catch{ return "00:00"; }
+  }
   try{
-    let date=new URL(c.request.url).searchParams.get('date')||new Date().toISOString().split('T')[0];
-    let apiUrl=`https://live-football-api.com/api/v1/matches?api_key=${K}&date=${date}&lang=en`;
+    let reqDate=new URL(c.request.url).searchParams.get('date')||new Date().toISOString().split('T')[0];
+    let apiUrl=`https://live-football-api.com/api/v1/matches?api_key=${K}&date=${reqDate}&lang=en`;
     let r=await fetch(apiUrl);
     let j=await r.json();
     let list=j.matches||[];
     let out=list.map(m=>{
-      // TIME FIX - API already gives "20:00", don't convert to Invalid Date
-      let rawTime=m.time||"";
-      let berlinTime=rawTime;
-      if(m.date && m.date.includes('T')){ // if full datetime
-        try{ berlinTime=new Date(m.date).toLocaleTimeString('en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit'});}catch{berlinTime=rawTime;}
-      }
-      // Country + League
-      let countryName=m.league?.country?.name||m.league?.country||m.country?.name||m.country||"World";
-      let countryFlag=m.league?.country?.flag||"🌍";
-      // Score fix
-      let gh=m.score?.home;
-      if(gh==null) gh=m.scores?.home??m.home_score??null;
-      let ga=m.score?.away;
-      if(ga==null) ga=m.scores?.away??m.away_score??null;
-
+      let timeStr=m.time||m.date||m.datetime||"";
+      let berlin=toBerlin(timeStr);
+      let country=m.league?.country?.name||m.league?.country||m.country?.name||m.country||m.league?.name||"World";
+      let leagueName=m.league?.name||m.competition?.name||m.competition||"League";
+      let gh=m.score?.home??m.home_score??null;
+      let ga=m.score?.away??m.away_score??null;
+      let status=m.status||"NS";
       return{
-        fixture:{id:m.id,berlinTime:berlinTime||"00:00",status:{short:m.status||"NS"}},
-        league:{name:m.league?.name||m.competition||"Cup",country:countryName,flag:countryFlag,isTop:0},
+        fixture:{id:m.id,berlinTime:berlin,status:{short:status},date:reqDate},
+        league:{name:leagueName,country:country},
         teams:{home:{name:m.home?.name||"Home"},away:{name:m.away?.name||"Away"}},
         goals:{home:gh,away:ga}
       }
     });
-
-    // BIG LEAGUES AT TOP
-    let bigLeagues=["Premier League","LaLiga","Bundesliga","Serie A","Ligue 1","Champions League","Europa League","Copa Libertadores","Copa do Brasil","World Cup"];
+    // BIG LEAGUES TOP
+    let big=["Champions","Europa","Premier","LaLiga","Bundesliga","Serie A","Ligue 1","Copa","AFC","UEFA"];
     out.sort((a,b)=>{
-      let aBig=bigLeagues.some(x=>a.league.name.includes(x))?-1:1;
-      let bBig=bigLeagues.some(x=>b.league.name.includes(x))?-1:1;
-      return aBig-bBig;
+      let aB=big.some(x=>a.league.name.includes(x))?0:1;
+      let bB=big.some(x=>b.league.name.includes(x))?0:1;
+      return aB-bB;
     });
-
-    return new Response(JSON.stringify({response:out,results:out.length}),{headers:{"content-type":"application/json","Access-Control-Allow-Origin":"*"}});
+    return new Response(JSON.stringify({response:out,results:out.length,usedDate:reqDate}),{headers:{"content-type":"application/json","Access-Control-Allow-Origin":"*"}});
   }catch(e){
     return new Response(JSON.stringify({response:[],error:e.message}),{headers:{"content-type":"application/json","Access-Control-Allow-Origin":"*"}});
   }
