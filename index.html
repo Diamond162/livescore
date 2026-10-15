@@ -5,169 +5,104 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FlashScore - LIVE 2026 - Europe Time</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
 body{background:#f0f0f0}
-.header{background:#001e28;color:white;text-align:center;padding:14px;font-weight:bold;font-size:16px;position:sticky;top:0;z-index:10}
-.sports{display:flex;gap:8px;padding:10px;background:#001e28;overflow-x:auto;scrollbar-width:none}
+.header{background:#001e28;color:white;text-align:center;padding:14px;font-weight:bold;position:sticky;top:0;z-index:10}
+.sports{display:flex;gap:8px;padding:10px;background:#001e28;overflow-x:auto}
 .sport{padding:8px 16px;border-radius:20px;border:none;font-weight:bold;white-space:nowrap;cursor:pointer}
 .sport.active{background:white;color:#001e28}
 .sport.inactive{background:#0f3a4a;color:white}
-.dates{display:flex;gap:8px;padding:10px;background:white;overflow-x:auto;border-bottom:1px solid #ddd;position:sticky;top:48px;z-index:9;scrollbar-width:none}
-.date{flex:0 0 auto;min-width:70px;padding:8px;border:1px solid #ddd;border-radius:12px;text-align:center;background:white;font-size:13px;cursor:pointer}
-.date.active{background:#001e28;color:white;border-color:#001e28}
-.date small{display:block;font-size:11px;opacity:0.7}
-.filters{display:flex;gap:8px;padding:8px 10px;background:white;border-bottom:1px solid #ddd;overflow-x:auto}
+.dates{display:flex;gap:8px;padding:10px;background:white;overflow-x:auto;border-bottom:1px solid #ddd;position:sticky;top:48px;z-index:9}
+.date{min-width:70px;padding:8px;border:1px solid #ddd;border-radius:12px;text-align:center;background:white;font-size:13px;cursor:pointer}
+.date.active{background:#001e28;color:white}
+.date small{display:block;font-size:11px;opacity:.7}
+.filters{display:flex;gap:8px;padding:8px 10px;background:white;border-bottom:1px solid #ddd}
 .filter{padding:6px 14px;border-radius:20px;border:1px solid #ddd;font-size:13px;background:white;white-space:nowrap;cursor:pointer}
 .filter.active{background:#001e28;color:white}
-.league-header{background:#e8e8e8;padding:8px 10px;font-size:12px;color:#555;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #d0d0d0;text-transform:uppercase}
-.league-header b{color:#222}
-.match{display:flex;background:white;border-bottom:1px solid #eee;padding:10px 10px;align-items:center}
-.time{width:70px;font-size:14px;text-align:left;color:#333;font-weight:bold}
-.time small{display:block;font-size:11px;color:#888;font-weight:bold;margin-top:2px}
+.league-header{background:#e8e8e8;padding:8px 10px;font-size:12px;color:#555;border-top:1px solid #d0d0d0;text-transform:uppercase}
+.match{display:flex;background:white;border-bottom:1px solid #eee;padding:10px;align-items:center}
+.time{width:70px;font-size:14px;font-weight:bold}
+.time small{display:block;font-size:11px;color:#888}
 .time.live{color:#e30613}
 .teams{flex:1}
-.teams div{font-size:14px;padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.score{width:60px;text-align:center;font-weight:bold;font-size:15px}
+.teams div{font-size:14px;padding:2px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.score{width:60px;text-align:center;font-weight:bold}
 </style>
 </head>
 <body>
-
 <div class="header">FlashScore - LIVE 2026 - Europe Time</div>
-
 <div class="sports">
 <button class="sport active">FOOTBALL</button>
 <button class="sport inactive">TENNIS</button>
 <button class="sport inactive">BASKETBALL</button>
 </div>
-
 <div class="dates" id="dates"></div>
-
 <div class="filters">
 <button class="filter active" data-f="ALL">ALL</button>
 <button class="filter" data-f="LIVE">LIVE</button>
 <button class="filter" data-f="FINISHED">FINISHED</button>
 <button class="filter" data-f="UPCOMING">UPCOMING</button>
 </div>
-
 <div id="list"></div>
-
 <script>
-let selectedDate = new Date().toISOString().slice(0,10); // AUTOMATIC TODAY
+let selectedDate = new Date().toISOString().slice(0,10);
 let allMatches = [];
 let filter = 'ALL';
-
 function genDates(){
-  const container = document.getElementById('dates');
-  container.innerHTML = '';
-  const base = new Date(); // AUTOMATIC - real today
+  const c=document.getElementById('dates');c.innerHTML='';
+  const base=new Date();
   for(let i=-3;i<=4;i++){
-    let d = new Date(base);
-    d.setDate(base.getDate()+i);
-    let yyyy = d.toISOString().slice(0,10);
-    let label = d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}).toUpperCase();
-    let dayName = d.toLocaleDateString('en-GB',{weekday:'short'}).toUpperCase();
-    if(i===-1) dayName='YESTERDAY';
-    if(i===0) dayName='TODAY';
-    if(i===1) dayName='TOMORROW';
-    let isToday = yyyy===selectedDate;
-    let btn = document.createElement('button');
-    btn.className = 'date'+(isToday?' active':'');
-    btn.innerHTML = `<small>${dayName}</small>${label}`;
-    btn.onclick=()=>{selectedDate=yyyy; genDates(); loadMatches();};
-    container.appendChild(btn);
+    let d=new Date(base);d.setDate(base.getDate()+i);
+    let yyyy=d.toISOString().slice(0,10);
+    let label=d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}).toUpperCase();
+    let dayName=d.toLocaleDateString('en-GB',{weekday:'short'}).toUpperCase();
+    if(i===-1)dayName='YESTERDAY';if(i===0)dayName='TODAY';if(i===1)dayName='TOMORROW';
+    let btn=document.createElement('button');
+    btn.className='date'+(yyyy===selectedDate?' active':'');
+    btn.innerHTML=`<small>${dayName}</small>${label}`;
+    btn.onclick=()=>{selectedDate=yyyy;genDates();loadMatches();};
+    c.appendChild(btn);
   }
 }
-
 async function loadMatches(){
-  document.getElementById('list').innerHTML = '<p style="padding:20px;text-align:center">Loading...</p>';
+  document.getElementById('list').innerHTML='<p style="padding:20px;text-align:center">Loading...</p>';
   try{
-    let res = await fetch(`/api/matches?date=${selectedDate}`);
-    let data = await res.json();
-    allMatches = data.response || [];
+    let res=await fetch(`/api/matches?date=${selectedDate}`);
+    let txt=await res.text();
+    // FINAL SAFE CHECK - if API returns HTML, don't crash
+    if(txt.trim().startsWith('<')) throw new Error('API returned HTML');
+    let data=JSON.parse(txt);
+    allMatches=data.response||[];
     render();
   }catch(e){
-    document.getElementById('list').innerHTML = '<p style="padding:20px;text-align:center">Error: '+e.message+'</p>';
+    document.getElementById('list').innerHTML=`<p style="padding:20px;text-align:center;color:#777">No matches yet for ${selectedDate}<br><small>${e.message}</small></p>`;
   }
 }
-
-function getCountryFlag(name){
-  let n = name.toLowerCase();
-  if(n.includes('nicaragua')||n.includes('guatemala')||n.includes('honduras')||n.includes('nacional')) return '🇳🇮';
-  if(n.includes('brazil')||n.includes('brasil')||n.includes('cundinamarca')||n.includes('colombia')||n.includes('magdalena')||n.includes('leones')||n.includes('inter palmira')) return '🇨🇴';
-  if(n.includes('libertadores')||n.includes('sudamericana')) return '🌎';
-  if(n.includes('caribbean')||n.includes('concacaf')) return '🌎';
-  if(n.includes('england')||n.includes('premier')) return '🏴󠁧󠁢󠁥󠁮󠁧󠁿';
-  if(n.includes('spain')||n.includes('la liga')) return '🇪🇸';
-  if(n.includes('germany')||n.includes('bundesliga')) return '🇩🇪';
-  return '🏳️';
-}
-
 function render(){
-  const list = document.getElementById('list');
-  list.innerHTML='';
-
-  let filtered = allMatches.filter(m=>{
-    if(filter==='ALL') return true;
-    if(filter==='LIVE') return m.fixture?.status?.short==='LIVE';
-    if(filter==='FINISHED') return m.fixture?.status?.short==='FT';
-    if(filter==='UPCOMING') return m.fixture?.status?.short==='NS';
+  const list=document.getElementById('list');list.innerHTML='';
+  let filtered=allMatches.filter(m=>{
+    if(filter==='ALL')return true;
+    if(filter==='LIVE')return m.fixture?.status?.short==='LIVE';
+    if(filter==='FINISHED')return m.fixture?.status?.short==='FT';
+    if(filter==='UPCOMING')return m.fixture?.status?.short==='NS';
     return true;
   });
-
-  // Sort by time automatically
-  filtered.sort((a,b)=> (a.berlinTime||'').localeCompare(b.berlinTime||''));
-
-  // Group by league
-  let groups = {};
-  filtered.forEach(m=>{
-    let league = m.league?.name || 'Other';
-    if(!groups[league]) groups[league]=[];
-    groups[league].push(m);
-  });
-
-  for(let leagueName in groups){
-    let flag = getCountryFlag(leagueName);
-    let header = document.createElement('div');
-    header.className='league-header';
-    let country = leagueName.split(':')[0] || 'WORLD';
-    header.innerHTML = `<span>${flag} ${leagueName}</span>`;
-    list.appendChild(header);
-
-    groups[leagueName].forEach(m=>{
-      let row = document.createElement('div');
-      row.className='match';
-      let time = m.berlinTime || 'TBD';
-      let status = m.fixture?.status?.short || 'NS';
-      let isLive = status==='LIVE';
-      row.innerHTML = `
-        <div class="time ${isLive?'live':''}">${time}<small>${status}</small></div>
-        <div class="teams">
-          <div>${m.teams?.home?.name || 'Home'}</div>
-          <div>${m.teams?.away?.name || 'Away'}</div>
-        </div>
-        <div class="score">${m.goals?.home ?? 0} - ${m.goals?.away ?? 0}</div>
-      `;
+  filtered.sort((a,b)=>(a.berlinTime||'').localeCompare(b.berlinTime||''));
+  let groups={};
+  filtered.forEach(m=>{let l=m.league?.name||'Other';if(!groups[l])groups[l]=[];groups[l].push(m);});
+  for(let ln in groups){
+    let h=document.createElement('div');h.className='league-header';h.innerHTML=`${ln}`;list.appendChild(h);
+    groups[ln].forEach(m=>{
+      let row=document.createElement('div');row.className='match';
+      let time=m.berlinTime||'-';let status=m.fixture?.status?.short||'NS';
+      row.innerHTML=`<div class="time ${status==='LIVE'?'live':''}">${time}<small>${status}</small></div><div class="teams"><div>${m.teams?.home?.name||'Home'}</div><div>${m.teams?.away?.name||'Away'}</div></div><div class="score">${m.goals?.home??0} - ${m.goals?.away??0}</div>`;
       list.appendChild(row);
     });
   }
-
-  if(filtered.length===0){
-    list.innerHTML='<p style="padding:20px;text-align:center;color:#777">No matches for this day</p>';
-  }
+  if(filtered.length===0)list.innerHTML=`<p style="padding:20px;text-align:center;color:#777">No matches for this day</p>`;
 }
-
-document.querySelectorAll('.filter').forEach(b=>{
-  b.onclick=()=>{
-    document.querySelectorAll('.filter').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
-    filter=b.dataset.f;
-    render();
-  };
-});
-
-genDates();
-loadMatches();
-setInterval(loadMatches, 60000); // Auto refresh every 60 sec
+document.querySelectorAll('.filter').forEach(b=>{b.onclick=()=>{document.querySelectorAll('.filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');filter=b.dataset.f;render();};});
+genDates();loadMatches();setInterval(loadMatches,60000);
 </script>
 </body>
 </html>
