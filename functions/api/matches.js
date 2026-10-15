@@ -4,75 +4,42 @@ export async function onRequest(context) {
 
   try {
     const url = new URL(context.request.url);
-    let dateStr = url.searchParams.get("date") || new Date().toISOString().slice(0,10);
-    // FotMob needs YYYYMMDD not YYYY-MM-DD
-    const fotmobDate = dateStr.replaceAll("-", "");
+    const date = url.searchParams.get("date") || new Date().toISOString().slice(0,10);
+    const KEY = context.env.FOOTBALL_API_KEY;
 
-    // FotMob FREE API - no key needed!
-    const apiUrl = `https://www.fotmob.com/api/matches?date=${fotmobDate}`;
+    if (!KEY) {
+      return send({ response: [], error: "FOOTBALL_API_KEY not set in Cloudflare" });
+    }
+
+    const apiUrl = `https://v3.football.api-sports.io/fixtures?date=${date}`;
 
     const res = await fetch(apiUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "application/json"
-      }
+      headers: { "x-apisports-key": KEY }
     });
 
     const data = await res.json();
 
-    // FotMob returns { leagues: [ { name, matches: [...] } ] }
-    const leagues = data.leagues || [];
-    const out = [];
-
-    for (const league of leagues) {
-      const leagueName = league.name || "League";
-      const matches = league.matches || [];
-
-      for (const m of matches) {
-        // Time - convert UTC to Berlin
-        let berlinTime = "15:00";
-        try {
-          if (m.status?.utcTime) {
-            const d = new Date(m.status.utcTime);
-            berlinTime = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
-          } else if (m.time) {
-            berlinTime = m.time.substring(0,5);
-          }
-        } catch {}
-
-        // Status: FT, LIVE, HT, NS, etc
-        const statusShort = m.status?.reason?.short || m.status?.liveTime?.short || "NS";
-
-        // Scores
-        let homeScore = 0, awayScore = 0;
-        if (m.status?.scoreStr) {
-          const parts = m.status.scoreStr.split("-");
-          if (parts.length === 2) {
-            homeScore = parseInt(parts[0]) || 0;
-            awayScore = parseInt(parts[1]) || 0;
-          }
-        }
-
-        out.push({
-          berlinTime: berlinTime,
-          fixture: {
-            date: dateStr,
-            berlinTime: berlinTime,
-            status: { short: statusShort }
-          },
-          teams: {
-            home: { name: m.home?.name || "Home" },
-            away: { name: m.away?.name || "Away" }
-          },
-          goals: { home: homeScore, away: awayScore },
-          league: { name: leagueName }
-        });
-      }
+    if (data.errors && Object.keys(data.errors).length > 0) {
+      return send({ response: [], error: data.errors });
     }
 
-    // Sort by time
-    out.sort((a,b) => a.berlinTime.localeCompare(b.berlinTime));
+    let list = data.response || [];
 
+    const out = list.map(f => {
+      let berlinTime = "15:00";
+      if (f.fixture?.date) {
+        berlinTime = new Date(f.fixture.date).toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit", timeZone:"Europe/Berlin" });
+      }
+      return {
+        berlinTime: berlinTime,
+        fixture: { date: date, berlinTime: berlinTime, status: { short: f.fixture?.status?.short || "NS" } },
+        teams: { home: { name: f.teams?.home?.name || "Home" }, away: { name: f.teams?.away?.name || "Away" } },
+        goals: { home: f.goals?.home ?? 0, away: f.goals?.away ?? 0 },
+        league: { name: f.league?.name || "League" }
+      };
+    });
+
+    out.sort((a,b) => a.berlinTime.localeCompare(b.berlinTime));
     return send({ response: out });
 
   } catch (e) {
