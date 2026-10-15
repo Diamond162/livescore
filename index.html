@@ -1,43 +1,36 @@
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FLASHCORE 2026</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#fff;font-family:Arial}.h{background:#111;padding:12px;border-bottom:2px solid #00ff88;font-weight:900;font-size:22px}.h span{color:#00ff88}.dates{display:flex;overflow-x:auto;gap:6px;padding:10px;background:#111}.dates button{padding:6px 14px;border-radius:20px;border:1px solid #333;background:#222;color:#fff;font-size:12px;white-space:nowrap}.dates button.active{background:#00ff88;color:#000;font-weight:bold}.tabs{display:flex;gap:6px;padding:8px;background:#111}.tabs button{padding:6px 14px;border-radius:16px;background:#222;color:#fff;border:none;font-size:12px}.tabs button.active{background:#00ff88;color:#000}.lg{background:#1e1e1e;padding:10px 12px;font-weight:bold;border-left:4px solid #00ff88;margin-top:8px;display:flex;justify-content:space-between;font-size:13px}.lg small{color:#888}.m{display:flex;padding:12px;border-bottom:1px solid #1a1a1a;background:#0f0f0f;align-items:center}.tm{width:65px;color:#00ff88;font-weight:bold;font-size:13px}.tm div{color:#888;font-size:10px;font-weight:normal}.teams{flex:1;font-size:13px;line-height:18px}.ct{font-size:10px;color:#888}.sc{font-weight:bold;color:#00ff88;min-width:55px;text-align:right;font-size:14px}</style></head><body>
-<div class="h">FLASH<span>CORE</span> LIVE 2026</div>
-<div class="dates" id="dates"></div><div class="tabs"><button class="active">ALL</button><button>LIVE</button><button>FINISHED</button></div>
-<div id="info" style="padding:6px 12px;color:#00ff88;font-size:11px;background:#111"></div>
-<div id="list" style="padding:20px;text-align:center;color:#666">Loading 2026...</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flashscore 2026 - Live Scores</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;background:#f5f5f5}
+.header{background:#001e28;color:white;padding:12px;display:flex;align-items:center;gap:12px}
+.header h1{font-size:20px}.header span{color:#00b050}
+.nav{background:white;display:flex;overflow-x:auto;border-bottom:1px solid #ddd}
+.nav button{padding:12px 18px;border:none;background:white;white-space:nowrap;font-weight:bold;cursor:pointer}
+.nav button.active{color:#00b050;border-bottom:3px solid #00b050}
+.date-bar{background:#001e28;color:white;display:flex;overflow-x:auto;padding:8px}
+.date-bar button{background:transparent;color:#aaa;border:1px solid #333;padding:6px 12px;margin-right:6px;border-radius:20px;cursor:pointer}
+.date-bar button.active{background:white;color:#001e28}
+.match{background:white;border-bottom:1px solid #eee;padding:10px 12px;display:flex;justify-content:space-between;align-items:center}
+.league{font-size:12px;color:#888;margin-bottom:2px}.teams{font-size:14px}
+.time{font-size:13px;font-weight:bold;min-width:45px}.score{font-weight:bold;color:#d00}
+.live{color:#d00;animation:blink 1s infinite} @keyframes blink{50%{opacity:.3}}
+</style>
+</head>
+<body>
+<div class="header"><h1>Flash<span>score</span> 2026</h1></div>
+<div class="nav">
+<button class="active">⚽ FOOTBALL</button><button>TENNIS</button><button>BASKETBALL</button>
+</div>
+<div class="date-bar" id="dateBar"></div>
+<div id="matches">Loading 2026 matches...</div>
 <script>
-let sel=new Date().toISOString().split('T')[0];
+const dateBar=document.getElementById('dateBar');const matchesDiv=document.getElementById('matches');
+let selectedDate="2026-06-11";
 function makeDates(){
-let c=document.getElementById('dates');c.innerHTML='';
-for(let i=-2;i<=4;i++){
-let d=new Date();d.setDate(d.getDate()+i);let iso=d.toISOString().split('T')[0];
-let b=document.createElement('button');b.textContent=(i==0?'TODAY ':'')+d.toLocaleDateString('en-US',{weekday:'short',day:'numeric'});
-if(iso==sel)b.classList.add('active');
-b.onclick=()=>{document.querySelectorAll('.dates button').forEach(x=>x.classList.remove('active'));b.classList.add('active');sel=iso;load();};
-c.appendChild(b);
-}
-}
-async function load(){
-let el=document.getElementById('list');let inf=document.getElementById('info');
-el.innerHTML='Loading '+sel+'...';
-try{
-let r=await fetch('/api/matches?date='+sel);let j=await r.json();
-let arr=j.response||[];
-inf.textContent='Date: '+(j.usedDate||sel)+' • Europe/Berlin • Results: '+arr.length+' • API has 2026 ✅';
-if(!arr.length){el.innerHTML='No matches on '+(j.usedDate||sel)+'<br>API returned 0 matches<br>Check your 500 credits';return;}
-let groups={};
-arr.forEach(m=>{let key=m.league.country+' - '+m.league.name;if(!groups[key])groups[key]={league:m.league,matches:[]};groups[key].matches.push(m);});
-let html='';
-for(let k in groups){
-let g=groups[k];
-html+='<div class="lg"><div>⚽ '+g.league.country+' - '+g.league.name+' ('+g.matches.length+')</div><small>Berlin</small></div>';
-g.matches.forEach(m=>{
-let time=m.fixture.berlinTime;
-let gh=m.goals.home,ga=m.goals.away;
-let score=gh!=null&&ga!=null?gh+' - '+ga:'- : -';
-html+='<div class="m"><div class="tm">'+time+'<div>'+m.league.country+'</div></div><div class="teams"><div>'+m.teams.home.name+'</div><div style="color:#aaa">'+m.teams.away.name+'</div><div class="ct">'+g.league.name+'</div></div><div class="sc">'+score+'</div></div>';
-});
-}
-el.innerHTML=html;
-}catch(e){el.innerHTML='Error: '+e.message}
-}
-makeDates();load();setInterval(load,30000);
-</script></body></html>
+  let dates=[];let base=new Date("2026-06-11");
+  for(let i=-2;i<12;i++){let d=new Date(base);d.setDate(base.getDate()+i);dates.push(d.toISOString().split('T')[0]);}
+  dateBar.innerHTML=dates.map(d=>{
+    let dt=new Date(d);let label=dt.toLocaleDateString('en',{month:'short',
