@@ -16,7 +16,7 @@
 .league-head{background:#e9e9e9;padding:7px 12px;font-weight:bold;font-size:13px;color:#333;border-top:1px solid #ddd}
 .match{background:#fff;padding:10px 12px;display:flex;justify-content:space-between;border-bottom:1px solid #eee}
 .match.teams div{font-size:14px;line-height:20px}
-.match.meta{text-align:right;min-width:60px}
+.meta{text-align:right;min-width:60px}
 .time{font-size:13px;font-weight:bold}.score{font-size:14px;font-weight:bold;color:#c00;margin-top:2px}
 .live{color:#d00;animation:blink 1s infinite} @keyframes blink{50%{opacity:.4}}
 </style>
@@ -25,17 +25,20 @@
 <div class="header">Flash<span>score</span> 2026</div>
 <div class="tabs"><button class="active">⚽ FOOTBALL</button><button>TENNIS</button><button>BASKETBALL</button></div>
 <div class="dates" id="dateBar"></div>
-<div id="list">Loading matches...</div>
+<div id="list">Loading...</div>
 <script>
-let sel="2026-06-11";
+let sel=new Date().toISOString().split('T')[0];
 const listEl=document.getElementById('list');
 const barEl=document.getElementById('dateBar');
 function buildDates(){
-  let out=[]; let base=new Date("2026-06-11");
-  for(let i=-3;i<15;i++){let d=new Date(base);d.setDate(base.getDate()+i);out.push(d.toISOString().split('T')[0]);}
+  let out=[]; let base=new Date();
+  for(let i=-2;i<8;i++){let d=new Date(base);d.setDate(base.getDate()+i);out.push(d.toISOString().split('T')[0]);}
+  // Add June 11 2026 for World Cup
+  out.push("2026-06-11");
   barEl.innerHTML=out.map(d=>{
-    let dt=new Date(d); let lbl=dt.toLocaleDateString('en',{month:'short',day:'numeric'});
-    if(d===new Date().toISOString().split('T')[0]) lbl="TODAY";
+    let dt=new Date(d);
+    let lbl= d==="2026-06-11"? "World Cup 2026" : dt.toLocaleDateString('en',{month:'short',day:'numeric'});
+    if(d===new Date().toISOString().split('T')[0]) lbl="TODAY Oct "+dt.getDate();
     return `<button class="${d===sel?'active':''}" onclick="load('${d}')">${lbl}</button>`;
   }).join('');
 }
@@ -46,16 +49,12 @@ async function load(date){
     let r=await fetch(`/api/matches?date=${date}`);
     let j=await r.json();
     let ms=j.response||[];
-    if(ms.length===0){
-      // try today if 2026 empty
-      if(date.startsWith("2026")){ return load(new Date().toISOString().split('T')[0]); }
-      listEl.innerHTML=`<div style='padding:30px;text-align:center'>No matches for ${date}<br>Try TODAY</div>`; return;
-    }
+    if(ms.length===0){listEl.innerHTML=`<div style='padding:30px;text-align:center'>No matches for ${date}</div>`; return;}
     let html=""; let last="";
     ms.forEach(m=>{
       let lg=`${m.league.country} - ${m.league.name}`;
       if(lg!==last){html+=`<div class="league-head">🌍 ${lg}</div>`; last=lg;}
-      let isLive=(m.fixture.status.short||"").toLowerCase().includes("live")|| (m.fixture.status.short||"").includes("1H")|| (m.fixture.status.short||"").includes("2H");
+      let isLive=(m.fixture.status.short||"").toLowerCase().includes("live");
       let timeHtml=isLive?`<span class="live">● LIVE ${m.fixture.berlinTime}</span>`:m.fixture.berlinTime;
       let score=m.goals.display|| (m.goals.home!=null?`${m.goals.home} - ${m.goals.away}`:"- : -");
       html+=`<div class="match"><div class="teams"><div>${m.teams.home.name}</div><div>${m.teams.away.name}</div></div><div class="meta"><div class="time">${timeHtml}</div><div class="score">${score}</div></div></div>`;
