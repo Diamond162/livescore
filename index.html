@@ -7,43 +7,45 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#000;color:#fff;font-family:Arial}
-.header{background:#00ff88;color:#000;padding:15px;text-align:center;font-weight:bold}
-.dates{display:flex;gap:8px;padding:10px;background:#111;overflow:auto}
-.dates button{background:#222;color:#fff;border:none;padding:10px;border-radius:8px}
-.dates button.active{background:#00ff88;color:#000}
-.match{background:#111;margin:10px;padding:12px;border-left:4px solid #00ff88;border-radius:8px}
-.time{color:#00ff88;font-weight:bold}
+.header{background:#000;color:#00FF88;padding:14px;text-align:center;font-weight:bold;font-size:18px;border-bottom:2px solid #00FF88}
+.dates{display:flex;overflow-x:auto;padding:10px;background:#111;gap:8px}
+.dates button{padding:8px 14px;border:1px solid #333;background:#222;color:#fff;border-radius:20px;white-space:nowrap}
+.dates button.active{background:#00FF88;color:#000;font-weight:bold}
+.match{background:#111;margin:8px;padding:12px;border-left:4px solid #00FF88;border-radius:6px}
+.time{color:#00FF88;font-weight:bold;font-size:12px}
+.league{color:#888;font-size:11px;margin:4px 0}
+.teams{font-size:15px;margin-top:6px}
+.score{color:#00FF88;float:right;font-weight:bold}
+.live{color:#ff4444;font-size:11px}
 </style>
 </head>
 <body>
-<div class="header">⚽ LiveScore BLACK & GREEN - Europe/Berlin</div>
+<div class="header">LiveScore BLACK & GREEN - Europe/Berlin</div>
 <div class="dates" id="dates"></div>
-<div id="list" style="padding:20px;text-align:center">Loading...</div>
+<div id="list" style="padding:10px;text-align:center">Loading...</div>
 <script>
 let sel=new Date().toISOString().split('T')[0];
 function makeDates(){
- const c=document.getElementById('dates');c.innerHTML='';
- for(let i=-1;i<=4;i++){
-  let d=new Date();d.setDate(d.getDate()+i);
-  let iso=d.toISOString().split('T')[0];
-  let lbl=i==-1?'YESTERDAY':i==0?'TODAY':i==1?'TOMORROW':d.toLocaleDateString('en-US',{weekday:'short'});
-  let b=document.createElement('button');b.textContent=lbl+' '+iso;
-  if(iso==sel)b.classList.add('active');
-  b.onclick=()=>{sel=iso;document.querySelectorAll('.dates button').forEach(x=>x.classList.remove('active'));b.classList.add('active');load();};
-  c.appendChild(b);
- }
+const c=document.getElementById('dates');c.innerHTML='';
+for(let i=-3;i<=3;i++){
+let d=new Date();d.setDate(d.getDate()+i);
+let iso=d.toISOString().split('T')[0];
+let b=document.createElement('button');b.textContent=(i==0?'TODAY ':'' )+d.toLocaleDateString('en-US',{weekday:'short'})+' '+d.getDate();
+if(iso==sel)b.classList.add('active');
+b.onclick=()=>{document.querySelectorAll('.dates button').forEach(x=>x.classList.remove('active'));b.classList.add('active');sel=iso;load();};
+c.appendChild(b);
+}
 }
 async function load(){
- document.getElementById('list').innerHTML='Loading '+sel+'...';
- try{
-  let r=await fetch('/api/matches?date='+sel);
-  let j=await r.json();
-  let list=j.response||[];
-  if(!list.length){document.getElementById('list').innerHTML='No matches '+sel;return;}
-  document.getElementById('list').innerHTML=list.map(m=>`<div class="match"><div style="color:#888;font-size:12px">${m.league.country} - ${m.league.name}</div><div style="display:flex;justify-content:space-between"><div>${m.teams.home.name}<br>${m.teams.away.name}</div><div><div class="time">${m.fixture.berlinTime}</div><div>${m.goals.home??''}-${m.goals.away??''} ${m.fixture.status.short}</div></div></div></div>`).join('');
- }catch(e){document.getElementById('list').innerHTML='API Error';}
+document.getElementById('list').innerHTML='Loading '+sel+'...';
+try{
+let r=await fetch('/api/matches?date='+sel);let j=await r.json();let L=j.response||[];
+if(!L.length){document.getElementById('list').innerHTML='<div style="color:#888;padding:20px">No matches '+sel+'<br><small>'+(j.error||'')+'</small></div>';return;}
+document.getElementById('list').innerHTML=L.map(m=>`<div class="match"><div class="time">${m.fixture.berlinTime||''} <span class="live">${m.fixture.status.short!='NS'?m.fixture.status.short:''} ${m.fixture.minute||''}</span></div><div class="league">${m.league.name}</div><div class="teams">${m.teams.home.name} <span class="score">${m.goals.home??'-'} : ${m.goals.away??'-'}</span><br>${m.teams.away.name}</div></div>`).join('');
+}catch(e){document.getElementById('list').innerHTML='API Error: '+e.message}
 }
 makeDates();load();
+setInterval(load,30000);
 </script>
 </body>
 </html>
