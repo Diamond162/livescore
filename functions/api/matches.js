@@ -1,69 +1,78 @@
 export async function onRequest(context) {
-  const headers = {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*"
-  };
+  const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" };
   const send = (obj) => new Response(JSON.stringify(obj), { headers });
 
   try {
     const url = new URL(context.request.url);
-    const date = url.searchParams.get("date") || new Date().toISOString().slice(0,10);
-    const KEY = context.env.LIVE_FOOTBALL_API_KEY;
+    let dateStr = url.searchParams.get("date") || new Date().toISOString().slice(0,10);
+    // FotMob needs YYYYMMDD not YYYY-MM-DD
+    const fotmobDate = dateStr.replaceAll("-", "");
 
-    if (!KEY) return send({ response: [], error: "LIVE_FOOTBALL_API_KEY missing in Cloudflare" });
+    // FotMob FREE API - no key needed!
+    const apiUrl = `https://www.fotmob.com/api/matches?date=${fotmobDate}`;
 
-    // CORRECT DOMAIN FROM YOUR PLAYGROUND
-    const apiUrl = `https://www.live-football-api.com/api/v1/matches?api_key=${KEY}&date=${date}&lang=en`;
-
-    const res = await fetch(apiUrl);
-    const rawText = await res.text();
-    
-    let apiData;
-    try {
-      apiData = JSON.parse(rawText);
-    } catch {
-      return send({ response: [], status: res.status, raw: rawText.slice(0,1000) });
-    }
-
-    if (!res.ok) {
-      return send({ response: [], status: res.status, apiError: apiData });
-    }
-
-    // Handle different response shapes
-    const list = apiData.data || apiData.matches || apiData.response || [];
-
-    const out = list.map(m => {
-      // time handling
-      let time = m.time || m.kickoff_time || "15:00";
-      if (time.length > 5) time = time.substring(0,5);
-      
-      // teams
-      const homeName = m.home?.name || m.home_team || m.teams?.home?.name || "Home";
-      const awayName = m.away?.name || m.away_team || m.teams?.away?.name || "Away";
-      
-      // league
-      const leagueName = m.league?.name || m.competition?.name || m.league || "League";
-
-      return {
-        berlinTime: time,
-        fixture: {
-          date: date,
-          berlinTime: time,
-          status: { short: m.status?.short || m.status || "NS" }
-        },
-        teams: {
-          home: { name: homeName },
-          away: { name: awayName }
-        },
-        goals: {
-          home: m.home?.goals ?? m.home_score ?? 0,
-          away: m.away?.goals ?? m.away_score ?? 0
-        },
-        league: { name: leagueName }
-      };
+    const res = await fetch(apiUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/json"
+      }
     });
 
+    const data = await res.json();
+
+    // FotMob returns { leagues: [ { name, matches: [...] } ] }
+    const leagues = data.leagues || [];
+    const out = [];
+
+    for (const league of leagues) {
+      const leagueName = league.name || "League";
+      const matches = league.matches || [];
+
+      for (const m of matches) {
+        // Time - convert UTC to Berlin
+        let berlinTime = "15:00";
+        try {
+          if (m.status?.utcTime) {
+            const d = new Date(m.status.utcTime);
+            berlinTime = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
+          } else if (m.time) {
+            berlinTime = m.time.substring(0,5);
+          }
+        } catch {}
+
+        // Status: FT, LIVE, HT, NS, etc
+        const statusShort = m.status?.reason?.short || m.status?.liveTime?.short || "NS";
+
+        // Scores
+        let homeScore = 0, awayScore = 0;
+        if (m.status?.scoreStr) {
+          const parts = m.status.scoreStr.split("-");
+          if (parts.length === 2) {
+            homeScore = parseInt(parts[0]) || 0;
+            awayScore = parseInt(parts[1]) || 0;
+          }
+        }
+
+        out.push({
+          berlinTime: berlinTime,
+          fixture: {
+            date: dateStr,
+            berlinTime: berlinTime,
+            status: { short: statusShort }
+          },
+          teams: {
+            home: { name: m.home?.name || "Home" },
+            away: { name: m.away?.name || "Away" }
+          },
+          goals: { home: homeScore, away: awayScore },
+          league: { name: leagueName }
+        });
+      }
+    }
+
+    // Sort by time
     out.sort((a,b) => a.berlinTime.localeCompare(b.berlinTime));
+
     return send({ response: out });
 
   } catch (e) {
