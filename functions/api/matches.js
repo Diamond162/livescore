@@ -1,45 +1,37 @@
 export async function onRequest(c){
+  const url=new URL(c.request.url);
+  const date=url.searchParams.get('date') || new Date().toISOString().split('T')[0];
   const KEY=(c.env.HIGHLIGHTLY_API_KEY||'').trim();
+  const hasKey=!!KEY;
+
+  if(url.searchParams.get('debug')){
+    return new Response(JSON.stringify({hasKey,date,keyLength:KEY.length}),{headers:{"content-type":"application/json"}});
+  }
+
+  if(!hasKey){
+    return new Response(JSON.stringify({response:[],results:0,date,error:"NO_API_KEY - Set HIGHLIGHTLY_API_KEY in Cloudflare Variables"}),{headers:{"content-type":"application/json"}});
+  }
+
   try{
-    let date=new URL(c.request.url).searchParams.get('date') || new Date().toISOString().split('T')[0];
+    let r=await fetch(`https://soccer.highlightly.net/matches?date=${date}&limit=500`,{
+      headers:{"x-rapidapi-key":KEY,"x-api-key":KEY}
+    });
+    let txt=await r.text();
+    let j={}; try{j=JSON.parse(txt)}catch{j={raw:txt.substring(0,300)}};
+    let list=j.data||[];
 
-    // Try soccer host first, then sports host
-    let urls=[
-      `https://soccer.highlightly.net/matches?date=${date}&limit=500`,
-      `https://sports.highlightly.net/football/matches?date=${date}&limit=500`
-    ];
-
-    let all=[];
-    for(let u of urls){
-      let r=await fetch(u,{
-        headers:{
-          "x-rapidapi-key":KEY,
-          "x-api-key":KEY,
-          "x-rapidapi-host":"soccer.highlightly.net"
-        }
-      });
-      let j=await r.json();
-      let list=j.data||[];
-      if(list.length>0){ all=list; break; }
-    }
-
-    let out=all.map(m=>{
+    let out=list.map(m=>{
       let t="--:--"; try{t=new Date(m.date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});}catch{}
-      let sc=m.score?.current||"";
-      let gh=null,ga=null;
-      if(sc.includes("-")){let p=sc.split("-"); gh=parseInt(p[0]); ga=parseInt(p[1]);}
       return{
         fixture:{id:m.id,berlinTime:t,status:{short:m.state?.description||"NS"}},
         league:{name:m.league?.name||"League",country:m.country?.name||"World"},
         teams:{home:{name:m.homeTeam?.name||"Home"},away:{name:m.awayTeam?.name||"Away"}},
-        goals:{home:gh,away:ga,display:sc}
+        goals:{display:m.score?.current||"-:-"}
       }
     });
 
-    return new Response(JSON.stringify({response:out,results:out.length,date}),{
-      headers:{"content-type":"application/json","Access-Control-Allow-Origin":"*"}
-    });
+    return new Response(JSON.stringify({response:out,results:out.length,date,debug:{status:r.status,rawLength:txt.length}}),{headers:{"content-type":"application/json","Access-Control-Allow-Origin":"*"}});
   }catch(e){
-    return new Response(JSON.stringify({response:[],error:e.message}),{headers:{"content-type":"application/json"}});
+    return new Response(JSON.stringify({response:[],results:0,date,error:e.message}),{headers:{"content-type":"application/json"}});
   }
 }
