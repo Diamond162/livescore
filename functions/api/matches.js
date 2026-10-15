@@ -2,32 +2,31 @@ export async function onRequest(c){
   const KEY=(c.env.HIGHLIGHTLY_API_KEY||'').trim();
   try{
     let date=new URL(c.request.url).searchParams.get('date') || new Date().toISOString().split('T')[0];
-    let allMatches=[];
 
-    // Fetch 500 at a time, get ALL pages
-    for(let offset=0; offset<2000; offset+=500){
-      let url=`https://soccer.highlightly.net/matches?date=${date}&limit=500&offset=${offset}`;
-      let r=await fetch(url,{
-        headers:{"x-rapidapi-key":KEY,"x-api-key":KEY,"x-rapidapi-host":"soccer.highlightly.net"}
+    // Try soccer host first, then sports host
+    let urls=[
+      `https://soccer.highlightly.net/matches?date=${date}&limit=500`,
+      `https://sports.highlightly.net/football/matches?date=${date}&limit=500`
+    ];
+
+    let all=[];
+    for(let u of urls){
+      let r=await fetch(u,{
+        headers:{
+          "x-rapidapi-key":KEY,
+          "x-api-key":KEY,
+          "x-rapidapi-host":"soccer.highlightly.net"
+        }
       });
       let j=await r.json();
       let list=j.data||[];
-      if(list.length===0) break;
-      allMatches.push(...list);
-      if(list.length<500) break; // last page
+      if(list.length>0){ all=list; break; }
     }
 
-    // Sort BIG leagues first like Flashscore
-    const big=["Major League","Premier League","LaLiga","Bundesliga","Serie A","Ligue 1","Champions League","World Cup","Euro","MLS","Championship"];
-    allMatches.sort((a,b)=>{
-      let aBig=big.some(x=>(a.league?.name||"").includes(x))?0:1;
-      let bBig=big.some(x=>(b.league?.name||"").includes(x))?0:1;
-      return aBig-bBig;
-    });
-
-    let out=allMatches.map(m=>{
+    let out=all.map(m=>{
       let t="--:--"; try{t=new Date(m.date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});}catch{}
-      let sc=m.score?.current||""; let gh=null,ga=null;
+      let sc=m.score?.current||"";
+      let gh=null,ga=null;
       if(sc.includes("-")){let p=sc.split("-"); gh=parseInt(p[0]); ga=parseInt(p[1]);}
       return{
         fixture:{id:m.id,berlinTime:t,status:{short:m.state?.description||"NS"}},
@@ -38,7 +37,7 @@ export async function onRequest(c){
     });
 
     return new Response(JSON.stringify({response:out,results:out.length,date}),{
-      headers:{"content-type":"application/json","Access-Control-Allow-Origin":"*","Cache-Control":"public, max-age=60"}
+      headers:{"content-type":"application/json","Access-Control-Allow-Origin":"*"}
     });
   }catch(e){
     return new Response(JSON.stringify({response:[],error:e.message}),{headers:{"content-type":"application/json"}});
