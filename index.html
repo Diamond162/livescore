@@ -7,72 +7,71 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#000;color:#fff;font-family:Arial}
-.header{background:#111;padding:12px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #00ff88}
-.logo{font-size:22px;font-weight:900}
-.logo span{color:#00ff88}
-.dates{display:flex;overflow-x:auto;gap:6px;padding:10px;background:#111;border-bottom:1px solid #222}
-.dates button{padding:6px 12px;border-radius:20px;border:1px solid #333;background:#222;color:#fff;font-size:12px;white-space:nowrap}
+.header{background:#111;padding:12px;border-bottom:2px solid #00ff88;display:flex;justify-content:space-between}
+.logo{font-weight:900;font-size:22px}.logo span{color:#00ff88}
+.dates{display:flex;overflow-x:auto;gap:6px;padding:10px;background:#111}
+.dates button{padding:6px 14px;border-radius:20px;border:1px solid #333;background:#222;color:#fff;font-size:12px;white-space:nowrap}
 .dates button.active{background:#00ff88;color:#000;font-weight:bold}
 .tabs{display:flex;gap:6px;padding:8px;background:#111}
-.tabs button{padding:6px 14px;border-radius:16px;background:#222;color:#fff;border:none;font-size:12px;font-weight:bold}
+.tabs button{padding:6px 14px;border-radius:16px;background:#222;color:#fff;border:none;font-size:12px}
 .tabs button.active{background:#00ff88;color:#000}
-.league-head{background:#222;padding:8px 12px;font-size:12px;font-weight:bold;border-left:4px solid #00ff88;margin-top:8px}
-.match{display:flex;padding:10px 12px;border-bottom:1px solid #1a1a1a;background:#0f0f0f}
-.match:hover{background:#1a1a1a}
-.time{width:50px;font-size:11px;color:#888}
-.time.live{color:#ff4444;font-weight:bold}
-.teams{flex:1;font-size:13px}
-.score{font-weight:bold;color:#00ff88}
+.league{background:#1e1e1e;padding:10px 12px;font-size:13px;font-weight:bold;border-left:4px solid #00ff88;margin-top:8px;display:flex;justify-content:space-between;align-items:center}
+.league span{color:#888;font-size:11px}
+.match{display:flex;padding:12px;border-bottom:1px solid #1a1a1a;background:#0f0f0f;align-items:center}
+.time{width:55px;font-size:12px;color:#00ff88;font-weight:bold}
+.teams{flex:1;font-size:13px;line-height:18px}
+.country{font-size:10px;color:#888}
+.score{font-size:14px;font-weight:bold;color:#00ff88;min-width:50px;text-align:right}
+.score.finished{color:#fff}
+.score.live{color:#ff4444}
 </style>
 </head>
 <body>
-<div class="header">
-<div class="logo">FLASH<span>CORE</span> <span style="font-size:10px;background:#00ff88;color:#000;padding:2px 6px;border-radius:4px">LIVE</span></div>
-<div>⚙️</div>
-</div>
+<div class="header"><div class="logo">FLASH<span>CORE</span> LIVE</div><div>⚙️</div></div>
 <div class="dates" id="dates"></div>
-<div class="tabs">
-<button class="active">ALL</button><button>LIVE</button><button>FINISHED</button><button>SCHEDULED</button>
-</div>
+<div class="tabs"><button class="active">ALL</button><button>LIVE</button><button>FINISHED</button><button>SCHEDULED</button></div>
 <div id="list" style="padding:20px;text-align:center;color:#666">Loading...</div>
 <script>
 let sel=new Date().toISOString().split('T')[0];
 function makeDates(){
 let c=document.getElementById('dates');c.innerHTML='';
-for(let i=-3;i<=4;i++){
+for(let i=-2;i<=5;i++){
 let d=new Date();d.setDate(d.getDate()+i);
 let iso=d.toISOString().split('T')[0];
-let label=(i==0?'TODAY ':'')+d.toLocaleDateString('en-US',{weekday:'short',day:'numeric'});
-let b=document.createElement('button');
-b.textContent=label;
-if(iso==sel) b.classList.add('active');
+let b=document.createElement('button');b.textContent=(i==0?'TODAY ':'')+d.toLocaleDateString('en-US',{weekday:'short',day:'numeric'});
+if(iso==sel)b.classList.add('active');
 b.onclick=()=>{document.querySelectorAll('.dates button').forEach(x=>x.classList.remove('active'));b.classList.add('active');sel=iso;load();};
 c.appendChild(b);
 }
 }
 async function load(){
-let el=document.getElementById('list');
-el.innerHTML='Loading '+sel+'...';
+let el=document.getElementById('list');el.innerHTML='Loading '+sel+'...';
 try{
-let r=await fetch('/api/matches?date='+sel);
-let j=await r.json();
-if(j.error){el.innerHTML='API Error: '+j.error+'<br><small>Check FOOTBALL_API_KEY in Cloudflare</small>';return;}
+let r=await fetch('/api/matches?date='+sel);let j=await r.json();
 let arr=j.response||[];
-if(!arr.length){el.innerHTML='No matches on '+sel+'<br>Try yesterday: <button onclick="sel=\'2025-10-15\';load()" style="color:#00ff88">2025-10-15</button>';return;}
+if(!arr.length){el.innerHTML='No matches '+sel;return;}
 let groups={};
-arr.forEach(m=>{let k=m.league.name;if(!groups[k])groups[k]=[];groups[k].push(m);});
+arr.forEach(m=>{
+let key=m.league.country+' - '+m.league.name;
+if(!groups[key]) groups[key]={league:m.league,matches:[]};
+groups[key].matches.push(m);
+});
 let html='';
-for(let league in groups){
-html+='<div class="league-head">⚽ '+league+' ('+groups[league].length+')</div>';
-groups[league].forEach(m=>{
-let isLive=m.fixture.status.short!='NS' && m.goals.home!==null;
-let t=m.fixture.berlinTime||'--:--';
-let s=m.fixture.status.short;
-html+='<div class="match"><div class="time '+(isLive?'live':'')+'">'+(isLive?s:t)+'</div><div class="teams">'+m.teams.home.name+'<br><span style="color:#888">'+m.teams.away.name+'</span></div><div class="score">'+(m.goals.home!=null?m.goals.home+' - '+m.goals.away:'- : -')+'</div></div>';
+for(let k in groups){
+let g=groups[k];
+html+='<div class="league"><div>⚽ '+g.league.country+' • '+g.league.name+' ('+g.matches.length+')</div><span>Europe/Berlin</span></div>';
+g.matches.forEach(m=>{
+let time=m.fixture.berlinTime||'--:--';
+let gh=m.goals.home,ga=m.goals.away;
+let hasScore=gh!=null&&ga!=null;
+let scoreTxt=hasScore?gh+' - '+ga:'- : -';
+let status=m.fixture.status.short;
+let isLive=status=='LIVE'||status=='1H'||status=='2H';
+html+='<div class="match"><div class="time">'+time+'</div><div class="teams"><div>'+m.teams.home.name+'</div><div style="color:#999">'+m.teams.away.name+'</div><div class="country">'+g.league.country+'</div></div><div class="score '+(isLive?'live':hasScore?'finished':'')+'">'+scoreTxt+'</div></div>';
 });
 }
 el.innerHTML=html;
-}catch(e){el.innerHTML='Fetch error: '+e.message+'<br>API: /api/matches?date='+sel;}
+}catch(e){el.innerHTML='Error: '+e.message}
 }
 makeDates();load();setInterval(load,30000);
 </script>
