@@ -1,78 +1,156 @@
-export async function onRequestGet(context) {
-  try {
-    // Check BOTH names - API_KEY and FOOTBALL_API_KEY
-    const key = context.env.FOOTBALL_API_KEY || context.env.API_KEY || context.env.LIVE_FOOTBALL_API_KEY;
-
-    if (!key) {
-      return new Response(JSON.stringify({
-        matches: [],
-        error: "FOOTBALL_API_KEY not set. Go Cloudflare Pages > Settings > Environment Variables > Add FOOTBALL_API_KEY = your key"
-      }), {
-        status: 200,
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
-      });
-    }
-
-    const urlObj = new URL(context.request.url);
-    const date = urlObj.searchParams.get("date") || new Date().toISOString().split("T")[0];
-    const lang = urlObj.searchParams.get("lang") || "en";
-
-    const apiUrl = `https://live-football-api.com/api/v1/matches?api_key=${key}&date=${date}&lang=${lang}`;
-
-    const r = await fetch(apiUrl, { headers: { "Accept": "application/json" } });
-    const text = await r.text();
-
-    let json;
-    try {
-      json = JSON.parse(text);
-    } catch {
-      return new Response(JSON.stringify({
-        matches: [],
-        raw: text.slice(0,300),
-        error: "API returned HTML not JSON - check your key"
-      }), {
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
-      });
-    }
-
-    // Your API returns {data: [...]} or {matches: [...]} - normalize it
-    let rawMatches = json.data || json.matches || json.result || [];
-    if (!Array.isArray(rawMatches)) {
-      if (rawMatches.matches) rawMatches = rawMatches.matches;
-      else rawMatches = Object.values(rawMatches);
-    }
-
-    const matches = rawMatches.map(m => ({
-      id: m.id || m.match_id,
-      date: m.date || m.start_time || m.time || m.kickoff,
-      status: m.status || m.match_status || 'NS',
-      league: { name: m.league?.name || m.competition?.name || m.league_name || 'League' },
-      home: {
-        name: m.home_team?.name || m.home?.name || m.home_name || m.teams?.home || 'Home',
-        score: m.home_score?? m.score?.home?? m.goals?.home?? 0
-      },
-      away: {
-        name: m.away_team?.name || m.away?.name || m.away_name || m.teams?.away || 'Away',
-        score: m.away_score?? m.score?.away?? m.goals?.away?? 0
-      },
-      score: {
-        home: m.home_score?? m.score?.home?? 0,
-        away: m.away_score?? m.score?.away?? 0
-      }
-    }));
-
-    return new Response(JSON.stringify({ matches }), {
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Cache-Control": "public, max-age=30"
-      }
-    });
-
-  } catch (err) {
-    return new Response(JSON.stringify({ matches: [], error: err.message }), {
-      status: 200,
-      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
-    });
-  }
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FlashScore Lagos - Black Green</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,Helvetica,sans-serif;background:#0a0a0a;color:#fff;min-height:100vh}
+header{background:#000;border-bottom:3px solid #00c853;padding:14px;text-align:center;position:sticky;top:0;z-index:20}
+header h1{font-size:18px;letter-spacing:1px}
+header h1 span{color:#00c853}
+header p{font-size:11px;color:#888;margin-top:3px}
+.dates{display:flex;gap:8px;overflow:auto;padding:10px 12px;background:#111;position:sticky;top:64px;z-index:15;border-bottom:1px solid #222;scrollbar-width:none}
+.dates::-webkit-scrollbar{display:none}
+.dates div{border:1px solid #333;padding:8px 16px;border-radius:20px;white-space:nowrap;cursor:pointer;background:#1a1a1a;color:#aaa;font-size:12px;font-weight:700;transition:.2s}
+.dates div.active{background:#00c853;color:#000;border-color:#00c853}
+.filters{display:flex;gap:8px;padding:10px 12px;background:#111;position:sticky;top:110px;z-index:14;border-bottom:1px solid #222}
+.filters button{padding:8px 16px;border-radius:20px;border:1px solid #333;background:#1a1a1a;color:#aaa;cursor:pointer;font-weight:700;font-size:12px}
+.filters button.active{background:#00c853;color:#000;border-color:#00c853}
+#list{padding:10px;max-width:700px;margin:0 auto}
+.group{margin:14px 0}
+.group-title{background:#111;border-left:4px solid #00c853;padding:8px 12px;font-size:12px;color:#00c853;font-weight:800;display:flex;justify-content:space-between;align-items:center;border-radius:0 8px 8px 0}
+.group-title small{color:#666;font-weight:600}
+.match{background:#151515;margin:2px 0;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #222;transition:.2s}
+.match:hover{background:#1e1e1e}
+.match:first-of-type{border-radius:12px 12px 0 0}
+.match:last-of-type{border-radius:0 0 12px 12px}
+.left{flex:1}
+.league-line{font-size:10px;color:#00c853;font-weight:700;display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.league-line.country{color:#888;font-weight:600}
+.team-row{display:flex;justify-content:space-between;align-items:center;margin:4px 0}
+.team-name{font-size:14px;font-weight:600;color:#eee;display:flex;gap:6px}
+.team-name img{width:18px;height:18px;background:#333;border-radius:50%}
+.center{text-align:center;min-width:60px}
+.time{font-size:11px;color:#888}
+.score{font-size:18px;font-weight:900;min-width:50px;text-align:center;line-height:1.1}
+.score.vs{font-size:10px;color:#555;font-weight:600}
+.live{color:#ff2d2d;font-weight:800;animation:blink 1s infinite;font-size:11px}
+.live-dot{width:6px;height:6px;background:#ff2d2d;border-radius:50%;display:inline-block;margin-right:4px;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.3}}
+.finished{color:#888}
+.upcoming{color:#00c853}
+</style>
+</head>
+<body>
+<header>
+<h1>⚽ FlashScore <span>Lagos</span></h1>
+<p>LIVE SCORES • WAT (Lagos Time) • Auto Refresh 30s</p>
+</header>
+<div class="dates" id="dates"></div>
+<div class="filters">
+<button class="active" id="bALL">ALL</button>
+<button id="bLIVE">LIVE</button>
+<button id="bFIN">FINISHED</button>
+<button id="bUP">UPCOMING</button>
+</div>
+<div id="list">Loading matches...</div>
+<script>
+var matchesList=[],curDate="",curF="ALL";
+function initDates(){
+var w=document.getElementById("dates");w.innerHTML="";
+for(var i=-2;i<=5;i++){
+var dt=new Date();dt.setDate(dt.getDate()+i);
+var iso=dt.toISOString().split("T")[0];
+var lab=dt.toLocaleDateString("en-GB",{day:"2-digit",month:"short"});
+if(i==-2) lab="14 Oct";
+if(i==-1) lab="YEST";
+if(i==0) lab="TODAY 16 Oct";
+if(i==1) lab="TOM";
+var el=document.createElement("div");el.textContent=lab;el.setAttribute("data-date",iso);
+if(i==0){el.className="active";curDate=iso;}
+el.onclick=function(){var d=this.getAttribute("data-date");var all=document.querySelectorAll(".dates div");for(var k=0;k<all.length;k++){all[k].className="";}this.className="active";curDate=d;load();};
+w.appendChild(el);
 }
+}
+function setF(f){
+curF=f;
+var all=document.querySelectorAll(".filters button");for(var k=0;k<all.length;k++){all[k].className="";}
+var map={ALL:"bALL",LIVE:"bLIVE",FINISHED:"bFIN",UPCOMING:"bUP"};
+document.getElementById(map[f]).className="active";
+render();
+}
+document.getElementById("bALL").onclick=function(){setF("ALL");};
+document.getElementById("bLIVE").onclick=function(){setF("LIVE");};
+document.getElementById("bFIN").onclick=function(){setF("FINISHED");};
+document.getElementById("bUP").onclick=function(){setF("UPCOMING");};
+
+function getStatusStr(m){
+var s=m.status;
+if(!s) return "NS";
+if(typeof s=="string") return s;
+if(typeof s=="object") return s.short||s.code||s.type||s.name||"NS";
+return String(s);
+}
+function getCountry(m){
+return (m.league && m.league.country) || m.country || m.league_country || "World";
+}
+function getLeague(m){
+return (m.league && m.league.name) || m.league_name || "League";
+}
+function formatTime(dateStr){
+try{
+var ds=(dateStr||"").replace(" ","T");
+var d=new Date(ds);
+if(isNaN(d.getTime())) return "--:--";
+return d.toLocaleTimeString("en-NG",{hour:"2-digit",minute:"2-digit",timeZone:"Africa/Lagos"});
+}catch(e){return "--:--";}
+}
+function load(){
+var l=document.getElementById("list");
+l.innerHTML='<div style="text-align:center;padding:40px;color:#666">Loading '+curDate+'...</div>';
+fetch("/api/matches?date="+curDate+"&lang=en").then(function(r){return r.json();}).then(function(d){
+var arr=d.matches||[];
+if(!Array.isArray(arr)){try{arr=Object.values(arr);}catch(e){arr=[];}}
+matchesList=arr;
+render();
+}).catch(function(e){l.innerHTML='<div style="background:#151515;padding:20px;border-radius:12px;color:#ff5555">Error: '+e.message+'</div>';});
+}
+function render(){
+var l=document.getElementById("list");
+if(!Array.isArray(matchesList)) matchesList=[];
+var f=[];
+for(var i=0;i<matchesList.length;i++){f.push(matchesList[i]);}
+if(curF=="LIVE"){var nf=[];for(var i=0;i<f.length;i++){var s=getStatusStr(f[i]).toUpperCase();if(s.indexOf("LIVE")>-1||["1H","2H","HT","ET"].indexOf(s)>-1){nf.push(f[i]);}}f=nf;}
+if(curF=="FINISHED"){var nf=[];for(var i=0;i<f.length;i++){var s=getStatusStr(f[i]).toUpperCase();if(s.indexOf("FIN")>-1||["FT","AET","PEN"].indexOf(s)>-1){nf.push(f[i]);}}f=nf;}
+if(curF=="UPCOMING"){var nf=[];for(var i=0;i<f.length;i++){var s=getStatusStr(f[i]).toUpperCase();if(s==""||["NS","TBD","PST","CANC","SCHEDULED","NOT STARTED"].indexOf(s)>-1){nf.push(f[i]);}}f=nf;}
+if(f.length==0){l.innerHTML='<div style="text-align:center;padding:40px;background:#151515;border-radius:12px;color:#666">No '+curF+' matches for '+curDate+'<br><small>Try ALL tab</small></div>';return;}
+
+var groups={};
+for(var i=0;i<f.length;i++){
+var m=f[i];
+var key=getCountry(m)+" - "+getLeague(m);
+if(!groups[key]) groups[key]=[];
+groups[key].push(m);
+}
+var html="";
+for(var g in groups){
+var list=groups[g];
+var first=list[0];
+var country=getCountry(first);
+var league=getLeague(first);
+html+='<div class="group"><div class="group-title"><span>'+league+'</span><small>'+country+' • '+list.length+' matches</small></div>';
+for(var j=0;j<list.length;j++){
+var m=list[j];
+var home=(m.home&&m.home.name)?m.home.name:"Home";
+var away=(m.away&&m.away.name)?m.away.name:"Away";
+var hs=(m.score&&m.score.home!=null)?m.score.home:"-";
+var as=(m.score&&m.score.away!=null)?m.score.away:"-";
+var st=getStatusStr(m);
+var stUp=st.toUpperCase();
+var isLive=stUp.indexOf("LIVE")>-1||["1H","2H","HT","ET"].indexOf(stUp)>-1;
+var isFin=stUp.indexOf("FIN")>-1||["FT","AET","PEN"].indexOf(stUp)>-1;
+var timeLabel=formatTime(m.date);
+var statusLabel=st;
+if(isLive)
