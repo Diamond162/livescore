@@ -3,26 +3,46 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FlashScore Lagos</title>
+<title>FlashScore Lagos - Black Green Pro</title>
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:Arial;background:#eee}
-header{background:#111;color:#fff;padding:14px;text-align:center;font-weight:700;position:sticky;top:0;z-index:10}
-.dates{display:flex;gap:8px;overflow:auto;padding:10px;background:#fff;position:sticky;top:48px;z-index:9}
-.dates div{border:1px solid #ccc;padding:8px 14px;border-radius:20px;white-space:nowrap;cursor:pointer;background:#fff;font-size:13px}
-.dates div.active{background:#111;color:#fff}
-.filters{display:flex;gap:8px;padding:10px;background:#fff}
-.filters button{padding:7px 15px;border-radius:20px;border:1px solid #ccc;background:#fff;font-weight:600}
-.filters button.active{background:#111;color:#fff}
-#list{padding:8px}
-.match{background:#fff;margin:8px 0;padding:12px;border-radius:12px;display:flex;justify-content:space-between;box-shadow:0 1px 3px rgba(0,0,0,.1)}
-.team{font-weight:600;font-size:14px}
-.score{font-weight:800;font-size:18px;text-align:center;min-width:40px}
-.meta{font-size:11px;color:#888}
-.live{color:#e00;font-weight:700}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,Helvetica,sans-serif;background:#0a0a0a;color:#fff;min-height:100vh}
+header{background:#000;border-bottom:3px solid #00c853;padding:14px;text-align:center;position:sticky;top:0;z-index:20}
+header h1{font-size:19px;letter-spacing:1px}
+header h1 span{color:#00c853}
+header p{font-size:10px;color:#888;margin-top:3px}
+.dates{display:flex;gap:8px;overflow:auto;padding:10px 12px;background:#111;position:sticky;top:62px;z-index:15;border-bottom:1px solid #222}
+.dates::-webkit-scrollbar{display:none}
+.dates div{border:1px solid #333;padding:8px 14px;border-radius:20px;white-space:nowrap;cursor:pointer;background:#1a1a1a;color:#aaa;font-size:12px;font-weight:700}
+.dates div.active{background:#00c853;color:#000;border-color:#00c853}
+.filters{display:flex;gap:8px;padding:10px 12px;background:#111;position:sticky;top:108px;z-index:14;border-bottom:1px solid #222}
+.filters button{padding:8px 14px;border-radius:20px;border:1px solid #333;background:#1a1a1a;color:#aaa;cursor:pointer;font-weight:700;font-size:12px}
+.filters button.active{background:#00c853;color:#000;border-color:#00c853}
+#list{padding:10px;max-width:750px;margin:0 auto}
+.group{margin:12px 0}
+.group-title{background:#111;border-left:4px solid #00c853;padding:8px 12px;font-size:11px;color:#00c853;font-weight:800;display:flex;justify-content:space-between;border-radius:0 8px 8px 0}
+.group-title small{color:#666}
+.match{background:#151515;margin:1px 0;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #222}
+.match:hover{background:#1e1e1e}
+.match:first-of-type{border-radius:12px 12px 0 0}
+.match:last-of-type{border-radius:0 0 12px 12px}
+.left{flex:1}
+.team-row{margin:4px 0;font-size:14px;font-weight:600;color:#eee}
+.center{text-align:center;min-width:65px}
+.time{font-size:11px;color:#888}
+.score{font-size:19px;font-weight:900;min-width:55px;text-align:center}
+.score small{display:block;font-size:10px;color:#555;margin-top:2px}
+.live{color:#ff2d2d;font-weight:800;font-size:11px}
+.live-dot{width:6px;height:6px;background:#ff2d2d;border-radius:50%;display:inline-block;margin-right:4px}
+.finished{color:#888}
+.upcoming{color:#00c853;font-weight:700}
 </style>
 </head>
 <body>
-<header>⚽ FlashScore Lagos</header>
+<header>
+<h1>⚽ FlashScore <span>Lagos</span></h1>
+<p>LIVE • WAT Lagos Time • Black Green Pro</p>
+</header>
 <div class="dates" id="dates"></div>
 <div class="filters">
 <button class="active" id="bALL">ALL</button>
@@ -35,7 +55,7 @@ header{background:#111;color:#fff;padding:14px;text-align:center;font-weight:700
 var matchesList=[],curDate="",curF="ALL";
 function initDates(){
 var w=document.getElementById("dates");w.innerHTML="";
-for(var i=-1;i<=4;i++){
+for(var i=-4;i<=4;i++){
 var dt=new Date();dt.setDate(dt.getDate()+i);
 var iso=dt.toISOString().split("T")[0];
 var lab=dt.toLocaleDateString("en-GB",{day:"2-digit",month:"short"});
@@ -48,67 +68,45 @@ el.onclick=function(){var d=this.getAttribute("data-date");var all=document.quer
 w.appendChild(el);
 }
 }
-function setF(f){
-curF=f;
-var all=document.querySelectorAll(".filters button");for(var k=0;k<all.length;k++){all[k].className="";}
-var map={ALL:"bALL",LIVE:"bLIVE",FINISHED:"bFIN",UPCOMING:"bUP"};
-document.getElementById(map[f]).className="active";
-render();
-}
+function setF(f){curF=f;var all=document.querySelectorAll(".filters button");for(var k=0;k<all.length;k++){all[k].className="";}var map={ALL:"bALL",LIVE:"bLIVE",FINISHED:"bFIN",UPCOMING:"bUP"};document.getElementById(map[f]).className="active";render();}
 document.getElementById("bALL").onclick=function(){setF("ALL");};
 document.getElementById("bLIVE").onclick=function(){setF("LIVE");};
 document.getElementById("bFIN").onclick=function(){setF("FINISHED");};
 document.getElementById("bUP").onclick=function(){setF("UPCOMING");};
-
-function getStatusStr(m){
-var s=m.status;
-if(!s) return "NS";
-if(typeof s=="string") return s;
-if(typeof s=="object") return s.short||s.code||s.type||s.name||"NS";
-return String(s);
-}
-
-function load(){
-var l=document.getElementById("list");
-l.innerHTML='<div style="text-align:center;padding:20px">Loading '+curDate+'...</div>';
-fetch("/api/matches?date="+curDate+"&lang=en").then(function(r){return r.json();}).then(function(d){
-var arr=d.matches||[];
-if(!Array.isArray(arr)){try{arr=Object.values(arr);}catch(e){arr=[];}}
-matchesList=arr;
-if(arr.length==0 && d.debug){
-l.innerHTML='<div style="background:#fff;padding:15px;border-radius:10px">No matches from API. Debug: '+JSON.stringify(d.debug).slice(0,500)+'</div>';
-return;
-}
-render();
-}).catch(function(e){l.innerHTML='<div style="background:#fff;padding:15px;color:red">Error: '+e.message+'</div>';});
-}
-
+function getStatusStr(m){var s=m.status;if(!s) return "NS";if(typeof s=="string") return s;if(typeof s=="object") return s.short||s.code||s.type||s.name||"NS";return String(s);}
+function getCountry(m){return (m.league&&m.league.country)||m.country||"World";}
+function getLeague(m){return (m.league&&m.league.name)||m.league_name||"League";}
+function formatTime(dateStr){try{var ds=(dateStr||"").toString().replace(" ","T");var d=new Date(ds);if(isNaN(d.getTime())) return "--:--";return d.toLocaleTimeString("en-NG",{hour:"2-digit",minute:"2-digit",timeZone:"Africa/Lagos"});}catch(e){return "--:--";}}
+function load(){var l=document.getElementById("list");l.innerHTML='<div style="text-align:center;padding:40px;color:#666">Loading '+curDate+'...</div>';fetch("/api/matches?date="+curDate+"&lang=en").then(function(r){return r.json();}).then(function(d){var arr=d.matches||[];if(!Array.isArray(arr)){try{arr=Object.values(arr);}catch(e){arr=[];}}matchesList=arr;render();}).catch(function(e){l.innerHTML='<div style="background:#151515;padding:20px;color:#f55">Error: '+e.message+'</div>';});}
 function render(){
 var l=document.getElementById("list");
 if(!Array.isArray(matchesList)) matchesList=[];
-var f=[];
-for(var i=0;i<matchesList.length;i++){f.push(matchesList[i]);}
+var f=[];for(var i=0;i<matchesList.length;i++){f.push(matchesList[i]);}
 if(curF=="LIVE"){var nf=[];for(var i=0;i<f.length;i++){var s=getStatusStr(f[i]).toUpperCase();if(s.indexOf("LIVE")>-1||["1H","2H","HT","ET"].indexOf(s)>-1){nf.push(f[i]);}}f=nf;}
 if(curF=="FINISHED"){var nf=[];for(var i=0;i<f.length;i++){var s=getStatusStr(f[i]).toUpperCase();if(s.indexOf("FIN")>-1||["FT","AET","PEN"].indexOf(s)>-1){nf.push(f[i]);}}f=nf;}
-if(curF=="UPCOMING"){var nf=[];for(var i=0;i<f.length;i++){var s=getStatusStr(f[i]).toUpperCase();if(s==""||["NS","TBD","PST","CANC","SCHEDULED","NOT STARTED"].indexOf(s)>-1){nf.push(f[i]);}}f=nf;}
-if(f.length==0){l.innerHTML='<div style="text-align:center;padding:30px;background:#fff;border-radius:12px">No '+curF+' matches for '+curDate+'<br><small>Check /api/matches?date='+curDate+'</small></div>';return;}
-var h="";
-for(var i=0;i<f.length;i++){
-var m=f[i];
-var home=(m.home&&m.home.name)?m.home.name:"Home";
-var away=(m.away&&m.away.name)?m.away.name:"Away";
-var hs=(m.score&&m.score.home!=null)?m.score.home:"-";
-var as=(m.score&&m.score.away!=null)?m.score.away:"-";
-var st=getStatusStr(m);
-var lg=(m.league&&m.league.name)?m.league.name:"League";
-var timeStr="";
-try{if(m.date){timeStr=new Date(m.date).toLocaleTimeString("en-NG",{hour:"2-digit",minute:"2-digit",timeZone:"Africa/Lagos"})+" • ";}}catch(e){}
-h+='<div class="match"><div style="flex:1"><div class="meta">'+lg+'</div><div class="team">'+home+'</div><div class="team">'+away+'</div><div class="meta '+(st.toUpperCase().indexOf("LIVE")>-1?"live":"")+'">'+timeStr+st+'</div></div><div class="score">'+hs+'<br>'+as+'</div></div>';
+if(curF=="UPCOMING"){var nf=[];for(var i=0;i<f.length;i++){var s=getStatusStr(f[i]).toUpperCase();if(s==""||["NS","TBD","PST","SCHEDULED","NOT STARTED"].indexOf(s)>-1){nf.push(f[i]);}}f=nf;}
+if(f.length==0){l.innerHTML='<div style="text-align:center;padding:40px;background:#151515;border-radius:12px;color:#666">No '+curF+' matches for '+curDate+'<br><small>Try ALL or other date</small></div>';return;}
+var groups={};for(var i=0;i<f.length;i++){var m=f[i];var key=getCountry(m)+" - "+getLeague(m);if(!groups[key]) groups[key]=[];groups[key].push(m);}
+var html="";
+for(var g in groups){
+var list=groups[g];var first=list[0];var country=getCountry(first);var league=getLeague(first);
+html+='<div class="group"><div class="group-title"><span>'+league+'</span><small>'+country+' • '+list.length+' matches</small></div>';
+for(var j=0;j<list.length;j++){
+var m=list[j];var home=(m.home&&m.home.name)?m.home.name:"Home";var away=(m.away&&m.away.name)?m.away.name:"Away";
+var hs=(m.score&&m.score.home!=null)?m.score.home:"-";var as=(m.score&&m.score.away!=null)?m.score.away:"-";
+var st=getStatusStr(m);var stUp=st.toUpperCase();var isLive=stUp.indexOf("LIVE")>-1||["1H","2H","HT","ET"].indexOf(stUp)>-1;var isFin=stUp.indexOf("FIN")>-1||["FT","AET","PEN"].indexOf(stUp)>-1;
+var timeLabel=formatTime(m.date);var statusHtml="";
+if(isLive) statusHtml='<span class="live"><span class="live-dot"></span>'+st+'</span>'; else if(isFin) statusHtml='<span class="finished">'+st+'</span>'; else statusHtml='<span class="upcoming">'+timeLabel+'</span>';
+var scoreHtml="";if(isLive||isFin){scoreHtml='<div class="score">'+hs+' : '+as+'<small>'+st+'</small></div>';}else{scoreHtml='<div class="score" style="color:#00c853">'+timeLabel+'<small>'+st+'</small></div>';}
+html+='<div class="match"><div class="left"><div class="team-row">'+home+'</div><div class="team-row">'+away+'</div></div><div class="center">'+statusHtml+'</div>'+scoreHtml+'</div>';
 }
-l.innerHTML=h;
+html+='</div>';
+}
+l.innerHTML=html;
 }
 initDates();
 load();
+setInterval(function(){load();},30000);
 </script>
 </body>
 </html>
