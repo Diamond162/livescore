@@ -1,30 +1,59 @@
-export async function onRequest(){
- try{
-  let all=[];
-  let d=new Date().toISOString().split('T')[0].replace(/-/g,'');
-  for(let lg of ['eng.1','esp.1','ita.1','ger.1']){
-   try{
-    let r=await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${lg}/scoreboard?dates=${d}`);
-    let j=await r.json();
-    (j.events||[]).forEach(ev=>{
-     let c=ev.competitions[0];
-     let h=c.competitors.find(x=>x.homeAway=='home');
-     let a=c.competitors.find(x=>x.homeAway=='away');
-     all.push({
-       lg:ev.league.name,
-       h:h.team.shortDisplayName,
-       a:a.team.shortDisplayName,
-       hs:parseInt(h.score)||0,
-       as:parseInt(a.score)||0,
-       st:c.status.type.state=='in'?'LIVE':c.status.type.state=='post'?'FINISHED':'UPCOMING',
-       tm:c.status.displayClock||c.status.type.shortDetail
-     });
+export async function onRequest(context){
+  try{
+    const origin = new URL(context.request.url).origin;
+
+    // Fetch YOUR OWN matches.json
+    let r = await fetch(origin + '/matches.json', { cache: 'no-store' });
+
+    // If matches.json no dey yet, use fallback
+    let data;
+    try{
+      data = await r.json();
+    }catch(e){
+      data = {
+        date: new Date().toISOString().split('T')[0],
+        matches: [
+          {"lg":"NPFL - Nigeria","h":"Enyimba FC","a":"Remo Stars","hs":2,"as":1,"st":"LIVE","tm":"67'"},
+          {"lg":"Premier League","h":"Arsenal","a":"Man City","hs":2,"as":1,"st":"LIVE","tm":"78'"},
+          {"lg":"La Liga","h":"Real Madrid","a":"Barcelona","hs":1,"as":0,"st":"FINISHED","tm":"FT"}
+        ]
+      };
+    }
+
+    const url = new URL(context.request.url);
+    let status = url.searchParams.get('status');
+    let lg = url.searchParams.get('lg');
+
+    let matches = data.matches || [];
+
+    // Filter?status=LIVE or?lg=NPFL
+    if(status) matches = matches.filter(m => m.st === status.toUpperCase());
+    if(lg) matches = matches.filter(m => m.lg.toLowerCase().includes(lg.toLowerCase()));
+
+    return new Response(JSON.stringify({
+      source: "my-own-api",
+      owner: "Diamond162/livescore",
+      date: data.date,
+      count: matches.length,
+      matches: matches
+    }), {
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "max-age=10"
+      }
     });
-   }catch(e){}
+
+  }catch(err){
+    return new Response(JSON.stringify({
+      source: "error-fallback",
+      count: 1,
+      matches: [
+        {"lg":"NPFL - Nigeria","h":"Enyimba FC","a":"Remo Stars","hs":1,"as":0,"st":"LIVE","tm":"34'"}
+      ],
+      error: err.message
+    }), {
+      headers: { "Content-Type":"application/json" }
+    });
   }
-  if(all.length==0) all=[{lg:"Premier League",h:"Arsenal",a:"Man City",hs:2,as:1,st:"LIVE",tm:"67'"},{lg:"La Liga",h:"Real Madrid",a:"Barcelona",hs:2,as:2,st:"FINISHED",tm:"FT"},{lg:"NPFL",h:"Enyimba",a:"Remo Stars",hs:1,as:0,st:"LIVE",tm:"34'"}];
-  return new Response(JSON.stringify({source: all.length>3?'live':'demo', matches:all, count:all.length}),{headers:{"Content-Type":"application/json","Cache-Control":"max-age=30"}});
- }catch(e){
-  return new Response(JSON.stringify({matches:[{lg:"Premier League",h:"Arsenal",a:"Man City",hs:2,as:1,st:"LIVE",tm:"67'"}],count:1}),{headers:{"Content-Type":"application/json"}});
- }
 }
