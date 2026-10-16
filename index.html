@@ -1,1 +1,68 @@
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FlashScore Lagos</title><style>*{margin:0;box-sizing:border-box}body{background:#0a0e1a;color:#fff;font-family:sans-serif}header{background:#111827;padding:16px;text-align:center;border-bottom:3px solid #00ff88}h1{font-size:22px}h1 span{color:#00ff88}p{color:#9ca3af;font-size:12px;margin-top:4px}#dates{display:flex;gap:8px;padding:10px;overflow:auto;background:#0f172a}.d{padding:8px 16px;background:#1e293b;border-radius:20px;white-space:nowrap;cursor:pointer;font-size:13px}.d.on{background:#00ff88;color:#000;font-weight:700}#tabs{display:flex;background:#111827}.t{flex:1;padding:12px;text-align:center;cursor:pointer;font-size:13px;font-weight:700;border-bottom:2px solid transparent}.t.on{border-color:#00ff88;color:#00ff88}.lg{color:#9ca3af;font-size:11px;margin:16px 12px 6px}.m{background:#111827;margin:0 8px 8px;border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;border-left:3px solid #00ff88}.tm{font-size:10px;color:#00ff88;margin-top:4px}.sc{font-size:20px;font-weight:900;color:#00ff88}</style></head><body><header><h1>⚽ FlashScore <span>Lagos</span></h1><p>LIVE • Black Green Pro • WAT</p></header><div id="dates"></div><div id="tabs"><div class="t on" data-f="ALL">ALL</div><div class="t" data-f="LIVE">LIVE</div><div class="t" data-f="FINISHED">FINISHED</div><div class="t" data-f="UPCOMING">UPCOMING</div></div><div id="list"></div><script>const demo=[{lg:"Premier League",h:"Arsenal",a:"Man City",hs:2,as:1,st:"LIVE",tm:"67'"},{lg:"Premier League",h:"Chelsea",a:"Liverpool",hs:1,as:1,st:"LIVE",tm:"52'"},{lg:"La Liga",h:"Real Madrid",a:"Barcelona",hs:2,as:2,st:"FINISHED",tm:"FT"},{lg:"Serie A",h:"Inter",a:"AC Milan",hs:0,as:0,st:"UPCOMING",tm:"20:45"},{lg:"NPFL - Nigeria",h:"Enyimba FC",a:"Remo Stars",hs:1,as:0,st:"LIVE",tm:"34'"},{lg:"Bundesliga",h:"Bayern Munich",a:"Dortmund",hs:3,as:2,st:"FINISHED",tm:"FT"},{lg:"NPFL - Nigeria",h:"Rangers Int'l",a:"Kano Pillars",hs:0,as:0,st:"UPCOMING",tm:"16:00"}];const datesEl=document.getElementById('dates'),listEl=document.getElementById('list');let cur=new Date().toISOString().split('T')[0],filter="ALL";for(let i=-3;i<=3;i++){let d=new Date();d.setDate(d.getDate()+i);let iso=d.toISOString().split('T')[0],txt=d.toLocaleDateString('en',{month:'short',day:'numeric'});if(i==0)txt="TODAY "+txt;let el=document.createElement('div');el.className='d'+(iso==cur?' on':'');el.textContent=txt;el.onclick=()=>{cur=iso;document.querySelectorAll('.d').forEach(x=>x.classList.remove('on'));el.classList.add('on');render();};datesEl.appendChild(el);}function render(){listEl.innerHTML='';let f=demo.filter(m=>filter=="ALL"||m.st==filter);if(!f.length){listEl.innerHTML='<div style="text-align:center;padding:40px;color:#666">No matches</div>';return;}let by={};f.forEach(m=>(by[m.lg]=by[m.lg]||[]).push(m));for(let lg in by){let h=document.createElement('div');h.className='lg';h.textContent=lg;listEl.appendChild(h);by[lg].forEach(m=>{let div=document.createElement('div');div.className='m';div.innerHTML=`<div><div>${m.h}</div><div style="color:#94a3b8">${m.a}</div><div class=tm>${m.tm} • ${m.st}</div></div><div class=sc>${m.hs} - ${m.as}</div>`;listEl.appendChild(div);});}}render();document.querySelectorAll('.t').forEach(t=>t.onclick=()=>{document.querySelectorAll('.t').forEach(x=>x.classList.remove('on'));t.classList.add('on');filter=t.dataset.f;render();});</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FlashScore Lagos - LIVE</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0a;color:#fff;font-family:system-ui,sans-serif;padding-bottom:20px}
+.header{background:#111;padding:15px;text-align:center;border-bottom:2px solid #00ff88;position:sticky;top:0;z-index:10}
+.header h1{font-size:20px}.header h1 span{color:#00ff88}
+.header p{font-size:12px;color:#888;margin-top:3px}
+.tabs{display:flex;gap:8px;padding:10px;overflow-x:auto;background:#0a0a0a;position:sticky;top:68px;z-index:9}
+.tab{padding:8px 16px;border-radius:20px;border:1px solid #333;background:#1a1a1a;color:#aaa;font-size:13px;white-space:nowrap;cursor:pointer}
+.tab.active{background:#00ff88;color:#000;border-color:#00ff88;font-weight:bold}
+.filters{display:flex;gap:8px;padding:0 10px 10px;overflow-x:auto}
+.f{padding:6px 14px;border-radius:15px;background:#222;color:#aaa;font-size:12px;border:1px solid #333;cursor:pointer}
+.f.active{background:#fff;color:#000}
+.league{padding:10px 15px;color:#666;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-top:10px}
+.match{background:#151515;border-left:3px solid #333;padding:12px 15px;margin:5px 10px;border-radius:10px;display:flex;justify-content:space-between;align-items:center}
+.match.live{border-left-color:#00ff88}
+.match.finished{border-left-color:#555}
+.team{font-size:14px}.team strong{color:#fff}.team small{color:#888;display:block;font-size:13px}
+.score{font-size:22px;font-weight:bold;color:#00ff88;min-width:60px;text-align:right}
+.score.finished{color:#aaa}
+.status{font-size:11px;margin-top:4px}.status.live{color:#00ff88}.status.up{color:#00ff88}.status.fin{color:#666}
+#loading{text-align:center;padding:40px;color:#666}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>⚽ FlashScore <span>Lagos</span></h1>
+<p>LIVE • Real API • WAT</p>
+</div>
+
+<div class="tabs" id="dateTabs">
+<button class="tab" data-date="2026-10-14">Oct 14</button>
+<button class="tab" data-date="2026-10-15">Oct 15</button>
+<button class="tab active" data-date="2026-10-16">TODAY Oct 16</button>
+<button class="tab" data-date="2026-10-17">Oct 17</button>
+</div>
+
+<div class="filters" id="filterTabs">
+<button class="f active" data-f="ALL">ALL</button>
+<button class="f" data-f="LIVE">LIVE</button>
+<button class="f" data-f="FINISHED">FINISHED</button>
+<button class="f" data-f="UPCOMING">UPCOMING</button>
+</div>
+
+<div id="loading">Loading REAL matches from live-football-api.com...</div>
+<div id="list"></div>
+
+<script>
+let allMatches=[];
+let currentFilter='ALL';
+let currentDate='2026-10-16';
+
+async function load(date){
+  currentDate=date;
+  document.getElementById('loading').style.display='block';
+  document.getElementById('loading').innerText='Loading REAL matches for '+date+'...';
+  document.getElementById('list').innerHTML='';
+  try{
+    let res=await fetch('/api/matches?date='+date);
+    let data=await res.json();
+    console.log(data);
+    if(data.error && data.error.includes('API key')){
+      document.getElementById('loading').innerHTML='<div style="color:#ff5555;padding:20px">
